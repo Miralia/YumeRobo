@@ -1,0 +1,281 @@
+/*
+ * YumeRobo Design System
+ * Inspired by Apple Human Interface Guidelines
+ * Supports Light/Dark mode with semantic color tokens
+ */
+
+/* ===== COLOR TOKENS ===== */
+:root {
+	/* System Colors - Light Mode */
+	--color-background: #ffffff;
+	--color-background-secondary: #f2f2f7;
+	--color-background-tertiary: #e5e5ea;
+
+	--color-label: #000000;
+	--color-label-secondary: rgba(60, 60, 67, 0.6);
+	--color-label-tertiary: rgba(60, 60, 67, 0.3);
+
+	--color-separator: rgba(60, 60, 67, 0.29);
+	--color-separator-opaque: #c6c6c8;
+
+	--color-fill: rgba(120, 120, 128, 0.2);
+	--color-fill-secondary: rgba(120, 120, 128, 0.16);
+
+	/* Accent - Purple (YumeRobo Brand) */
+	--color-accent: #5856d6;
+	--color-accent-hover: #7674e0;
+
+	/* Glass Effect */
+	--glass-background: rgba(255, 255, 255, 0.72);
+	--glass-blur: 20px;
+
+	/* Shadows */
+	--shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+	--shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+	--shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+/* System Colors - Dark Mode (Auto) */
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) {
+		--color-background: #000000;
+		--color-background-secondary: #1c1c1e;
+		--color-background-tertiary: #2c2c2e;
+
+		--color-label: #ffffff;
+		--color-label-secondary: rgba(235, 235, 245, 0.6);
+		--color-label-tertiary: rgba(235, 235, 245, 0.3);
+
+		--color-separator: rgba(84, 84, 88, 0.65);
+		--color-separator-opaque: #38383a;
+
+		--color-fill: rgba(120, 120, 128, 0.36);
+		--color-fill-secondary: rgba(120, 120, 128, 0.32);
+
+		/* Accent - Purple (YumeRobo Brand) */
+		--color-accent: #7b7aff;
+		--color-accent-hover: #9d9cff;
+
+		/* Glass Effect */
+		--glass-background: rgba(28, 28, 30, 0.72);
+
+		/* Shadows */
+		--shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+		--shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+		--shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.5);
+	}
+}
+
+/* Force Dark Mode */
+:root[data-theme="dark"] {
+	--color-background: #000000;
+	--color-background-secondary: #1c1c1e;
+	--color-background-tertiary: #2c2c2e;
+
+	--color-label: #ffffff;
+	--color-label-secondary: rgba(235, 235, 245, 0.6);
+	--color-label-tertiary: rgba(235, 235, 245, 0.3);
+
+	--color-separator: rgba(84, 84, 88, 0.65);
+	--color-separator-opaque: #38383a;
+
+	--color-fill: rgba(120, 120, 128, 0.36);
+	--color-fill-secondary: rgba(120, 120, 128, 0.32);
+
+	/* Accent - Purple (YumeRobo Brand) */
+	--color-accent: #7b7aff;
+	--color-accent-hover: #9d9cff;
+
+	/* Glass Effect */
+	--glass-background: rgba(28, 28, 30, 0.72);
+
+	/* Shadows */
+	--shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+	--shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+	--shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.5);
+}
+
+/* ===== TYPOGRAPHY ===== */
+:root {
+	--font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+	--font-mono: 'SF Mono', SFMono-Regular, ui-monospace, Menlo, Monaco, 'Cascadia Mono', 'Consolas', monospace;
+
+	--text-xs: 0.75rem;
+	/* 12px */
+	--text-sm: 0.875rem;
+	/* 14px */
+	--text-base: 1rem;
+	/* 16px */
+	--text-lg: 1.125rem;
+	/* 18px */
+	--text-xl: 1.25rem;
+	/* 20px */
+	--text-2xl: 1.5rem;
+	/* 24px */
+	--text-3xl: 1.875rem;
+	/* 30px */
+	--text-4xl: 2.25rem;
+	/* 36px */
+
+	--leading-tight: 1.25;
+	--leading-normal: 1.5;
+	--leading-relaxed: 1.75;
+
+	--tracking-tight: -0.025em;
+	--tracking-normal: 0;
+}
+
+/* ===== SPACING ===== */
+:root {
+	--space-1: 0.25rem;
+	/* 4px */
+	--space-2: 0.5rem;
+	/* 8px */
+	--space-3: 0.75rem;
+	/* 12px */
+	--space-4: 1rem;
+	/* 16px */
+	--space-5: 1.25rem;
+	/* 20px */
+	--space-6: 1.5rem;
+	/* 24px */
+	--space-8: 2rem;
+	/* 32px */
+	--space-10: 2.5rem;
+	/* 40px */
+	--space-12: 3rem;
+	/* 48px */
+	--space-16: 4rem;
+	/* 64px */
+}
+
+/* ===== BORDERS ===== */
+:root {
+	--radius-sm: 6px;
+	--radius-md: 10px;
+	--radius-lg: 14px;
+	--radius-xl: 20px;
+	--radius-full: 9999px;
+}
+
+/* ===== TRANSITIONS ===== */
+:root {
+	--ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+	--ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+	--duration-fast: 150ms;
+	--duration-normal: 250ms;
+	--duration-slow: 400ms;
+}
+
+/* ===== RESET & BASE ===== */
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+}
+
+html {
+	font-size: 16px;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+	text-rendering: optimizeLegibility;
+}
+
+body {
+	font-family: var(--font-sans);
+	font-size: var(--text-base);
+	line-height: var(--leading-normal);
+	color: var(--color-label);
+	background-color: var(--color-background);
+	min-height: 100vh;
+}
+
+a {
+	color: var(--color-accent);
+	text-decoration: none;
+	transition: color var(--duration-fast) var(--ease-out);
+}
+
+a:hover {
+	color: var(--color-accent-hover);
+}
+
+code,
+pre {
+	font-family: var(--font-mono);
+	font-size: var(--text-sm);
+}
+
+pre {
+	background-color: var(--color-background-secondary);
+	border-radius: var(--radius-md);
+	padding: var(--space-4);
+	overflow-x: auto;
+}
+
+/* ===== UTILITY CLASSES ===== */
+.glass {
+	background: var(--glass-background);
+	backdrop-filter: blur(var(--glass-blur));
+	-webkit-backdrop-filter: blur(var(--glass-blur));
+}
+
+.container {
+	width: 100%;
+	max-width: 960px;
+	margin-inline: auto;
+	padding-inline: var(--space-4);
+}
+
+@media (min-width: 768px) {
+	.container {
+		padding-inline: var(--space-6);
+	}
+}
+
+/* ===== VIEW TRANSITIONS ===== */
+@keyframes fade-in {
+	from {
+		opacity: 0;
+	}
+}
+
+@keyframes fade-out {
+	to {
+		opacity: 0;
+	}
+}
+
+@keyframes slide-from-right {
+	from {
+		transform: translateX(30px);
+	}
+}
+
+@keyframes slide-to-left {
+	to {
+		transform: translateX(-30px);
+	}
+}
+
+::view-transition-old(root) {
+	animation: 150ms cubic-bezier(0.4, 0, 1, 1) both fade-out,
+		200ms cubic-bezier(0.4, 0, 0.2, 1) both slide-to-left;
+}
+
+::view-transition-new(root) {
+	animation: 210ms cubic-bezier(0, 0, 0.2, 1) 90ms both fade-in,
+		300ms cubic-bezier(0.4, 0, 0.2, 1) both slide-from-right;
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+
+	::view-transition-group(*),
+	::view-transition-old(*),
+	::view-transition-new(*) {
+		animation: none !important;
+	}
+}

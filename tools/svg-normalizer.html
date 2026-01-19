@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>YumeRobo Icon Normalizer</title>
+    <style>
+        body {
+            font-family: -apple-system, system-ui, sans-serif;
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            color: #333;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        textarea {
+            width: 100%;
+            height: 150px;
+            font-family: monospace;
+            font-size: 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 8px;
+        }
+
+        .preview-box {
+            border: 1px dashed #ccc;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #f9f9f9;
+        }
+
+        svg {
+            border: 1px solid #ddd;
+            background: white;
+            color: #333;
+            transition: color 0.2s;
+        }
+
+        .controls {
+            margin: 1rem 0;
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        label {
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        code {
+            background: #eee;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+
+        .output {
+            background: #eef;
+            padding: 1rem;
+            border-radius: 4px;
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 12px;
+            margin-top: 1rem;
+        }
+
+        button {
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        h2 {
+            border-bottom: 2px solid #eee;
+            padding-bottom: 0.5rem;
+        }
+
+        .tips {
+            font-size: 0.9rem;
+            color: #666;
+            line-height: 1.5;
+            background: #fff8e1;
+            padding: 1rem;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>SVG Icon Normalizer</h1>
+    <p>Use this tool to verify and extract paths for <code>src/lib/utils/icons.ts</code>.</p>
+
+    <div class="tips">
+        <strong>Workflow:</strong>
+        <ol>
+            <li><strong>Trace:</strong> Use <a href="https://vectorizer.ai" target="_blank">vectorizer.ai</a> or
+                Inkscape to convert your Image to SVG.</li>
+            <li><strong>Flatten:</strong> In your vector tool, combine all shapes into one "Compound Path" (Union).</li>
+            <li><strong>Paste:</strong> Paste the raw SVG code below.</li>
+            <li><strong>Refine:</strong> Adjust the `Current Path` until it looks centered in the 24x24 box.</li>
+        </ol>
+    </div>
+
+    <div class="grid">
+        <div>
+            <h2>Input</h2>
+            <p><small>Paste full &lt;svg&gt; or just `d` path</small></p>
+            <textarea id="input" placeholder="Paste SVG code here..."></textarea>
+            <div class="controls">
+                <button onclick="processInput()">Update Preview</button>
+            </div>
+
+            <h3>Manual Tweaks</h3>
+            <label>ViewBox Override: <input type="text" id="vbox" placeholder="0 0 24 24" value="0 0 24 24"></label>
+        </div>
+
+        <div>
+            <h2>Preview (24x24)</h2>
+            <div class="preview-box">
+                <!-- Main Preview -->
+                <svg id="preview" width="96" height="96" viewBox="0 0 24 24" fill="currentColor">
+                    <path id="previewPath" d="" />
+                </svg>
+            </div>
+            <p>Hover color test: <span style="color: #007722; font-weight: bold; cursor: pointer;"
+                    onmouseover="setPreviewColor('#007722')" onmouseout="setPreviewColor('#333')">Douban Green</span>,
+                <span style="color: #f5c518; font-weight: bold; cursor: pointer;"
+                    onmouseover="setPreviewColor('#f5c518')" onmouseout="setPreviewColor('#333')">IMDb Yellow</span>
+            </p>
+        </div>
+    </div>
+
+    <h2>Final Output</h2>
+    <p>Copy this string to <code>icons.ts</code>:</p>
+    <div class="output" id="output">...</div>
+
+    <div id="pathList"
+        style="margin: 1rem 0; max-height: 200px; overflow-y: auto; border: 1px solid #eee; padding: 0.5rem;"></div>
+
+    <script>
+        const previewSvg = document.getElementById('preview');
+        const output = document.getElementById('output');
+        const inputBox = document.getElementById('input');
+        const vboxInput = document.getElementById('vbox');
+        const pathList = document.getElementById('pathList');
+
+        let originalPaths = []; // Store parsed {d, fill, id}
+
+        function renderPreview() {
+            // clear preview
+            previewSvg.innerHTML = '';
+
+            // Re-add paths that are checked
+            const selectedPaths = [];
+
+            originalPaths.forEach((p, idx) => {
+                const checkbox = document.getElementById(`chk-${idx}`);
+                if (checkbox && checkbox.checked) {
+                    const newPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                    newPath.setAttribute('d', p.d);
+                    // In preview, we use currentColor to show what the final mono icon looks like
+                    // But we could allow toggling "Show Original Color" for debugging. 
+                    // For now, assume goal is monochrome.
+                    previewSvg.appendChild(newPath);
+                    selectedPaths.push(p.d);
+                }
+            });
+
+            // Calculate BBox of the COMPOUND shape
+            try {
+                // We need at least one path
+                if (selectedPaths.length > 0) {
+                    // Browser needs a moment to render to calc BBox
+                    requestAnimationFrame(() => {
+                        const bbox = previewSvg.getBBox();
+                        if (bbox.width > 0) {
+                            const padding = Math.max(bbox.width, bbox.height) * 0.1;
+                            const x = Math.floor(bbox.x - padding);
+                            const y = Math.floor(bbox.y - padding);
+                            const w = Math.ceil(bbox.width + (padding * 2));
+                            const h = Math.ceil(bbox.height + (padding * 2));
+                            const vb = `${x} ${y} ${w} ${h}`;
+                            vboxInput.value = vb;
+                            previewSvg.setAttribute('viewBox', vb);
+
+                            output.textContent = `{
+    d: "${selectedPaths.join(' ')}",
+    viewBox: "${vb}"
+},`;
+                        }
+                    });
+                } else {
+                    output.textContent = "...";
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        function processInput() {
+            const raw = inputBox.value.trim();
+            if (!raw) return;
+
+            // Parse SVG string
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(raw.includes('<svg') ? raw : `<svg>${raw}</svg>`, "image/svg+xml");
+
+            const paths = Array.from(doc.querySelectorAll('path'));
+
+            originalPaths = paths.map((p, i) => ({
+                d: p.getAttribute('d'),
+                fill: p.getAttribute('fill') || p.style.fill || '#000',
+                id: i
+            }));
+
+            // Generate UI
+            pathList.innerHTML = '<strong>Select Paths to Include:</strong><br>';
+
+            originalPaths.forEach((p, i) => {
+                const row = document.createElement('div');
+                row.style.display = 'flex';
+                row.style.alignItems = 'center';
+                row.style.marginBottom = '4px';
+
+                const chk = document.createElement('input');
+                chk.type = 'checkbox';
+                chk.id = `chk-${i}`;
+                chk.checked = i > 0; // Heuristic: Uncheck first path (usually background)
+                chk.onchange = renderPreview;
+
+                const colorBox = document.createElement('div');
+                colorBox.style.width = '12px';
+                colorBox.style.height = '12px';
+                colorBox.style.backgroundColor = p.fill;
+                colorBox.style.margin = '0 8px';
+                colorBox.style.border = '1px solid #ccc';
+
+                const label = document.createElement('span');
+                label.innerText = `Path ${i} (${p.d.substring(0, 20)}...)`;
+                label.style.fontSize = '12px';
+                label.style.color = '#666';
+
+                row.appendChild(chk);
+                row.appendChild(colorBox);
+                row.appendChild(label);
+                pathList.appendChild(row);
+            });
+
+            renderPreview();
+        }
+
+        function setPreviewColor(c) {
+            previewSvg.style.color = c;
+        }
+
+        vboxInput.addEventListener('input', (e) => {
+            previewSvg.setAttribute('viewBox', e.target.value);
+        });
+
+        inputBox.addEventListener('input', processInput);
+    </script>
+</body>
+
+</html>
