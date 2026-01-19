@@ -26,3 +26,4 @@ vite.config.ts.timestamp-*
 src/lib/content/releases/
 static/posters/
 static/mediainfo/
+static/og/

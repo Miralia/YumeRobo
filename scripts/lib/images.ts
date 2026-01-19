@@ -7,20 +7,23 @@ import path from 'node:path';
 
 const POSTER_WIDTH = 500;
 const POSTER_QUALITY = 80;
+const OG_WIDTH = 600;
+const OG_QUALITY = 80;
 const OUTPUT_DIR = 'static/posters';
+const OG_DIR = 'static/og';
 
 /**
  * Process a poster image from a URL or local path
  * 1. Downloads/Reads image
  * 2. Resizes to standard width (preserving aspect ratio)
- * 3. Converts to AVIF format
- * 4. Saves to static/posters directory
+ * 3. Converts to AVIF format (for web) and JPG (for OG)
+ * 4. Saves to static/posters and static/og directories
  * 
- * @returns The relative path to the saved image (e.g., '/posters/slug.avif')
+ * @returns The relative path to the saved main image (e.g., '/posters/slug.avif')
  */
 export async function processPoster(source: string, slug: string): Promise<string> {
     try {
-        let buffer: ArrayBuffer;
+        let buffer: Buffer | ArrayBuffer;
 
         // Check if source is URL or local path
         if (source.startsWith('http')) {
@@ -34,25 +37,45 @@ export async function processPoster(source: string, slug: string): Promise<strin
             buffer = await fs.readFile(source);
         }
 
-        // Ensure output directory exists
+        // Ensure output directories exist
         await fs.mkdir(OUTPUT_DIR, { recursive: true });
+        await fs.mkdir(OG_DIR, { recursive: true });
 
-        const filename = `${slug}.avif`;
-        const outputPath = path.join(OUTPUT_DIR, filename);
+        const filenameAvif = `${slug}.avif`;
+        const filenameJpg = `${slug}.jpg`;
+        const outputPathAvif = path.join(OUTPUT_DIR, filenameAvif);
+        const outputPathJpg = path.join(OG_DIR, filenameJpg);
 
-        // Process image with Sharp
-        await sharp(buffer)
+        const image = sharp(buffer);
+
+        // 1. Generate AVIF (Main)
+        await image
+            .clone()
             .resize(POSTER_WIDTH, null, {
-                withoutEnlargement: true // Don't upscale if smaller
+                withoutEnlargement: true
             })
             .avif({
                 quality: POSTER_QUALITY,
-                effort: 4 // Balance between speed and compression
+                effort: 4
             })
-            .toFile(outputPath);
+            .toFile(outputPathAvif);
 
-        console.log(`[+] Poster saved to ${outputPath}`);
-        return `/posters/${filename}`;
+        // 2. Generate JPG (OG / Social)
+        await image
+            .clone()
+            .resize(OG_WIDTH, null, {
+                withoutEnlargement: true
+            })
+            .jpeg({
+                quality: OG_QUALITY,
+                mozjpeg: true
+            })
+            .toFile(outputPathJpg);
+
+        console.log(`[+] Poster saved to ${outputPathAvif}`);
+        console.log(`[+] OG Image saved to ${outputPathJpg}`);
+
+        return `/posters/${filenameAvif}`;
 
     } catch (error) {
         console.error('❌ Error processing poster:', error);

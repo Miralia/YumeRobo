@@ -3,6 +3,9 @@
     import { getAllReleases, searchReleases } from "$lib/content/loader";
     import { t } from "$lib/stores/locale";
     import { onMount } from "svelte";
+    import { env } from "$env/dynamic/public";
+
+    const SITE_URL = env.PUBLIC_SITE_URL || "https://yumerobo.moe";
 
     // Get all releases
     const allReleases = getAllReleases();
@@ -46,10 +49,26 @@
 
 <svelte:head>
     <title>夢みる機械</title>
-    <meta
-        name="description"
-        content="Latest media releases and announcements"
-    />
+    <meta name="description" content="Latest media releases" />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="夢みる機械" />
+    <meta property="og:description" content="Latest media releases" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="夢みる機械" />
+    {#if allReleases.length > 0}
+        <meta
+            property="og:image"
+            content="{SITE_URL}{allReleases[0].poster
+                .replace('.avif', '.jpg')
+                .replace('/posters/', '/og/')}"
+        />
+    {/if}
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="夢みる機械" />
+    <meta name="twitter:description" content="Latest media releases" />
 </svelte:head>
 
 <div class="home-page container">

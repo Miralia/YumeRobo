@@ -7,6 +7,9 @@
     import MediaInfoCard from "$lib/components/MediaInfoCard.svelte";
     import { type Release, getReleaseBadges } from "$lib/content/schema";
     import { externalIcons } from "$lib/utils/icons";
+    import { env } from "$env/dynamic/public";
+
+    const SITE_URL = env.PUBLIC_SITE_URL || "https://yumerobo.moe";
 
     interface Props {
         data: {
@@ -121,6 +124,61 @@
             data.release.title_zh,
         )} | 夢みる機械</title
     >
+    <meta
+        name="description"
+        content="{data.release.year} · {data.release.media_type === 'movie'
+            ? 'Movie'
+            : 'TV'}"
+    />
+
+    <!-- Open Graph -->
+    <meta
+        property="og:title"
+        content={getLocalizedTitle(
+            $locale,
+            data.release.title,
+            data.release.title_en,
+            data.release.title_zh,
+        )}
+    />
+    <meta
+        property="og:description"
+        content="{data.release.year} · {data.release.media_type === 'movie'
+            ? 'Movie'
+            : 'TV'}"
+    />
+    <meta
+        property="og:image"
+        content="{SITE_URL}{data.release.poster
+            .replace('.avif', '.jpg')
+            .replace('/posters/', '/og/')}"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="夢みる機械" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+        name="twitter:title"
+        content={getLocalizedTitle(
+            $locale,
+            data.release.title,
+            data.release.title_en,
+            data.release.title_zh,
+        )}
+    />
+    <meta
+        name="twitter:description"
+        content="{data.release.year} · {data.release.media_type === 'movie'
+            ? 'Movie'
+            : 'TV'}"
+    />
+    <meta
+        name="twitter:image"
+        content="{SITE_URL}{data.release.poster
+            .replace('.avif', '.jpg')
+            .replace('/posters/', '/og/')}"
+    />
 </svelte:head>
 
 <article class="detail-page container">
