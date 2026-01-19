@@ -1,14 +1,14 @@
 
 import { getAllReleases } from '$lib/content/loader';
-import { PUBLIC_SITE_URL } from '$env/static/public';
+import { env } from '$env/dynamic/public';
 import type { RequestHandler } from './$types';
 
 export const prerender = true;
 
 export const GET: RequestHandler = async ({ url }) => {
     const releases = getAllReleases();
-    // Prefer environment variable (set in Cloudflare/env), fallback to origin (dev)
-    const siteUrl = PUBLIC_SITE_URL || url.origin;
+    // Prefer environment variable, fallback to origin (dev) or default
+    const siteUrl = env.PUBLIC_SITE_URL || url.origin || 'https://yumerobo.moe';
 
     const xml = `<?xml version="1.0" encoding="UTF-8" ?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
