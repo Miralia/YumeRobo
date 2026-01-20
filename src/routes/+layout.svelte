@@ -3,15 +3,21 @@
 	import Header from "$lib/components/Header.svelte";
 	import Footer from "$lib/components/Footer.svelte";
 	import { onNavigate } from "$app/navigation";
+	import { page } from "$app/stores";
+	import {
+		boundaryIndicator,
+		type BoundaryIndicatorOptions,
+	} from "$lib/utils/overscroll";
 
 	let { children } = $props();
 
-	// Enable View Transitions API for smooth page navigation
-	onNavigate((navigation) => {
-		// Progressive enhancement: only use if browser supports View Transitions
-		if (!document.startViewTransition) return;
+	// Only enable load more on homepage
+	let indicatorOptions = $derived<BoundaryIndicatorOptions>({
+		enableLoadMore: $page.url.pathname === "/",
+	});
 
-		// Skip transition if URL hasn't changed (e.g. hash change or clicking current link)
+	onNavigate((navigation) => {
+		if (!document.startViewTransition) return;
 		if (navigation.from?.url.href === navigation.to?.url.href) return;
 
 		return new Promise((resolve) => {
@@ -28,7 +34,7 @@
 	<title>夢みる機械</title>
 </svelte:head>
 
-<div class="app-shell">
+<div class="app-shell" use:boundaryIndicator={indicatorOptions}>
 	<Header />
 	<main class="main-content">
 		{@render children()}

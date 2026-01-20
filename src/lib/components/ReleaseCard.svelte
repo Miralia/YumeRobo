@@ -129,11 +129,6 @@
         width: 100%;
         height: 100%;
         object-fit: cover;
-        transition: transform var(--duration-normal) var(--ease-out);
-    }
-
-    .release-card:hover .poster {
-        transform: scale(1.05);
     }
 
     /* Gradient overlay */

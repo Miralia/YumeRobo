@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { slide } from "svelte/transition";
     import { spring } from "svelte/motion";
     import { locale, t, type Locale } from "$lib/stores/locale";
     import { goto } from "$app/navigation";
@@ -332,7 +333,7 @@
 
     <!-- Mobile Menu -->
     {#if isMobileMenuOpen}
-        <nav class="nav-mobile">
+        <nav class="nav-mobile" transition:slide={{ duration: 200 }}>
             <div class="mobile-search-wrapper">
                 <svg
                     class="search-icon"

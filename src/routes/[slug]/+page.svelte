@@ -8,7 +8,7 @@
     import { type Release, getReleaseBadges } from "$lib/content/schema";
     import { externalIcons } from "$lib/utils/icons";
     import { env } from "$env/dynamic/public";
-    import { duration } from "$lib/utils/animation";
+    import { duration, sectionDelay } from "$lib/utils/animation";
 
     const SITE_URL = env.PUBLIC_SITE_URL || "https://yumerobo.moe";
 
@@ -20,14 +20,11 @@
 
     let { data }: Props = $props();
 
-    // Animation constants
     const animDuration = duration.entrance;
     const animEasing = cubicOut;
     const animY = 15;
-    const staggerBase = 80;
+    const slideConfig = { duration: 250, easing: cubicOut };
 
-    // Tech Specs expansion state
-    // Default: Collapse if title contains x264, x265, or AV1 (case insensitive)
     let expandedSpecs = $state<Set<number>>(new Set());
 
     $effect(() => {
@@ -244,7 +241,7 @@
             in:fly={{
                 x: animY,
                 duration: animDuration,
-                delay: staggerBase * 2,
+                delay: sectionDelay("hero"),
                 easing: animEasing,
             }}
         >
@@ -410,7 +407,7 @@
             in:fly={{
                 y: animY,
                 duration: animDuration,
-                delay: staggerBase * 3,
+                delay: sectionDelay("specs"),
                 easing: animEasing,
             }}
         >
@@ -420,7 +417,7 @@
                     in:fly={{
                         y: 20,
                         duration: 400,
-                        delay: staggerBase * 3 + i * 50,
+                        delay: sectionDelay("specs", i),
                         easing: cubicOut,
                     }}
                 >
@@ -448,7 +445,7 @@
                     </button>
 
                     {#if expandedSpecs.has(i)}
-                        <div class="spec-body" transition:slide>
+                        <div class="spec-body" transition:slide={slideConfig}>
                             {#if spec.content}
                                 <div class="spec-content">
                                     {@html spec.content}
@@ -482,7 +479,7 @@
         in:fly={{
             y: animY,
             duration: animDuration,
-            delay: staggerBase * 4,
+            delay: sectionDelay("mediainfo"),
             easing: animEasing,
         }}
     >
@@ -498,10 +495,10 @@
                         in:fly={{
                             y: 20,
                             duration: 400,
-                            delay:
-                                staggerBase * 4 +
-                                (tIndex * torrent.mediainfo.length + miIndex) *
-                                    50,
+                            delay: sectionDelay(
+                                "mediainfo",
+                                tIndex * torrent.mediainfo.length + miIndex,
+                            ),
                             easing: cubicOut,
                         }}
                     >
@@ -523,7 +520,7 @@
         in:fly={{
             y: animY,
             duration: animDuration,
-            delay: staggerBase * 5,
+            delay: sectionDelay("torrents"),
             easing: animEasing,
         }}
     >
@@ -535,7 +532,7 @@
                     in:fly={{
                         y: 20,
                         duration: 400,
-                        delay: staggerBase * 5 + index * 50,
+                        delay: sectionDelay("torrents", index),
                         easing: cubicOut,
                     }}
                 >
@@ -615,7 +612,6 @@
         display: flex;
         flex-direction: column;
         gap: var(--space-8);
-        will-change: transform, opacity;
         padding-bottom: var(--space-16);
     }
 
@@ -953,7 +949,7 @@
     .chevron {
         flex-shrink: 0;
         color: var(--color-label-tertiary);
-        transition: transform var(--duration-fast) var(--ease-out);
+        transition: transform var(--duration-normal) var(--ease-spring);
     }
 
     .chevron.expanded {

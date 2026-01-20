@@ -49,3 +49,26 @@ export function flyConfig(
         easing: cubicOut,
     };
 }
+
+/**
+ * Section-based stagger delays for detail page
+ * Provides consistent timing across all page sections
+ */
+export const sections = {
+    breadcrumb: { base: 0 },
+    hero: { base: 160 },
+    specs: { base: 240, offset: 50 },
+    mediainfo: { base: 320, offset: 50 },
+    torrents: { base: 400, offset: 50 },
+} as const;
+
+/**
+ * Calculate delay for section-based animations
+ * @param section - Section name from sections config
+ * @param index - Item index within section (for stagger effect)
+ */
+export function sectionDelay(section: keyof typeof sections, index = 0): number {
+    const config = sections[section];
+    const offset = "offset" in config ? config.offset : 0;
+    return config.base + index * offset;
+}

@@ -248,26 +248,13 @@ pre {
 	}
 }
 
-@keyframes slide-from-right {
-	from {
-		transform: translateX(30px);
-	}
-}
-
-@keyframes slide-to-left {
-	to {
-		transform: translateX(-30px);
-	}
-}
-
+/* Fade-only page transition - lets Magic Move be the sole motion focal point */
 ::view-transition-old(root) {
-	animation: 150ms cubic-bezier(0.4, 0, 1, 1) both fade-out,
-		200ms cubic-bezier(0.4, 0, 0.2, 1) both slide-to-left;
+	animation: 150ms cubic-bezier(0.4, 0, 1, 1) both fade-out;
 }
 
 ::view-transition-new(root) {
-	animation: 210ms cubic-bezier(0, 0, 0.2, 1) 90ms both fade-in,
-		300ms cubic-bezier(0.4, 0, 0.2, 1) both slide-from-right;
+	animation: 200ms cubic-bezier(0, 0, 0.2, 1) 50ms both fade-in;
 }
 
 /* Stabilize persistent elements */
@@ -333,7 +320,7 @@ pre {
 }
 
 ::view-transition-new(detail-badges) {
-	animation: 250ms ease-out 300ms both badge-fly-in;
+	animation: 280ms var(--ease-out) 350ms both badge-fly-in;
 }
 
 /* ===== ENTRANCE ANIMATIONS ===== */

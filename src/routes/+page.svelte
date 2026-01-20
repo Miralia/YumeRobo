@@ -9,7 +9,6 @@
 
     const SITE_URL = env.PUBLIC_SITE_URL || "https://yumerobo.moe";
 
-    // Get all releases
     const allReleases = getAllReleases();
 
     /**
@@ -76,6 +75,25 @@
     function loadMore() {
         displayCount += 10;
     }
+
+    // Listen for scroll-to-load-more event from boundary indicator
+    $effect(() => {
+        if (!browser) return;
+
+        function handleBoundaryLoadMore() {
+            if (hasMore) {
+                loadMore();
+            }
+        }
+
+        window.addEventListener("boundary-loadmore", handleBoundaryLoadMore);
+        return () => {
+            window.removeEventListener(
+                "boundary-loadmore",
+                handleBoundaryLoadMore,
+            );
+        };
+    });
 </script>
 
 <svelte:head>
@@ -192,5 +210,9 @@
     .load-more-button:hover {
         background: var(--color-fill);
         border-color: var(--color-accent);
+    }
+
+    .load-more-button:active {
+        transform: scale(0.97);
     }
 </style>
