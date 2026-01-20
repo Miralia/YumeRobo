@@ -5,19 +5,25 @@
     import { page } from "$app/stores";
     import { browser } from "$app/environment";
     import { env } from "$env/dynamic/public";
+    import { tick } from "svelte";
 
     const SITE_URL = env.PUBLIC_SITE_URL || "https://yumerobo.moe";
 
     // Get all releases
     const allReleases = getAllReleases();
 
-    // Search state (client-side only for SSG)
-    let searchQuery = $state("");
+    /**
+     * Search state (client-side only for SSG).
+     * Initialize directly from URL if in browser to avoid effect triggering reset.
+     */
+    const initialQuery = browser ? $page.url.searchParams.get("q") || "" : "";
+    let searchQuery = $state(initialQuery);
 
     $effect(() => {
         if (browser) {
             const urlQuery = $page.url.searchParams.get("q") || "";
             if (searchQuery !== urlQuery) {
+                // Only update if truly different (avoids loop)
                 searchQuery = urlQuery;
             }
         }
@@ -27,13 +33,42 @@
         searchQuery.trim() ? searchReleases(searchQuery) : allReleases,
     );
 
-    // Pagination
+    /** Pagination limit */
     let displayCount = $state(10);
 
+    /** Track count of items restored from snapshot to skip their entrance animation */
+    let restoredCount = $state(0);
+
+    /**
+     * Reset pagination ONLY when search query changes.
+     * We use a tracked/untracked pattern or explicit check to avoid reset on mount.
+     */
+    let previousQuery = initialQuery;
+
     $effect(() => {
-        searchQuery;
-        displayCount = 10;
+        if (searchQuery !== previousQuery) {
+            displayCount = 10;
+            restoredCount = 0; // Reset animation state on new search
+            previousQuery = searchQuery;
+        }
     });
+
+    /**
+     * Preserve scroll position and display count during navigation.
+     */
+    export const snapshot = {
+        capture: () => ({ displayCount, scrollY: window.scrollY }),
+        restore: (value: { displayCount: number; scrollY: number }) => {
+            displayCount = value.displayCount;
+            restoredCount = value.displayCount; // Skip animation for restored items
+            // Manually restore scroll position after DOM update
+            if (browser) {
+                tick().then(() => {
+                    window.scrollTo(0, value.scrollY);
+                });
+            }
+        },
+    };
 
     let displayedReleases = $derived(filteredReleases.slice(0, displayCount));
     let hasMore = $derived(filteredReleases.length > displayCount);
@@ -72,7 +107,11 @@
     <section class="release-list">
         {#if displayedReleases.length > 0}
             {#each displayedReleases as release, index (release.slug)}
-                <ReleaseCard {release} {index} />
+                <ReleaseCard
+                    {release}
+                    {index}
+                    animate={index >= restoredCount}
+                />
             {/each}
         {:else if searchQuery}
             <div class="empty-state">

@@ -3,49 +3,48 @@
     import { type Release, getReleaseBadges } from "$lib/content/schema";
     import { formatDateTime } from "$lib/utils/date";
     import { locale, getLocalizedTitle } from "$lib/stores/locale";
+    import { springPresets, stagger } from "$lib/utils/animation";
 
     interface Props {
+        /** The release data to display */
         release: Release;
+        /** Index for staggered animation delay */
         index?: number;
+        /** Whether to play the entrance animation */
+        animate?: boolean;
     }
 
-    let { release, index = 0 }: Props = $props();
-
-    // Staggered entrance animation
-    const opacity = spring(0, { stiffness: 0.1, damping: 0.8 });
-    const translateY = spring(20, { stiffness: 0.15, damping: 0.8 });
-
-    $effect(() => {
-        const delay = index * 50;
-        setTimeout(() => {
-            opacity.set(1);
-            translateY.set(0);
-        }, delay);
-    });
+    let { release, index = 0, animate = true }: Props = $props();
 
     // Hover animation
-    const scale = spring(1, { stiffness: 0.3, damping: 0.7 });
+    const scale = spring(1, springPresets.snappy);
 
     function handleHover(hovering: boolean) {
         scale.set(hovering ? 1.02 : 1);
     }
 
-    // Get torrent release names for display (top-level folder names)
     function getTorrentNames(): string[] {
         return release.torrents.map((t) => t.name);
     }
+
+    // Stagger delay for CSS animation
+    const animDelay = `${stagger(index)}ms`;
 </script>
 
 <a
     href="/{release.slug}"
     class="release-card"
-    style:opacity={$opacity}
-    style:transform="translateY({$translateY}px) scale({$scale})"
+    class:animate-fade-up={animate}
+    style:animation-delay={animDelay}
+    style:transform="scale({$scale})"
     onmouseenter={() => handleHover(true)}
     onmouseleave={() => handleHover(false)}
 >
     <!-- Poster -->
-    <div class="poster-container">
+    <div
+        class="poster-container"
+        style:view-transition-name="poster-{release.slug}"
+    >
         <img
             src={release.poster}
             alt={release.title}
@@ -58,7 +57,7 @@
     <!-- Info -->
     <div class="info">
         <!-- Localized title (switches based on locale) -->
-        <h2 class="title">
+        <h2 class="title" style:view-transition-name="title-{release.slug}">
             {getLocalizedTitle(
                 $locale,
                 release.title,
@@ -100,9 +99,9 @@
         text-decoration: none;
         color: inherit;
         transition:
+            transform var(--duration-fast) var(--ease-spring),
             box-shadow var(--duration-normal) var(--ease-out),
             background var(--duration-fast) var(--ease-out);
-        will-change: transform, opacity;
     }
 
     .release-card:hover {
@@ -137,7 +136,7 @@
         transform: scale(1.05);
     }
 
-    /* Poster overlay removed (kept empty div for gradient optionally or remove fully if not needed) */
+    /* Gradient overlay */
     .poster-overlay {
         position: absolute;
         inset: 0;

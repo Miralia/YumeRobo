@@ -4,23 +4,27 @@
     import { goto } from "$app/navigation";
     import { page } from "$app/stores";
     import { debounce } from "$lib/utils/debounce";
+    import { springPresets } from "$lib/utils/animation";
 
-    // Theme state: 'auto' | 'light' | 'dark'
+    /** Theme state */
     type ThemeMode = "auto" | "light" | "dark";
     let themeMode = $state<ThemeMode>("auto");
     let isThemeMenuOpen = $state(false);
 
-    // Language dropdown
+    /** Language dropdown state */
     let isLangMenuOpen = $state(false);
 
-    // Search state
+    /** Search state */
     let searchQuery = $state("");
     let isSearchFocused = $state(false);
     let isTyping = false;
     let isComposing = false;
     let originUrl: string | null = null;
 
-    // Sync search input with URL
+    /**
+     * Syncs search input with URL query parameters.
+     * Prevents overwriting user input while typing.
+     */
     $effect(() => {
         const urlQuery = $page.url.searchParams.get("q") || "";
         if (!isTyping && searchQuery !== urlQuery) {
@@ -31,7 +35,9 @@
         }
     });
 
-    // Debounced search navigation
+    /**
+     * Navigates to the search URL with debouncing.
+     */
     const navigateToSearch = debounce((query: string) => {
         if (isComposing) return;
 
@@ -90,7 +96,7 @@
     let isMobileMenuOpen = $state(false);
 
     // Spring animation for logo
-    const logoScale = spring(1, { stiffness: 0.3, damping: 0.7 });
+    const logoScale = spring(1, springPresets.snappy);
 
     // Initialize theme from localStorage
     $effect(() => {
@@ -155,7 +161,7 @@
     });
 </script>
 
-<header class="header glass">
+<header class="header glass" style:view-transition-name="app-header">
     <div class="header-content container">
         <!-- Logo -->
         <a
@@ -455,7 +461,10 @@
         background: var(--color-fill);
         border: 1px solid transparent;
         border-radius: var(--radius-lg);
-        transition: all var(--duration-fast) var(--ease-out);
+        transition:
+            background-color var(--duration-fast) var(--ease-out),
+            border-color var(--duration-fast) var(--ease-out),
+            box-shadow var(--duration-fast) var(--ease-out);
     }
 
     .search-input:focus {
@@ -517,7 +526,9 @@
         color: var(--color-label-secondary);
         border-radius: var(--radius-md);
         cursor: pointer;
-        transition: all var(--duration-fast) var(--ease-out);
+        transition:
+            background-color var(--duration-fast) var(--ease-out),
+            color var(--duration-fast) var(--ease-out);
     }
 
     .nav-button:hover {

@@ -11,6 +11,9 @@
 		// Progressive enhancement: only use if browser supports View Transitions
 		if (!document.startViewTransition) return;
 
+		// Skip transition if URL hasn't changed (e.g. hash change or clicking current link)
+		if (navigation.from?.url.href === navigation.to?.url.href) return;
+
 		return new Promise((resolve) => {
 			document.startViewTransition(async () => {
 				resolve();

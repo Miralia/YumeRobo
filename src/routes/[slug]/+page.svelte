@@ -1,13 +1,14 @@
 <script lang="ts">
-    import { fly, fade } from "svelte/transition";
-    import { cubicOut } from "svelte/easing";
+    import { fly } from "svelte/transition";
     import { slide } from "svelte/transition";
+    import { cubicOut } from "svelte/easing";
     import { formatDateTime } from "$lib/utils/date";
     import { locale, t, getLocalizedTitle } from "$lib/stores/locale";
     import MediaInfoCard from "$lib/components/MediaInfoCard.svelte";
     import { type Release, getReleaseBadges } from "$lib/content/schema";
     import { externalIcons } from "$lib/utils/icons";
     import { env } from "$env/dynamic/public";
+    import { duration } from "$lib/utils/animation";
 
     const SITE_URL = env.PUBLIC_SITE_URL || "https://yumerobo.moe";
 
@@ -20,10 +21,10 @@
     let { data }: Props = $props();
 
     // Animation constants
-    const staggerBase = 80;
-    const animDuration = 500;
-    const animY = 15;
+    const animDuration = duration.entrance;
     const animEasing = cubicOut;
+    const animY = 15;
+    const staggerBase = 80;
 
     // Tech Specs expansion state
     // Default: Collapse if title contains x264, x265, or AV1 (case insensitive)
@@ -213,7 +214,10 @@
     <!-- Hero Section -->
     <header class="hero">
         <!-- Poster -->
-        <div class="poster-container">
+        <div
+            class="poster-container"
+            style:view-transition-name="poster-{data.release.slug}"
+        >
             <img
                 src={data.release.poster}
                 alt={data.release.title}
@@ -221,7 +225,11 @@
                 fetchpriority="high"
                 decoding="sync"
             />
-            <div class="poster-overlay">
+            <div class="poster-gradient"></div>
+            <div
+                class="poster-badges"
+                style:view-transition-name="detail-badges"
+            >
                 {#each getReleaseBadges(data.release) as badge}
                     <span class="badge {badge === 'Fin' ? 'badge-fin' : ''}"
                         >{badge}</span
@@ -241,7 +249,10 @@
             }}
         >
             <!-- Single localized title -->
-            <h1 class="title">
+            <h1
+                class="title"
+                style:view-transition-name="title-{data.release.slug}"
+            >
                 {getLocalizedTitle(
                     $locale,
                     data.release.title,
@@ -667,20 +678,31 @@
 
     /* Sheen Effect */
 
-    .poster-overlay {
+    /* Gradient layer (always visible, no transition) */
+    .poster-gradient {
         position: absolute;
         inset: 0;
+        background: linear-gradient(
+            to top,
+            rgba(0, 0, 0, 0.6) 0%,
+            transparent 50%
+        );
+        pointer-events: none;
+        border-radius: var(--radius-lg);
+    }
+
+    /* Badges container (separate from gradient for clean animation) */
+    .poster-badges {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
         display: flex;
         flex-direction: row;
         flex-wrap: wrap;
         align-items: flex-end;
         justify-content: flex-start;
         padding: var(--space-2);
-        background: linear-gradient(
-            to top,
-            rgba(0, 0, 0, 0.6) 0%,
-            transparent 50%
-        );
         gap: 4px;
     }
 
