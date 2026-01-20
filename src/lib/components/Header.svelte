@@ -1,6 +1,9 @@
 <script lang="ts">
     import { spring } from "svelte/motion";
     import { locale, t, type Locale } from "$lib/stores/locale";
+    import { goto } from "$app/navigation";
+    import { page } from "$app/stores";
+    import { debounce } from "$lib/utils/debounce";
 
     // Theme state: 'auto' | 'light' | 'dark'
     type ThemeMode = "auto" | "light" | "dark";
@@ -13,6 +16,75 @@
     // Search state
     let searchQuery = $state("");
     let isSearchFocused = $state(false);
+    let isTyping = false;
+    let isComposing = false;
+    let originUrl: string | null = null;
+
+    // Sync search input with URL
+    $effect(() => {
+        const urlQuery = $page.url.searchParams.get("q") || "";
+        if (!isTyping && searchQuery !== urlQuery) {
+            searchQuery = urlQuery;
+        }
+        if (!urlQuery && originUrl !== null && !isTyping) {
+            originUrl = null;
+        }
+    });
+
+    // Debounced search navigation
+    const navigateToSearch = debounce((query: string) => {
+        if (isComposing) return;
+
+        const trimmed = query.trim();
+        if (trimmed) {
+            const isFirstSearch = !$page.url.searchParams.has("q");
+            if (originUrl === null && isFirstSearch) {
+                originUrl = $page.url.pathname;
+            }
+            goto(`/?q=${encodeURIComponent(trimmed)}`, {
+                replaceState: !isFirstSearch,
+                keepFocus: true,
+            });
+        } else if ($page.url.searchParams.has("q")) {
+            const returnUrl = originUrl || "/";
+            originUrl = null;
+            goto(returnUrl, { replaceState: true, keepFocus: true });
+        }
+        isTyping = false;
+    }, 300);
+
+    function clearSearch() {
+        searchQuery = "";
+        isTyping = false;
+        const returnUrl = originUrl || "/";
+        originUrl = null;
+        goto(returnUrl, { replaceState: true });
+    }
+
+    // IME composition handlers
+    function handleCompositionStart() {
+        isComposing = true;
+        isTyping = true;
+    }
+
+    function handleCompositionEnd(event: CompositionEvent) {
+        isComposing = false;
+        const target = event.target as HTMLInputElement;
+        const value = target.value.trim();
+        if (value) {
+            searchQuery = target.value;
+            navigateToSearch(searchQuery);
+        }
+    }
+
+    function handleSearchInput(event: Event) {
+        const target = event.target as HTMLInputElement;
+        searchQuery = target.value;
+        isTyping = true;
+        if (!isComposing) {
+            navigateToSearch(searchQuery);
+        }
+    }
 
     // Mobile menu
     let isMobileMenuOpen = $state(false);
@@ -68,16 +140,6 @@
         }
     }
 
-    function handleSearchInput(event: Event) {
-        const target = event.target as HTMLInputElement;
-        searchQuery = target.value;
-        if (typeof window !== "undefined") {
-            window.dispatchEvent(
-                new CustomEvent("header-search", { detail: searchQuery }),
-            );
-        }
-    }
-
     function handleClickOutside(event: MouseEvent) {
         const target = event.target as HTMLElement;
         if (!target.closest(".theme-dropdown")) isThemeMenuOpen = false;
@@ -129,18 +191,15 @@
                 placeholder={$t.search}
                 value={searchQuery}
                 oninput={handleSearchInput}
+                oncompositionstart={handleCompositionStart}
+                oncompositionend={handleCompositionEnd}
                 onfocus={() => (isSearchFocused = true)}
                 onblur={() => (isSearchFocused = false)}
             />
             {#if searchQuery}
                 <button
                     class="clear-btn"
-                    onclick={() => {
-                        searchQuery = "";
-                        window.dispatchEvent(
-                            new CustomEvent("header-search", { detail: "" }),
-                        );
-                    }}
+                    onclick={clearSearch}
                     aria-label="Clear search"
                 >
                     <svg
@@ -290,6 +349,8 @@
                     placeholder={$t.search}
                     value={searchQuery}
                     oninput={handleSearchInput}
+                    oncompositionstart={handleCompositionStart}
+                    oncompositionend={handleCompositionEnd}
                 />
             </div>
 

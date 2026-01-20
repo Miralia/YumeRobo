@@ -2,7 +2,8 @@
     import ReleaseCard from "$lib/components/ReleaseCard.svelte";
     import { getAllReleases, searchReleases } from "$lib/content/loader";
     import { t } from "$lib/stores/locale";
-    import { onMount } from "svelte";
+    import { page } from "$app/stores";
+    import { browser } from "$app/environment";
     import { env } from "$env/dynamic/public";
 
     const SITE_URL = env.PUBLIC_SITE_URL || "https://yumerobo.moe";
@@ -10,41 +11,36 @@
     // Get all releases
     const allReleases = getAllReleases();
 
-    // Search state - listens to header search event
+    // Search state (client-side only for SSG)
     let searchQuery = $state("");
+
+    $effect(() => {
+        if (browser) {
+            const urlQuery = $page.url.searchParams.get("q") || "";
+            if (searchQuery !== urlQuery) {
+                searchQuery = urlQuery;
+            }
+        }
+    });
+
     let filteredReleases = $derived(
         searchQuery.trim() ? searchReleases(searchQuery) : allReleases,
     );
 
-    // Infinite scroll state
+    // Pagination
     let displayCount = $state(10);
+
+    $effect(() => {
+        searchQuery;
+        displayCount = 10;
+    });
+
     let displayedReleases = $derived(filteredReleases.slice(0, displayCount));
     let hasMore = $derived(filteredReleases.length > displayCount);
 
     function loadMore() {
         displayCount += 10;
     }
-
-    // Infinite scroll trigger removed in favor of manual load more
-
-    onMount(() => {
-        function handleHeaderSearch(event: CustomEvent<string>) {
-            searchQuery = event.detail;
-            displayCount = 10; // Reset pagination on new search
-        }
-
-        window.addEventListener(
-            "header-search",
-            handleHeaderSearch as EventListener,
-        );
-
-        return () => {
-            window.removeEventListener(
-                "header-search",
-                handleHeaderSearch as EventListener,
-            );
-        };
-    });
 </script>
 
 <svelte:head>
