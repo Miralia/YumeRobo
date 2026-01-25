@@ -105,7 +105,7 @@ export async function promptPoster(): Promise<string> {
  */
 export async function promptDisplayName(torrentName: string): Promise<string> {
     return input({
-        message: 'Display name for Telegram (e.g. **KWTR** BD 1080p FLAC x265):',
+        message: 'Display name for Telegram (e.g. KWTR BD 1080p FLAC x265):',
         default: torrentName.substring(0, 50),
         validate: (val) => !!val.trim() || 'Display name is required'
     });

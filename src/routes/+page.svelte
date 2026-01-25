@@ -98,11 +98,11 @@
 
 <svelte:head>
     <title>夢みる機械</title>
-    <meta name="description" content="Latest media releases" />
+    <meta name="description" content="Latest release" />
 
     <!-- Open Graph -->
     <meta property="og:title" content="夢みる機械" />
-    <meta property="og:description" content="Latest media releases" />
+    <meta property="og:description" content="Latest release" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="夢みる機械" />
     {#if allReleases.length > 0}
@@ -117,7 +117,7 @@
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="夢みる機械" />
-    <meta name="twitter:description" content="Latest media releases" />
+    <meta name="twitter:description" content="Latest release" />
 </svelte:head>
 
 <div class="home-page container">

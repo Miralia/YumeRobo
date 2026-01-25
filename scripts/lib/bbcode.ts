@@ -57,6 +57,10 @@ function parseInnerBBCode(input: string): string {
     result = result.replace(/\[size=[^\]]*\]/gi, '');
     result = result.replace(/\[\/size\]/gi, '');
 
+    // [spoiler=Title]...[/spoiler] -> divs
+    result = result.replace(/\[spoiler=([^\]]+)\]/gi, '<div class="inner-quote"><div class="inner-quote-title">$1</div><div class="inner-quote-content">');
+    result = result.replace(/\[\/spoiler\]/gi, '</div></div>');
+
     return result.trim();
 }
 
