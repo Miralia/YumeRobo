@@ -65,43 +65,48 @@ function parseInnerBBCode(input: string): string {
 }
 
 /**
- * Extract outermost [quote=Title]...[/quote] blocks only
- * Handles nested quotes by counting open/close tags
+ * Extract outermost [quote=Title] or [spoiler=Title] blocks only
+ * Handles nested quotes/spoilers by counting open/close tags
  */
 function extractOutermostQuotes(input: string): Array<{ title: string; content: string }> {
     const results: Array<{ title: string; content: string }> = [];
     let remaining = input;
 
     while (true) {
-        // Find next [quote=Title]
-        const openMatch = remaining.match(/\[quote=([^\]]+)\]/i);
+        // Find next [quote=Title] or [spoiler=Title]
+        const openMatch = remaining.match(/\[(quote|spoiler)=([^\]]+)\]/i);
         if (!openMatch || openMatch.index === undefined) break;
 
-        const title = openMatch[1].trim();
+        const tagName = openMatch[1].toLowerCase(); // 'quote' or 'spoiler'
+        const title = openMatch[2].trim();
         const startIndex = openMatch.index + openMatch[0].length;
 
-        // Find matching [/quote] by counting nested quotes
+        // Define tags based on what we found
+        const openTagStr = `[${tagName}`;
+        const closeTagStr = `[/${tagName}]`;
+
+        // Find matching closing tag by counting nested tags of the SAME type
         let depth = 1;
         let pos = startIndex;
         let endIndex = -1;
 
         while (pos < remaining.length && depth > 0) {
-            const nextOpen = remaining.indexOf('[quote', pos);
-            const nextClose = remaining.indexOf('[/quote]', pos);
+            const nextOpen = remaining.toLowerCase().indexOf(openTagStr, pos);
+            const nextClose = remaining.toLowerCase().indexOf(closeTagStr, pos);
 
             if (nextClose === -1) break;
 
             if (nextOpen !== -1 && nextOpen < nextClose) {
-                // Found another opening quote before closing
+                // Found another opening tag before closing
                 depth++;
-                pos = nextOpen + 6; // Move past "[quote"
+                pos = nextOpen + openTagStr.length;
             } else {
-                // Found closing quote
+                // Found closing tag
                 depth--;
                 if (depth === 0) {
                     endIndex = nextClose;
                 }
-                pos = nextClose + 8; // Move past "[/quote]"
+                pos = nextClose + closeTagStr.length;
             }
         }
 
@@ -110,7 +115,8 @@ function extractOutermostQuotes(input: string): Array<{ title: string; content: 
             results.push({ title, content });
             remaining = remaining.substring(pos);
         } else {
-            break;
+            // Unbalanced or broken, skip this start and try to find next
+            remaining = remaining.substring(startIndex);
         }
     }
 

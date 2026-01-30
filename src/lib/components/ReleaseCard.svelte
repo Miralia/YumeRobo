@@ -28,7 +28,7 @@
     }
 
     // Stagger delay for CSS animation
-    const animDelay = `${stagger(index)}ms`;
+    let animDelay = $derived(`${stagger(index)}ms`);
 </script>
 
 <a

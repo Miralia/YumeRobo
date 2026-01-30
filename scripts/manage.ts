@@ -551,8 +551,13 @@ async function edit() {
                 specs,
                 links
             };
-            const code = generateReleaseCode(updatedData);
-            await fs.writeFile(filePath, code);
+            const codeBlock = generateReleaseCode(updatedData);
+            const cleanCode = codeBlock.trim().replace(/,$/, '');
+            const fileContent = `import type { Release } from '../schema';
+
+export const release: Release = ${cleanCode};
+`;
+            await fs.writeFile(filePath, fileContent);
             console.log(`[+] Saved changes to ${filePath}`);
             return;
         }
