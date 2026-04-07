@@ -17,7 +17,7 @@
         </p>
         <div class="footer-links">
             <a
-                href="https://t.me/YumeRobo"
+                href="https://t.me/YumeRobo_Channel"
                 class="footer-link"
                 aria-label="Telegram"
                 target="_blank"

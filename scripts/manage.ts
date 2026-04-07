@@ -59,7 +59,7 @@ import { detectPlatform, isValidUrl, getSupportedPlatforms } from './lib/links';
 import { generateReleaseCode } from './lib/templates';
 import { generateHash, type ReleaseData, type TorrentEntry, type MediaInfoEntry, type SpecEntry } from './lib/types';
 import { processPoster } from './lib/images';
-import { buildCaption, sendPhoto, isSupportedFormat } from './lib/telegram';
+import { buildCaption, sendPhotoWithRetry, isSupportedFormat } from './lib/telegram';
 import { tempManager } from './lib/cleanup';
 
 const RELEASES_DIR = path.join(process.cwd(), 'src/lib/content/releases');
@@ -308,14 +308,14 @@ async function stepTelegram(release: ReleaseData): Promise<void> {
     const channelId = process.env.TELEGRAM_CHANNEL_ID;
 
     if (!token || !channelId) {
-        console.log('[i] Telegram not configured');
+        console.log('[i] Telegram not configured (set TELEGRAM_BOT_TOKEN and TELEGRAM_CHANNEL_ID in .env)');
         return;
     }
 
     const shouldPost = await confirm({ message: 'Post to Telegram?', default: false });
     if (!shouldPost) return;
 
-    let imagePath: string = '';
+    let photoSource: string = '';
     while (true) {
         const imageInput = await promptTelegramImage();
 
@@ -325,21 +325,12 @@ async function stepTelegram(release: ReleaseData): Promise<void> {
                 console.log(`[!] Unsupported format: ${urlExt}`);
                 continue;
             }
-            try {
-                const response = await fetch(imageInput);
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                const buffer = Buffer.from(await response.arrayBuffer());
-                imagePath = path.join(os.tmpdir(), `telegram-${Date.now()}.${urlExt}`);
-                await fs.writeFile(imagePath, buffer);
-                tempManager.add(imagePath);
-                break;
-            } catch (e) {
-                console.log(`[!] Failed to download: ${e}`);
-                continue;
-            }
+            // Pass URL directly to Telegram — no need to download first
+            photoSource = imageInput;
+            break;
         } else {
-            imagePath = imageInput.trim().replace(/\\(.)/g, '$1');
-            if (!isSupportedFormat(imagePath)) {
+            photoSource = imageInput.trim().replace(/\\\\(.)/g, '$1');
+            if (!isSupportedFormat(photoSource)) {
                 console.log(`[!] Unsupported format`);
                 continue;
             }
@@ -363,12 +354,33 @@ async function stepTelegram(release: ReleaseData): Promise<void> {
     const websiteUrl = `https://yumerobo.moe/${release.slug}`;
     buttons.push({ text: 'YumeRobo', url: websiteUrl });
 
-    const result = await sendPhoto(token, channelId, imagePath, caption, buttons);
+    // Send with automatic retry
+    while (true) {
+        const result = await sendPhotoWithRetry(token, channelId, photoSource, caption, buttons);
 
-    if (result.ok) {
-        console.log(`[+] Posted to Telegram! Message ID: ${result.messageId}`);
-    } else {
-        console.log(`[!] Failed to post: ${result.error}`);
+        if (result.ok) {
+            console.log(`[+] Posted to Telegram! Message ID: ${result.messageId}`);
+            if (result.attempts > 1) {
+                console.log(`[i] Succeeded after ${result.attempts} attempts`);
+            }
+            return;
+        }
+
+        console.log(`[!] Failed after ${result.attempts} attempt(s): ${result.error}`);
+
+        const action = await select({
+            message: 'What to do?',
+            choices: [
+                { name: 'Retry', value: 'retry' },
+                { name: 'Skip Telegram posting', value: 'skip' }
+            ]
+        });
+
+        if (action === 'skip') {
+            console.log('[i] Skipped Telegram posting');
+            return;
+        }
+        // action === 'retry': loop continues
     }
 }
 
@@ -577,6 +589,25 @@ export const release: Release = ${cleanCode};
     }
 }
 
+async function telegramPush() {
+    console.log('\n=== Push to Telegram ===\n');
+
+    const choices = await getReleases();
+    if (choices.length === 0) {
+        console.log('No releases found.');
+        return;
+    }
+
+    const { data: releaseData } = await select({
+        message: 'Select release to push:',
+        choices
+    });
+
+    console.log(`\nSelected: ${releaseData.title_en || releaseData.title_zh} (${releaseData.slug})`);
+    await stepTelegram(releaseData);
+    await tempManager.cleanup();
+}
+
 async function deleteRelease(slug: string) {
     if (!slug) {
         console.log('[!] Slug required for delete. Usage: bun run cli delete <slug>');
@@ -683,9 +714,12 @@ async function main() {
         case 'edit':
             await edit();
             break;
+        case 'telegram':
+            await telegramPush();
+            break;
         default:
             console.log(`[!] Unknown command: ${command}`);
-            console.log('Usage: bun run cli [create|delete <slug>|deploy]');
+            console.log('Usage: bun run cli [create|edit|delete <slug>|deploy|telegram]');
     }
 }
 
