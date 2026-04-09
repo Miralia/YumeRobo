@@ -79,6 +79,10 @@ import {
     type EditDraft,
 } from './lib/drafts';
 import {
+    formatCreateDraftSummary,
+    formatEditDraftSummary,
+} from './lib/summary';
+import {
     auditManagedAssets,
     executeCleanupPlan,
     formatAuditReport,
@@ -235,6 +239,16 @@ function syncTmdbLink(
     }
 
     return nextLinks;
+}
+
+async function persistCreateDraft(draft: CreateDraft) {
+    await saveCreateDraft(draft);
+    console.log(formatCreateDraftSummary(draft));
+}
+
+async function persistEditDraft(draft: EditDraft) {
+    await saveEditDraft(draft);
+    console.log(formatEditDraftSummary(draft));
 }
 
 // ==========================================
@@ -600,45 +614,49 @@ async function create() {
             specs = existingDraft.specs;
             links = existingDraft.links;
             console.log(`[i] Resumed draft: ${slug}\n`);
+            console.log(formatCreateDraftSummary(existingDraft));
         } else {
             await clearCreateDraft();
             slug = generateHash(8);
             console.log(`Slug: ${slug}\n`);
-            await saveCreateDraft(buildCreateDraftState({ slug }));
+            await persistCreateDraft(buildCreateDraftState({ slug }));
         }
     } else {
         slug = generateHash(8);
         console.log(`Slug: ${slug}\n`);
-        await saveCreateDraft(buildCreateDraftState({ slug }));
+        await persistCreateDraft(buildCreateDraftState({ slug }));
     }
 
     if (!metadata) {
         metadata = await stepMetadata() ?? undefined;
         if (!metadata) return;
-        await saveCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }));
+        await persistCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }));
     }
 
     if (!posterPath) {
         posterPath = await stepPoster(slug);
-        await saveCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }));
+        await persistCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }));
     }
 
     if (!torrents) {
         torrents = await stepTorrents();
-        await saveCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }));
+        await persistCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }));
     }
 
     if (!specs) {
         specs = await stepSpecs();
-        await saveCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }));
+        await persistCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }));
     }
 
     if (!links) {
         links = await stepLinks(metadata.tmdb_id, metadata.media_type);
-        await saveCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }));
+        await persistCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }));
     }
 
     while (true) {
+        console.log(formatCreateDraftSummary(
+            buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }),
+        ));
         const releaseData: ReleaseData = {
             slug,
             title: metadata.title,
@@ -712,20 +730,20 @@ export const release: Release = ${cleanCode};
             if (newMeta) {
                 metadata = newMeta;
                 links = syncTmdbLink(links, metadata.tmdb_id, metadata.media_type);
-                await saveCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }));
+                await persistCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }));
             }
         } else if (action === 'poster') {
             posterPath = await stepPoster(slug);
-            await saveCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }));
+            await persistCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }));
         } else if (action === 'torrents') {
             torrents = await stepTorrents();
-            await saveCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }));
+            await persistCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }));
         } else if (action === 'specs') {
             specs = await stepSpecs();
-            await saveCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }));
+            await persistCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }));
         } else if (action === 'links') {
             links = await stepLinks(metadata.tmdb_id, metadata.media_type);
-            await saveCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }));
+            await persistCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }));
         }
     }
 }
@@ -786,6 +804,7 @@ async function edit() {
             links = existingDraft.links ?? currentData.links;
             date = existingDraft.date;
             console.log(`[i] Resumed edit draft for ${slug}`);
+            console.log(formatEditDraftSummary(existingDraft));
         } else {
             await clearEditDraft(slug);
             metadata = toMetadataState(currentData);
@@ -794,7 +813,7 @@ async function edit() {
             specs = currentData.specs;
             links = currentData.links;
             date = currentData.date;
-            await saveEditDraft(buildEditDraftState({
+            await persistEditDraft(buildEditDraftState({
                 slug,
                 originalRelease,
                 metadata,
@@ -812,7 +831,7 @@ async function edit() {
         specs = currentData.specs;
         links = currentData.links;
         date = currentData.date;
-        await saveEditDraft(buildEditDraftState({
+        await persistEditDraft(buildEditDraftState({
             slug,
             originalRelease,
             metadata,
@@ -826,6 +845,18 @@ async function edit() {
 
     while (true) {
         console.log(`\nEditing: ${metadata.title}`);
+        console.log(formatEditDraftSummary(
+            buildEditDraftState({
+                slug,
+                originalRelease,
+                metadata,
+                posterPath,
+                torrents,
+                specs,
+                links,
+                date,
+            }),
+        ));
         const action = await select({
             message: 'Select field to edit:',
             choices: [
@@ -902,7 +933,7 @@ export const release: Release = ${cleanCode};
             if (newMeta) {
                 metadata = newMeta;
                 links = syncTmdbLink(links, metadata.tmdb_id, metadata.media_type);
-                await saveEditDraft(buildEditDraftState({
+                await persistEditDraft(buildEditDraftState({
                     slug,
                     originalRelease,
                     metadata,
@@ -915,7 +946,7 @@ export const release: Release = ${cleanCode};
             }
         } else if (action === 'poster') {
             posterPath = await stepPoster(slug);
-            await saveEditDraft(buildEditDraftState({
+            await persistEditDraft(buildEditDraftState({
                 slug,
                 originalRelease,
                 metadata,
@@ -927,7 +958,7 @@ export const release: Release = ${cleanCode};
             }));
         } else if (action === 'torrents') {
             torrents = await stepTorrents();
-            await saveEditDraft(buildEditDraftState({
+            await persistEditDraft(buildEditDraftState({
                 slug,
                 originalRelease,
                 metadata,
@@ -939,7 +970,7 @@ export const release: Release = ${cleanCode};
             }));
         } else if (action === 'specs') {
             specs = await stepSpecs();
-            await saveEditDraft(buildEditDraftState({
+            await persistEditDraft(buildEditDraftState({
                 slug,
                 originalRelease,
                 metadata,
@@ -951,7 +982,7 @@ export const release: Release = ${cleanCode};
             }));
         } else if (action === 'links') {
             links = await stepLinks(metadata.tmdb_id, metadata.media_type);
-            await saveEditDraft(buildEditDraftState({
+            await persistEditDraft(buildEditDraftState({
                 slug,
                 originalRelease,
                 metadata,
