@@ -9,7 +9,6 @@ import { getUniqueLanguageFlags } from '../../src/lib/utils/language-flags';
 import type { ReleaseData } from './types';
 
 const TELEGRAM_API = 'https://api.telegram.org/bot';
-const SITE_URL = 'https://yumerobo.moe';
 
 // Telegram supported image formats
 const SUPPORTED_FORMATS = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
@@ -84,7 +83,8 @@ function formatDisplayName(displayName: string): string {
  */
 export async function buildCaption(
     release: ReleaseData,
-    comparisonsLink: string
+    comparisonsLink: string,
+    siteUrl: string
 ): Promise<string> {
     const lines: string[] = [];
 
@@ -121,7 +121,7 @@ export async function buildCaption(
         // Links
         const linkParts: string[] = [];
         if (torrent.mediainfo.length > 0) {
-            const miUrl = `${SITE_URL}/mediainfo/${torrent.mediainfo[0].raw_hash}`;
+            const miUrl = `${siteUrl}/mediainfo/${torrent.mediainfo[0].raw_hash}`;
             linkParts.push(`[Mediainfo](${escapeMarkdown(miUrl)})`);
         }
         if (comparisonsLink) {

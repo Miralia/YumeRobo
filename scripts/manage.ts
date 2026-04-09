@@ -6,7 +6,11 @@
  * 
  * Usage:
  *   bun run cli create         - Interactive wizard to create a new release
+ *   bun run cli edit           - Edit an existing release
  *   bun run cli delete <slug>  - Delete a release by its slug
+ *   bun run cli telegram       - Push an existing release to Telegram
+ *   bun run cli audit-assets   - Audit managed media assets for drift/orphans
+ *   bun run cli prune-assets   - Delete orphaned managed media assets after confirmation
  *   bun run cli deploy         - Build and deploy to Cloudflare Pages (Direct Upload)
  * 
  * Environment:
@@ -55,15 +59,183 @@ import {
 } from './lib/tmdb';
 import { parseTorrent, formatSize } from './lib/torrent';
 import { parseBBCodeSpecs } from './lib/bbcode';
-import { detectPlatform, isValidUrl, getSupportedPlatforms } from './lib/links';
+import { addExternalLink, buildInitialExternalLinks, isValidUrl } from './lib/links';
 import { generateReleaseCode } from './lib/templates';
 import { generateHash, type ReleaseData, type TorrentEntry, type MediaInfoEntry, type SpecEntry } from './lib/types';
 import { processPoster } from './lib/images';
 import { buildCaption, sendPhotoWithRetry, isSupportedFormat } from './lib/telegram';
 import { tempManager } from './lib/cleanup';
+import { getCliUsage, resolveCliCommand } from './lib/cli';
+import { ensurePagesProject, getDeployCommand } from './lib/deploy';
+import { getCliConfig, getReleaseUrl, getTelegramConfig } from './lib/config';
+import {
+    clearCreateDraft,
+    clearEditDraft,
+    loadCreateDraft,
+    loadEditDraft,
+    saveCreateDraft,
+    saveEditDraft,
+    type CreateDraft,
+    type EditDraft,
+} from './lib/drafts';
+import {
+    auditManagedAssets,
+    executeCleanupPlan,
+    formatAuditReport,
+    formatCleanupResult,
+    hasAuditIssues,
+    planReleaseAssetCleanup,
+    planReleaseAssetDiffCleanup,
+    pruneOrphanedAssets,
+    validateReleaseAssets,
+} from './lib/assets';
 
 const RELEASES_DIR = path.join(process.cwd(), 'src/lib/content/releases');
 const STATIC_PATH = path.join(process.cwd(), 'static');
+
+interface ReleaseRecord {
+    slug: string;
+    data: ReleaseData;
+    path: string;
+}
+
+interface ReleaseMetadataState {
+    title: string;
+    year: number;
+    tmdb_id: number;
+    media_type: 'movie' | 'tv';
+    special_type?: 'tva' | 'ova' | 'ona' | 'special';
+    season?: number;
+    badge_label?: string;
+    is_complete?: boolean;
+}
+
+function hasValidationIssues(result: Awaited<ReturnType<typeof validateReleaseAssets>>): boolean {
+    return (
+        result.missingReferences.length > 0 ||
+        result.malformedReferences.length > 0 ||
+        result.derivedMismatches.length > 0
+    );
+}
+
+function formatValidationReport(
+    slug: string,
+    result: Awaited<ReturnType<typeof validateReleaseAssets>>,
+): string {
+    return [
+        `ASSET_VALIDATION release=${slug}`,
+        `missing_references count=${result.missingReferences.length}`,
+        ...result.missingReferences.map((issue) => `- kind=${issue.kind} path=${issue.path}`),
+        `malformed_references count=${result.malformedReferences.length}`,
+        ...result.malformedReferences.map((issue) => `- kind=${issue.kind} path=${issue.path}${issue.detail ? ` detail=${issue.detail}` : ''}`),
+        `derived_mismatches count=${result.derivedMismatches.length}`,
+        ...result.derivedMismatches.map((issue) => `- kind=${issue.kind} path=${issue.path}${issue.expectedPath ? ` expected=${issue.expectedPath}` : ''}${issue.detail ? ` detail=${issue.detail}` : ''}`),
+    ].join('\n');
+}
+
+function shouldPrintCleanupSummary(cleanup: Awaited<ReturnType<typeof executeCleanupPlan>>): boolean {
+    return (
+        cleanup.delete.length > 0 ||
+        cleanup.keep.length > 0 ||
+        cleanup.missing.length > 0 ||
+        cleanup.errors.length > 0
+    );
+}
+
+async function loadReleaseRecords(): Promise<ReleaseRecord[]> {
+    const files = await fs.readdir(RELEASES_DIR);
+    const records: ReleaseRecord[] = [];
+
+    for (const file of files) {
+        if (!file.endsWith('.ts')) continue;
+
+        const filePath = path.join(RELEASES_DIR, file);
+        try {
+            const mod = await import(filePath);
+            if (mod.release) {
+                records.push({
+                    slug: mod.release.slug,
+                    data: mod.release as ReleaseData,
+                    path: filePath,
+                });
+            }
+        } catch {
+            // Ignore malformed files here; callers may fall back to raw file deletion.
+        }
+    }
+
+    return records;
+}
+
+function toMetadataState(release: ReleaseData): ReleaseMetadataState {
+    return {
+        title: release.title,
+        year: release.year,
+        tmdb_id: release.tmdb_id,
+        media_type: release.media_type,
+        special_type: release.special_type,
+        season: release.season,
+        badge_label: release.badge_label,
+        is_complete: release.is_complete,
+    };
+}
+
+function buildCreateDraftState(input: {
+    slug: string;
+    metadata?: ReleaseMetadataState;
+    posterPath?: string;
+    torrents?: TorrentEntry[];
+    specs?: SpecEntry[];
+    links?: Record<string, string>;
+}): CreateDraft {
+    return {
+        slug: input.slug,
+        metadata: input.metadata,
+        posterPath: input.posterPath,
+        torrents: input.torrents,
+        specs: input.specs,
+        links: input.links,
+    };
+}
+
+function buildEditDraftState(input: {
+    slug: string;
+    originalRelease: ReleaseData;
+    metadata?: ReleaseMetadataState;
+    posterPath?: string;
+    torrents?: TorrentEntry[];
+    specs?: SpecEntry[];
+    links?: Record<string, string>;
+    date: string;
+}): EditDraft {
+    return {
+        slug: input.slug,
+        originalRelease: input.originalRelease,
+        metadata: input.metadata,
+        posterPath: input.posterPath,
+        torrents: input.torrents,
+        specs: input.specs,
+        links: input.links,
+        date: input.date,
+    };
+}
+
+function syncTmdbLink(
+    links: Record<string, string>,
+    tmdbId: number,
+    mediaType: string,
+): Record<string, string> {
+    const nextLinks = { ...links };
+    const initialLinks = buildInitialExternalLinks(tmdbId, mediaType);
+
+    if (initialLinks.tmdb) {
+        nextLinks.tmdb = initialLinks.tmdb;
+    } else {
+        delete nextLinks.tmdb;
+    }
+
+    return nextLinks;
+}
 
 // ==========================================
 // Step Functions
@@ -276,22 +448,30 @@ async function stepSpecs(): Promise<SpecEntry[]> {
 
 async function stepLinks(tmdbId: number, mediaType: string): Promise<Record<string, string>> {
     console.log('\n--- External Links ---');
-    const links: Record<string, string> = {};
+    let links = buildInitialExternalLinks(tmdbId, mediaType);
 
-    if (tmdbId > 0) {
-        const type = mediaType === 'movie' ? 'movie' : 'tv';
-        links.tmdb = `https://www.themoviedb.org/${type}/${tmdbId}`;
+    if (links.tmdb) {
         console.log(`[+] Auto-added: tmdb`);
+    }
+
+    const shouldAddManualLinks = await confirm({
+        message: 'Add external links manually?',
+        default: false,
+    });
+    if (!shouldAddManualLinks) {
+        return links;
     }
 
     let addMoreLinks = true;
     while (addMoreLinks) {
         const url = await promptLink();
         if (isValidUrl(url)) {
-            const platform = detectPlatform(url);
-            if (platform) {
-                links[platform] = url;
-                console.log(`[+] Added: ${platform}`);
+            const result = addExternalLink(links, url);
+            if (result.status === 'added') {
+                links = result.links;
+                console.log(`[+] Added: ${result.platform}`);
+            } else if (result.status === 'duplicate') {
+                console.log(`[!] ${result.platform} already exists, skipped`);
             } else {
                 console.log(`[!] Unknown platform, skipped`);
             }
@@ -303,10 +483,10 @@ async function stepLinks(tmdbId: number, mediaType: string): Promise<Record<stri
 }
 
 async function stepTelegram(release: ReleaseData): Promise<void> {
-    const token = process.env.TELEGRAM_BOT_TOKEN;
-    const channelId = process.env.TELEGRAM_CHANNEL_ID;
+    const config = getCliConfig();
+    const telegramConfig = getTelegramConfig(config);
 
-    if (!token || !channelId) {
+    if (!telegramConfig) {
         console.log('[i] Telegram not configured (set TELEGRAM_BOT_TOKEN and TELEGRAM_CHANNEL_ID in .env)');
         return;
     }
@@ -338,7 +518,7 @@ async function stepTelegram(release: ReleaseData): Promise<void> {
     }
 
     const comparisons = await promptComparisons();
-    const caption = await buildCaption(release, comparisons);
+    const caption = await buildCaption(release, comparisons, config.siteUrl);
 
     console.log('\n--- Telegram Preview ---');
     console.log(caption);
@@ -350,12 +530,18 @@ async function stepTelegram(release: ReleaseData): Promise<void> {
     if (release.links?.tmdb) {
         buttons.push({ text: 'TMDB', url: release.links.tmdb });
     }
-    const websiteUrl = `https://yumerobo.moe/${release.slug}`;
+    const websiteUrl = getReleaseUrl(config, release.slug);
     buttons.push({ text: 'YumeRobo', url: websiteUrl });
 
     // Send with automatic retry
     while (true) {
-        const result = await sendPhotoWithRetry(token, channelId, photoSource, caption, buttons);
+        const result = await sendPhotoWithRetry(
+            telegramConfig.token,
+            telegramConfig.channelId,
+            photoSource,
+            caption,
+            buttons,
+        );
 
         if (result.ok) {
             console.log(`[+] Posted to Telegram! Message ID: ${result.messageId}`);
@@ -389,16 +575,68 @@ async function stepTelegram(release: ReleaseData): Promise<void> {
 
 async function create() {
     console.log('\n=== Create New Release ===\n');
-    const slug = generateHash(8);
-    console.log(`Slug: ${slug}\n`);
+    const existingDraft = await loadCreateDraft();
+    let slug: string;
+    let metadata: ReleaseMetadataState | undefined;
+    let posterPath: string | undefined;
+    let torrents: TorrentEntry[] | undefined;
+    let specs: SpecEntry[] | undefined;
+    let links: Record<string, string> | undefined;
 
-    let metadata = await stepMetadata();
-    if (!metadata) return;
+    if (existingDraft) {
+        const draftAction = await select({
+            message: `Found an unfinished create draft for ${existingDraft.slug}.`,
+            choices: [
+                { name: 'Resume draft', value: 'resume' },
+                { name: 'Discard draft and start new', value: 'discard' },
+            ],
+        });
 
-    let posterPath = await stepPoster(slug);
-    let torrents = await stepTorrents();
-    let specs = await stepSpecs();
-    let links = await stepLinks(metadata.tmdb_id, metadata.media_type);
+        if (draftAction === 'resume') {
+            slug = existingDraft.slug;
+            metadata = existingDraft.metadata;
+            posterPath = existingDraft.posterPath;
+            torrents = existingDraft.torrents;
+            specs = existingDraft.specs;
+            links = existingDraft.links;
+            console.log(`[i] Resumed draft: ${slug}\n`);
+        } else {
+            await clearCreateDraft();
+            slug = generateHash(8);
+            console.log(`Slug: ${slug}\n`);
+            await saveCreateDraft(buildCreateDraftState({ slug }));
+        }
+    } else {
+        slug = generateHash(8);
+        console.log(`Slug: ${slug}\n`);
+        await saveCreateDraft(buildCreateDraftState({ slug }));
+    }
+
+    if (!metadata) {
+        metadata = await stepMetadata() ?? undefined;
+        if (!metadata) return;
+        await saveCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }));
+    }
+
+    if (!posterPath) {
+        posterPath = await stepPoster(slug);
+        await saveCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }));
+    }
+
+    if (!torrents) {
+        torrents = await stepTorrents();
+        await saveCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }));
+    }
+
+    if (!specs) {
+        specs = await stepSpecs();
+        await saveCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }));
+    }
+
+    if (!links) {
+        links = await stepLinks(metadata.tmdb_id, metadata.media_type);
+        await saveCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }));
+    }
 
     while (true) {
         const releaseData: ReleaseData = {
@@ -451,53 +689,66 @@ export const release: Release = ${cleanCode};
         if (action === 'confirm') {
             const targetPath = path.join(RELEASES_DIR, `${slug}.ts`);
             await fs.writeFile(targetPath, fileContent, 'utf-8');
+            const validation = await validateReleaseAssets({ release: releaseData });
+            if (hasValidationIssues(validation)) {
+                console.log(`\n[!] Release written to: ${targetPath}`);
+                console.log(formatValidationReport(slug, validation));
+                process.exitCode = 1;
+                await tempManager.cleanup();
+                return;
+            }
             console.log(`\n[+] Release saved to: ${targetPath}`);
+            await clearCreateDraft();
             await stepTelegram(releaseData);
             await tempManager.cleanup();
             break;
         } else if (action === 'cancel') {
             console.log('[!] Cancelled');
+            await clearCreateDraft();
             await tempManager.cleanup();
             return;
         } else if (action === 'metadata') {
             const newMeta = await stepMetadata();
-            if (newMeta) metadata = newMeta;
+            if (newMeta) {
+                metadata = newMeta;
+                links = syncTmdbLink(links, metadata.tmdb_id, metadata.media_type);
+                await saveCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }));
+            }
         } else if (action === 'poster') {
             posterPath = await stepPoster(slug);
+            await saveCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }));
         } else if (action === 'torrents') {
             torrents = await stepTorrents();
+            await saveCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }));
         } else if (action === 'specs') {
             specs = await stepSpecs();
+            await saveCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }));
         } else if (action === 'links') {
             links = await stepLinks(metadata.tmdb_id, metadata.media_type);
+            await saveCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }));
         }
     }
 }
 
 async function getReleases() {
-    const files = await fs.readdir(RELEASES_DIR);
-    const releases = [];
-    for (const file of files) {
-        if (!file.endsWith('.ts')) continue;
-        const filePath = path.join(RELEASES_DIR, file);
-        try {
-            const mod = await import(filePath);
-            if (mod.release) {
-                releases.push({
-                    name: `[${mod.release.date.split('T')[0]}] ${mod.release.title} (${mod.release.slug})`,
-                    value: { slug: mod.release.slug, data: mod.release, path: filePath }
-                });
-            }
-        } catch (e) {
-            // skip
-        }
-    }
-    return releases.sort((a, b) => b.name.localeCompare(a.name));
+    const records = await loadReleaseRecords();
+    return records
+        .map((record) => ({
+            name: `[${record.data.date.split('T')[0]}] ${record.data.title} (${record.slug})`,
+            value: record,
+        }))
+        .sort((a, b) => b.name.localeCompare(a.name));
 }
 
 async function edit() {
     console.log('\n=== Edit Release ===\n');
-    const choices = await getReleases();
+    const records = await loadReleaseRecords();
+    const choices = records
+        .map((record) => ({
+            name: `[${record.data.date.split('T')[0]}] ${record.data.title} (${record.slug})`,
+            value: record,
+        }))
+        .sort((a, b) => b.name.localeCompare(a.name));
     if (choices.length === 0) {
         console.log('No releases found.');
         return;
@@ -508,21 +759,70 @@ async function edit() {
         choices
     });
 
-    let metadata: any = {
-        title: currentData.title,
-        year: currentData.year,
-        tmdb_id: currentData.tmdb_id,
-        media_type: currentData.media_type,
-        special_type: currentData.special_type,
-        season: currentData.season,
-        badge_label: currentData.badge_label,
-        is_complete: currentData.is_complete
-    };
-    let posterPath = currentData.poster;
-    let torrents = currentData.torrents;
-    let specs = currentData.specs;
-    let links = currentData.links;
-    let date = currentData.date;
+    const existingDraft = await loadEditDraft(slug);
+    let originalRelease = currentData;
+    let metadata: ReleaseMetadataState;
+    let posterPath: string;
+    let torrents: TorrentEntry[];
+    let specs: SpecEntry[];
+    let links: Record<string, string>;
+    let date: string;
+
+    if (existingDraft) {
+        const draftAction = await select({
+            message: `Found an unfinished edit draft for ${slug}.`,
+            choices: [
+                { name: 'Resume draft', value: 'resume' },
+                { name: 'Discard draft and reload current release', value: 'discard' },
+            ],
+        });
+
+        if (draftAction === 'resume') {
+            originalRelease = existingDraft.originalRelease;
+            metadata = existingDraft.metadata ?? toMetadataState(currentData);
+            posterPath = existingDraft.posterPath ?? currentData.poster;
+            torrents = existingDraft.torrents ?? currentData.torrents;
+            specs = existingDraft.specs ?? currentData.specs;
+            links = existingDraft.links ?? currentData.links;
+            date = existingDraft.date;
+            console.log(`[i] Resumed edit draft for ${slug}`);
+        } else {
+            await clearEditDraft(slug);
+            metadata = toMetadataState(currentData);
+            posterPath = currentData.poster;
+            torrents = currentData.torrents;
+            specs = currentData.specs;
+            links = currentData.links;
+            date = currentData.date;
+            await saveEditDraft(buildEditDraftState({
+                slug,
+                originalRelease,
+                metadata,
+                posterPath,
+                torrents,
+                specs,
+                links,
+                date,
+            }));
+        }
+    } else {
+        metadata = toMetadataState(currentData);
+        posterPath = currentData.poster;
+        torrents = currentData.torrents;
+        specs = currentData.specs;
+        links = currentData.links;
+        date = currentData.date;
+        await saveEditDraft(buildEditDraftState({
+            slug,
+            originalRelease,
+            metadata,
+            posterPath,
+            torrents,
+            specs,
+            links,
+            date,
+        }));
+    }
 
     while (true) {
         console.log(`\nEditing: ${metadata.title}`);
@@ -539,7 +839,10 @@ async function edit() {
             ]
         });
 
-        if (action === 'cancel') return;
+        if (action === 'cancel') {
+            await clearEditDraft(slug);
+            return;
+        }
         if (action === 'save') {
             const updatedData: ReleaseData = {
                 slug,
@@ -564,21 +867,100 @@ async function edit() {
 export const release: Release = ${cleanCode};
 `;
             await fs.writeFile(filePath, fileContent);
+            const otherReleases = records
+                .filter((record) => record.slug !== slug)
+                .map((record) => record.data);
+            const cleanupPlan = planReleaseAssetDiffCleanup({
+                previousRelease: originalRelease,
+                nextRelease: updatedData,
+                otherReleases,
+            });
+            const cleanup = await executeCleanupPlan(cleanupPlan);
+            if (shouldPrintCleanupSummary(cleanup)) {
+                console.log(formatCleanupResult(cleanup));
+            }
+
+            const validation = await validateReleaseAssets({ release: updatedData });
+            if (hasValidationIssues(validation)) {
+                console.log(`[!] Saved changes to ${filePath}, but asset validation failed`);
+                console.log(formatValidationReport(slug, validation));
+                process.exitCode = 1;
+                return;
+            }
+
+            if (cleanup.errors.length > 0) {
+                process.exitCode = 1;
+            }
+
+            await clearEditDraft(slug);
             console.log(`[+] Saved changes to ${filePath}`);
             return;
         }
 
         if (action === 'metadata') {
             const newMeta = await stepMetadata();
-            if (newMeta) metadata = newMeta;
+            if (newMeta) {
+                metadata = newMeta;
+                links = syncTmdbLink(links, metadata.tmdb_id, metadata.media_type);
+                await saveEditDraft(buildEditDraftState({
+                    slug,
+                    originalRelease,
+                    metadata,
+                    posterPath,
+                    torrents,
+                    specs,
+                    links,
+                    date,
+                }));
+            }
         } else if (action === 'poster') {
             posterPath = await stepPoster(slug);
+            await saveEditDraft(buildEditDraftState({
+                slug,
+                originalRelease,
+                metadata,
+                posterPath,
+                torrents,
+                specs,
+                links,
+                date,
+            }));
         } else if (action === 'torrents') {
             torrents = await stepTorrents();
+            await saveEditDraft(buildEditDraftState({
+                slug,
+                originalRelease,
+                metadata,
+                posterPath,
+                torrents,
+                specs,
+                links,
+                date,
+            }));
         } else if (action === 'specs') {
             specs = await stepSpecs();
+            await saveEditDraft(buildEditDraftState({
+                slug,
+                originalRelease,
+                metadata,
+                posterPath,
+                torrents,
+                specs,
+                links,
+                date,
+            }));
         } else if (action === 'links') {
             links = await stepLinks(metadata.tmdb_id, metadata.media_type);
+            await saveEditDraft(buildEditDraftState({
+                slug,
+                originalRelease,
+                metadata,
+                posterPath,
+                torrents,
+                specs,
+                links,
+                date,
+            }));
         }
     }
 }
@@ -602,6 +984,67 @@ async function telegramPush() {
     await tempManager.cleanup();
 }
 
+async function auditAssets() {
+    const records = await loadReleaseRecords();
+    const report = await auditManagedAssets({
+        releases: records.map((record) => record.data),
+    });
+
+    console.log(formatAuditReport(report));
+    if (hasAuditIssues(report)) {
+        process.exitCode = 1;
+    }
+}
+
+async function pruneAssets() {
+    const records = await loadReleaseRecords();
+    const report = await auditManagedAssets({
+        releases: records.map((record) => record.data),
+    });
+
+    console.log(formatAuditReport(report));
+
+    if (report.orphanedFiles.length === 0) {
+        console.log('[i] No orphaned assets to prune');
+        if (
+            report.missingReferences.length > 0 ||
+            report.malformedReferences.length > 0 ||
+            report.derivedMismatches.length > 0
+        ) {
+            process.exitCode = 1;
+        }
+        return;
+    }
+
+    const shouldDelete = await confirm({
+        message: `Delete ${report.orphanedFiles.length} orphaned asset(s)?`,
+        default: false,
+    });
+    if (!shouldDelete) {
+        console.log('[i] Prune cancelled');
+        process.exitCode = 1;
+        return;
+    }
+
+    const cleanup = await pruneOrphanedAssets({
+        orphanedFiles: report.orphanedFiles,
+    });
+    console.log(formatCleanupResult(cleanup));
+
+    if (cleanup.errors.length > 0) {
+        process.exitCode = 1;
+        return;
+    }
+
+    if (
+        report.missingReferences.length > 0 ||
+        report.malformedReferences.length > 0 ||
+        report.derivedMismatches.length > 0
+    ) {
+        process.exitCode = 1;
+    }
+}
+
 async function deleteRelease(slug: string) {
     if (!slug) {
         console.log('[!] Slug required for delete. Usage: bun run cli delete <slug>');
@@ -610,90 +1053,78 @@ async function deleteRelease(slug: string) {
     const targetPath = path.join(RELEASES_DIR, `${slug}.ts`);
     try {
         await fs.access(targetPath);
-
-        // Load release data to find associated files
-        let releaseData: any = null;
-        try {
-            const mod = await import(targetPath);
-            releaseData = mod.release;
-        } catch (e) {
-            console.log('[!] Could not parse release file, will only delete .ts file');
-        }
+        const records = await loadReleaseRecords();
+        const record = records.find((entry) => entry.slug === slug);
 
         const shouldDelete = await confirm({ message: `Delete release ${slug}? This cannot be undone.`, default: false });
-        if (shouldDelete) {
-            // Delete the .ts file
-            await fs.unlink(targetPath);
-            console.log(`[+] Deleted ${targetPath}`);
-
-            // Delete poster if exists
-            if (releaseData?.poster) {
-                const posterPath = path.join(STATIC_PATH, releaseData.poster);
-                try {
-                    await fs.access(posterPath);
-                    await fs.unlink(posterPath);
-                    console.log(`[+] Deleted poster: ${posterPath}`);
-                } catch {
-                    // Poster doesn't exist or already deleted
-                }
-            }
-
-            // Delete mediainfo files
-            if (releaseData?.torrents) {
-                for (const torrent of releaseData.torrents) {
-                    if (torrent.mediainfo) {
-                        for (const mi of torrent.mediainfo) {
-                            const miPath = path.join(STATIC_PATH, 'mediainfo', mi.raw_hash);
-                            try {
-                                await fs.access(miPath);
-                                await fs.unlink(miPath);
-                                console.log(`[+] Deleted mediainfo: ${miPath}`);
-                            } catch {
-                                // MediaInfo doesn't exist or already deleted
-                            }
-                        }
-                    }
-                }
-            }
-
-            console.log(`[✓] Release ${slug} fully deleted`);
+        if (!shouldDelete) {
+            return;
         }
+
+        await fs.unlink(targetPath);
+        console.log(`[+] Deleted ${targetPath}`);
+
+        if (!record) {
+            console.log('[!] Could not parse release file, deleted the .ts file only');
+            process.exitCode = 1;
+            return;
+        }
+
+        const remainingReleases = records
+            .filter((entry) => entry.slug !== slug)
+            .map((entry) => entry.data);
+        const cleanupPlan = planReleaseAssetCleanup({
+            release: record.data,
+            remainingReleases,
+        });
+        const cleanup = await executeCleanupPlan(cleanupPlan);
+        if (shouldPrintCleanupSummary(cleanup)) {
+            console.log(formatCleanupResult(cleanup));
+        }
+        if (cleanup.errors.length > 0) {
+            process.exitCode = 1;
+        }
+
+        console.log(`[✓] Release ${slug} fully deleted`);
     } catch {
         console.log(`[!] Release ${slug} not found`);
+        process.exitCode = 1;
     }
 }
 
 async function deploy() {
     console.log('\n=== Deploy to Cloudflare ===\n');
+    const config = getCliConfig();
     try {
         console.log('[1/3] Building project...');
         await exec('npm run build');
         console.log('[+] Build complete.');
 
         console.log('[2/3] Ensuring Cloudflare Pages project exists...');
-        try {
-            // Try to create project (ignore if exists)
-            await exec('npx wrangler pages project create yumerobo --production-branch main');
-            console.log('[+] Project created/verified.');
-        } catch (e) {
-            // Check if error is "already exists" (exit code 1 usually)
-            // We just ignore creation failure and hope it's because it exists
-            // or let the deploy step fail with a clearer error if it's a real issue
-            console.log('[i] Project might already exist or creation requires login. Proceeding to deploy...');
+        const projectStatus = await ensurePagesProject(
+            exec,
+            config.cloudflarePagesProject,
+            config.cloudflareProductionBranch,
+        );
+        if (projectStatus === 'created') {
+            console.log('[+] Project created.');
+        } else {
+            console.log('[i] Project already exists.');
         }
 
         console.log('[3/3] Deploying (Direct Upload)...');
-        // Add --commit-dirty=true to allow deploying with uncomitted changes (since we rely on local files)
-        await exec('npx wrangler pages deploy build --project-name yumerobo --commit-dirty=true');
+        await exec(getDeployCommand(config.cloudflarePagesProject, 'build'));
         console.log('[+] Deployment initiated!');
     } catch (e) {
         console.error('[!] Deployment failed:', e);
+        process.exitCode = 1;
     }
 }
 
 async function main() {
-    const args = process.argv.slice(2);
-    const command = args[0] || 'create';
+    const resolved = resolveCliCommand(process.argv.slice(2));
+    const command = resolved.command;
+    const args = resolved.args;
 
     switch (command) {
         case 'create':
@@ -711,10 +1142,23 @@ async function main() {
         case 'telegram':
             await telegramPush();
             break;
+        case 'audit-assets':
+            await auditAssets();
+            break;
+        case 'prune-assets':
+            await pruneAssets();
+            break;
+        case 'help':
+            console.log(getCliUsage());
+            break;
         default:
             console.log(`[!] Unknown command: ${command}`);
-            console.log('Usage: bun run cli [create|edit|delete <slug>|deploy|telegram]');
+            console.log(getCliUsage());
+            process.exitCode = 1;
     }
 }
 
-main().catch(console.error);
+main().catch((error) => {
+    console.error(error);
+    process.exit(1);
+});
