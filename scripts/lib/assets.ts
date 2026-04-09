@@ -48,6 +48,7 @@ const STATIC_DIR = "static";
 const POSTERS_DIR = "posters";
 const OG_DIR = "og";
 const MEDIAINFO_DIR = "mediainfo";
+const MANAGED_ASSET_KINDS: ManagedAssetKind[] = ["poster", "og", "mediainfo"];
 
 function sortIssues(issues: ManagedAssetIssue[]): ManagedAssetIssue[] {
 	return issues.sort((a, b) =>
@@ -539,6 +540,44 @@ export async function pruneOrphanedAssets({
 	return executeCleanupPlan(plan);
 }
 
+function countIssuesByKind(issues: ManagedAssetIssue[]): Record<ManagedAssetKind, number> {
+	const counts: Record<ManagedAssetKind, number> = {
+		poster: 0,
+		og: 0,
+		mediainfo: 0,
+	};
+
+	for (const issue of issues) {
+		counts[issue.kind] += 1;
+	}
+
+	return counts;
+}
+
+function countRefsByKind(
+	refs: Array<Pick<ManagedAssetReference, "kind">>,
+): Record<ManagedAssetKind, number> {
+	const counts: Record<ManagedAssetKind, number> = {
+		poster: 0,
+		og: 0,
+		mediainfo: 0,
+	};
+
+	for (const ref of refs) {
+		counts[ref.kind] += 1;
+	}
+
+	return counts;
+}
+
+function formatKindCounts(
+	label: string,
+	counts: Record<ManagedAssetKind, number>,
+): string {
+	const details = MANAGED_ASSET_KINDS.map((kind) => `${kind}=${counts[kind]}`).join(" ");
+	return `${label} ${details}`;
+}
+
 export function formatAuditReport(report: ManagedAssetAuditReport): string {
 	const lines: string[] = ["ASSET_AUDIT"];
 	const sections: Array<[string, ManagedAssetIssue[]]> = [
@@ -547,9 +586,16 @@ export function formatAuditReport(report: ManagedAssetAuditReport): string {
 		["malformed_references", report.malformedReferences],
 		["derived_mismatches", report.derivedMismatches],
 	];
+	const allIssues = sections.flatMap(([, issues]) => issues);
+	const total = allIssues.length;
+	const status = total > 0 ? "issues" : "ok";
+	const byKind = countIssuesByKind(allIssues);
+
+	lines.push(`summary status=${status} total=${total}`);
+	lines.push(formatKindCounts("by_kind", byKind));
 
 	for (const [name, issues] of sections) {
-		lines.push(`${name} count=${issues.length}`);
+		lines.push(`[${name}] count=${issues.length}`);
 		for (const issue of issues) {
 			const parts = [`kind=${issue.kind}`, `path=${issue.path}`];
 			if (issue.releaseSlug) parts.push(`release=${issue.releaseSlug}`);
@@ -588,9 +634,21 @@ export function formatCleanupResult(result: ManagedAssetCleanupResult): string {
 			),
 		],
 	];
+	const deletedByKind = countRefsByKind(result.delete);
+	const keptByKind = countRefsByKind(result.keep.map((entry) => entry.asset));
+	const missingByKind = countRefsByKind(result.missing);
+	const errorsByKind = countRefsByKind(result.errors.map((entry) => entry.asset));
+
+	lines.push(
+		`summary deleted=${result.delete.length} kept=${result.keep.length} missing=${result.missing.length} errors=${result.errors.length}`,
+	);
+	lines.push(formatKindCounts("deleted_by_kind", deletedByKind));
+	lines.push(formatKindCounts("kept_by_kind", keptByKind));
+	lines.push(formatKindCounts("missing_by_kind", missingByKind));
+	lines.push(formatKindCounts("errors_by_kind", errorsByKind));
 
 	for (const [name, entries] of sections) {
-		lines.push(`${name} count=${entries.length}`);
+		lines.push(`[${name}] count=${entries.length}`);
 		for (const entry of entries) {
 			lines.push(`- ${entry}`);
 		}
