@@ -13,13 +13,6 @@ export function generateReleaseCode(data: ReleaseData): string {
     lines.push(`        slug: '${escapeString(data.slug)}',`);
     lines.push(`        title: '${escapeString(data.title)}',`);
 
-    if (data.title_en) {
-        lines.push(`        title_en: '${escapeString(data.title_en)}',`);
-    }
-    if (data.title_zh) {
-        lines.push(`        title_zh: '${escapeString(data.title_zh)}',`);
-    }
-
     lines.push(`        date: '${data.date}',`);
     lines.push(`        tmdb_id: ${data.tmdb_id},`);
     lines.push(`        media_type: '${data.media_type}',`);
@@ -102,4 +95,3 @@ function escapeTemplateString(str: string | undefined | null): string {
         .replace(/`/g, '\\`')
         .replace(/\${/g, '\\${');
 }
-

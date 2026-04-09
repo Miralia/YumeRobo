@@ -69,8 +69,6 @@ export const ReleaseSchema = z.object({
 
     // Content metadata
     title: z.string().describe('Primary display title'),
-    title_en: z.string().optional().describe('English title'),
-    title_zh: z.string().optional().describe('Chinese title'),
 
     // Date
     date: z.string().datetime().or(z.string()).describe('Publication date in ISO format'),

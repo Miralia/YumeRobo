@@ -3,18 +3,9 @@
 	import Header from "$lib/components/Header.svelte";
 	import Footer from "$lib/components/Footer.svelte";
 	import { onNavigate } from "$app/navigation";
-	import { page } from "$app/stores";
-	import {
-		boundaryIndicator,
-		type BoundaryIndicatorOptions,
-	} from "$lib/utils/overscroll";
+	import { boundaryIndicator } from "$lib/utils/overscroll";
 
 	let { children } = $props();
-
-	// Only enable load more on homepage
-	let indicatorOptions = $derived<BoundaryIndicatorOptions>({
-		enableLoadMore: $page.url.pathname === "/",
-	});
 
 	onNavigate((navigation) => {
 		if (!document.startViewTransition) return;
@@ -34,7 +25,7 @@
 	<title>夢みる機械</title>
 </svelte:head>
 
-<div class="app-shell" use:boundaryIndicator={indicatorOptions}>
+<div class="app-shell" use:boundaryIndicator={{ enableLoadMore: false }}>
 	<Header />
 	<main class="main-content">
 		{@render children()}

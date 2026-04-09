@@ -89,9 +89,8 @@ export async function buildCaption(
     const lines: string[] = [];
 
     // Title + Season (bold)
-    const title = release.title_zh || release.title;
     const season = release.season ? ` S${String(release.season).padStart(2, '0')}` : '';
-    lines.push(`**${escapeMarkdown(`${title}${season}`)}**`);
+    lines.push(`**${escapeMarkdown(`${release.title}${season}`)}**`);
     lines.push('');
 
     // Subtitles - extract from first MediaInfo of first torrent
@@ -278,4 +277,3 @@ export async function sendPhotoWithRetry(
 
     return { ok: false, error: lastError, attempts: maxRetries };
 }
-

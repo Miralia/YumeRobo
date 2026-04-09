@@ -1,99 +1,86 @@
 <script lang="ts">
-    import ReleaseCard from "$lib/components/ReleaseCard.svelte";
-    import { getAllReleases, searchReleases } from "$lib/content/loader";
-    import { t } from "$lib/stores/locale";
-    import { page } from "$app/stores";
-    import { browser } from "$app/environment";
-    import { env } from "$env/dynamic/public";
-    import { tick } from "svelte";
+	import { browser } from "$app/environment";
+	import { page } from "$app/stores";
+	import { env } from "$env/dynamic/public";
+	import { tick } from "svelte";
+	import ReleaseCard from "$lib/components/ReleaseCard.svelte";
+	import { getAllReleases, searchReleases } from "$lib/content/loader";
+	import {
+		HOME_RELEASE_BATCH_SIZE,
+		getNextDisplayCount,
+	} from "$lib/utils/infinite-scroll";
 
-    const SITE_URL = env.PUBLIC_SITE_URL || "https://yumerobo.moe";
+	const SITE_URL = env.PUBLIC_SITE_URL || "https://yumerobo.moe";
+	const allReleases = getAllReleases();
+	const initialQuery = browser ? $page.url.searchParams.get("q") || "" : "";
 
-    const allReleases = getAllReleases();
+	let searchQuery = $state(initialQuery);
+	let displayCount = $state(HOME_RELEASE_BATCH_SIZE);
+	let restoredCount = $state(0);
+	let sentinel = $state<HTMLDivElement | null>(null);
+	let previousQuery = initialQuery;
 
-    /**
-     * Search state (client-side only for SSG).
-     * Initialize directly from URL if in browser to avoid effect triggering reset.
-     */
-    const initialQuery = browser ? $page.url.searchParams.get("q") || "" : "";
-    let searchQuery = $state(initialQuery);
+	$effect(() => {
+		if (!browser) return;
 
-    $effect(() => {
-        if (browser) {
-            const urlQuery = $page.url.searchParams.get("q") || "";
-            if (searchQuery !== urlQuery) {
-                // Only update if truly different (avoids loop)
-                searchQuery = urlQuery;
-            }
-        }
-    });
+		const urlQuery = $page.url.searchParams.get("q") || "";
+		if (searchQuery !== urlQuery) {
+			searchQuery = urlQuery;
+		}
+	});
 
-    let filteredReleases = $derived(
-        searchQuery.trim() ? searchReleases(searchQuery) : allReleases,
-    );
+	let filteredReleases = $derived(
+		searchQuery.trim() ? searchReleases(searchQuery) : allReleases,
+	);
+	let displayedReleases = $derived(filteredReleases.slice(0, displayCount));
+	let hasMore = $derived(displayCount < filteredReleases.length);
 
-    /** Pagination limit */
-    let displayCount = $state(10);
+	$effect(() => {
+		if (searchQuery === previousQuery) return;
 
-    /** Track count of items restored from snapshot to skip their entrance animation */
-    let restoredCount = $state(0);
+		displayCount = HOME_RELEASE_BATCH_SIZE;
+		restoredCount = 0;
+		previousQuery = searchQuery;
+	});
 
-    /**
-     * Reset pagination ONLY when search query changes.
-     * We use a tracked/untracked pattern or explicit check to avoid reset on mount.
-     */
-    let previousQuery = initialQuery;
+	$effect(() => {
+		if (displayCount > filteredReleases.length) {
+			displayCount = filteredReleases.length || HOME_RELEASE_BATCH_SIZE;
+		}
+	});
 
-    $effect(() => {
-        if (searchQuery !== previousQuery) {
-            displayCount = 10;
-            restoredCount = 0; // Reset animation state on new search
-            previousQuery = searchQuery;
-        }
-    });
+	export const snapshot = {
+		capture: () => ({ displayCount, scrollY: window.scrollY }),
+		restore: (value: { displayCount: number; scrollY: number }) => {
+			displayCount = value.displayCount;
+			restoredCount = value.displayCount;
+			if (browser) {
+				tick().then(() => {
+					window.scrollTo(0, value.scrollY);
+				});
+			}
+		},
+	};
 
-    /**
-     * Preserve scroll position and display count during navigation.
-     */
-    export const snapshot = {
-        capture: () => ({ displayCount, scrollY: window.scrollY }),
-        restore: (value: { displayCount: number; scrollY: number }) => {
-            displayCount = value.displayCount;
-            restoredCount = value.displayCount; // Skip animation for restored items
-            // Manually restore scroll position after DOM update
-            if (browser) {
-                tick().then(() => {
-                    window.scrollTo(0, value.scrollY);
-                });
-            }
-        },
-    };
+	function loadMore() {
+		displayCount = getNextDisplayCount(displayCount, filteredReleases.length);
+	}
 
-    let displayedReleases = $derived(filteredReleases.slice(0, displayCount));
-    let hasMore = $derived(filteredReleases.length > displayCount);
+	$effect(() => {
+		if (!browser || !sentinel || !hasMore) return;
 
-    function loadMore() {
-        displayCount += 10;
-    }
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (entries.some((entry) => entry.isIntersecting)) {
+					loadMore();
+				}
+			},
+			{ rootMargin: "320px 0px" },
+		);
 
-    // Listen for scroll-to-load-more event from boundary indicator
-    $effect(() => {
-        if (!browser) return;
-
-        function handleBoundaryLoadMore() {
-            if (hasMore) {
-                loadMore();
-            }
-        }
-
-        window.addEventListener("boundary-loadmore", handleBoundaryLoadMore);
-        return () => {
-            window.removeEventListener(
-                "boundary-loadmore",
-                handleBoundaryLoadMore,
-            );
-        };
-    });
+		observer.observe(sentinel);
+		return () => observer.disconnect();
+	});
 </script>
 
 <svelte:head>
@@ -133,24 +120,19 @@
             {/each}
         {:else if searchQuery}
             <div class="empty-state">
-                <p class="empty-title">{$t.noResults}</p>
-                <p class="empty-desc">{$t.noResultsFor} "{searchQuery}"</p>
+                <p class="empty-title">No results found</p>
+                <p class="empty-desc">No releases match "{searchQuery}"</p>
             </div>
         {:else}
             <div class="empty-state">
-                <p class="empty-title">{$t.noResults}</p>
+                <p class="empty-title">No results found</p>
                 <p class="empty-desc">Check back soon for new content</p>
             </div>
         {/if}
     </section>
 
-    <!-- Load More -->
     {#if hasMore}
-        <div class="load-more-container">
-            <button class="load-more-button" onclick={loadMore}>
-                {$t.loadMore}
-            </button>
-        </div>
+        <div class="scroll-sentinel" bind:this={sentinel} aria-hidden="true"></div>
     {/if}
 </div>
 
@@ -187,32 +169,8 @@
         margin: 0;
     }
 
-    /* Load More */
-    .load-more-container {
-        display: flex;
-        justify-content: center;
-        padding: var(--space-8) 0;
-        margin-top: var(--space-4);
-    }
-
-    .load-more-button {
-        padding: var(--space-2) var(--space-6);
-        font-size: var(--text-sm);
-        font-weight: 500;
-        color: var(--color-accent);
-        background: transparent;
-        border: 1px solid var(--color-separator);
-        border-radius: var(--radius-lg);
-        cursor: pointer;
-        transition: all var(--duration-fast) var(--ease-out);
-    }
-
-    .load-more-button:hover {
-        background: var(--color-fill);
-        border-color: var(--color-accent);
-    }
-
-    .load-more-button:active {
-        transform: scale(0.97);
+    .scroll-sentinel {
+        height: 1px;
+        margin-top: var(--space-6);
     }
 </style>

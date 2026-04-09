@@ -11,8 +11,6 @@ export const sampleReleases: Release[] = [
     {
         slug: '9gbs4sb6',
         title: 'Takopi\'s Original Sin',
-        title_en: 'Takopi\'s Original Sin',
-        title_zh: '章鱼哔的原罪',
         date: '2026-01-19T07:32:38.564Z',
         tmdb_id: 284445,
         media_type: 'tv',
@@ -110,16 +108,11 @@ export function getAllReleases(): Release[] {
 }
 
 /**
- * Search releases by title (en/zh)
+ * Search releases by title
  */
 export function searchReleases(query: string): Release[] {
     const q = query.toLowerCase();
-    return getAllReleases().filter(
-        (r) =>
-            r.title.toLowerCase().includes(q) ||
-            (r.title_en?.toLowerCase().includes(q) ?? false) ||
-            (r.title_zh?.toLowerCase().includes(q) ?? false),
-    );
+    return getAllReleases().filter((r) => r.title.toLowerCase().includes(q));
 }
 
 /**

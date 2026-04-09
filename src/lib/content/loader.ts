@@ -36,10 +36,7 @@ export function getAllReleases(): Release[] {
 export function searchReleases(query: string): Release[] {
     const q = query.toLowerCase();
     return getAllReleases().filter(
-        (r) =>
-            r.title.toLowerCase().includes(q) ||
-            (r.title_en?.toLowerCase().includes(q) ?? false) ||
-            (r.title_zh?.toLowerCase().includes(q) ?? false),
+        (r) => r.title.toLowerCase().includes(q),
     );
 }
 

@@ -1,5 +1,5 @@
 /**
- * Scroll Boundary Indicator with Load More Trigger
+ * Scroll Boundary Indicator with optional Load More Trigger
  * 
  * Shows a subtle glow when user reaches top/bottom of page.
  * Dispatches 'boundary-loadmore' event when user intentionally over-scrolls at bottom.
@@ -32,7 +32,7 @@ const defaultOptions: Required<BoundaryIndicatorOptions> = {
     color: "var(--color-accent)",
     maxOpacity: 0.08,
     size: 60,
-    enableLoadMore: true,
+    enableLoadMore: false,
     loadMoreThreshold: 400,
     loadMoreCooldown: 1000,
     settleDelay: 200,

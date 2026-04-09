@@ -10,11 +10,6 @@ export const siteConfig = {
 
     // Pagination
     postsPerPage: 10,
-
-    // Default locale
-    defaultLocale: 'en-US',
-    supportedLocales: ['en-US', 'zh-CN'] as const,
-
     // API keys (loaded from environment in production)
     tmdb: {
         apiBaseUrl: 'https://api.themoviedb.org/3',
@@ -27,5 +22,3 @@ export const siteConfig = {
         botToken: ''   // Set via environment variable
     }
 } as const;
-
-export type Locale = typeof siteConfig.supportedLocales[number];

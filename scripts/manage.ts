@@ -70,8 +70,7 @@ const STATIC_PATH = path.join(process.cwd(), 'static');
 // ==========================================
 
 async function stepMetadata(): Promise<{
-    title_en: string;
-    title_zh: string;
+    title: string;
     year: number;
     tmdb_id: number;
     media_type: 'movie' | 'tv';
@@ -404,9 +403,7 @@ async function create() {
     while (true) {
         const releaseData: ReleaseData = {
             slug,
-            title: metadata.title_en,
-            title_en: metadata.title_en,
-            title_zh: metadata.title_zh,
+            title: metadata.title,
             date: new Date().toISOString(),
             tmdb_id: metadata.tmdb_id,
             media_type: metadata.media_type,
@@ -512,8 +509,7 @@ async function edit() {
     });
 
     let metadata: any = {
-        title_en: currentData.title_en,
-        title_zh: currentData.title_zh,
+        title: currentData.title,
         year: currentData.year,
         tmdb_id: currentData.tmdb_id,
         media_type: currentData.media_type,
@@ -529,7 +525,7 @@ async function edit() {
     let date = currentData.date;
 
     while (true) {
-        console.log(`\nEditing: ${metadata.title_en || metadata.title_zh}`);
+        console.log(`\nEditing: ${metadata.title}`);
         const action = await select({
             message: 'Select field to edit:',
             choices: [
@@ -547,9 +543,7 @@ async function edit() {
         if (action === 'save') {
             const updatedData: ReleaseData = {
                 slug,
-                title: metadata.title_en || metadata.title_zh,
-                title_en: metadata.title_en,
-                title_zh: metadata.title_zh,
+                title: metadata.title,
                 year: metadata.year,
                 date: date,
                 tmdb_id: metadata.tmdb_id,
@@ -603,7 +597,7 @@ async function telegramPush() {
         choices
     });
 
-    console.log(`\nSelected: ${releaseData.title_en || releaseData.title_zh} (${releaseData.slug})`);
+    console.log(`\nSelected: ${releaseData.title} (${releaseData.slug})`);
     await stepTelegram(releaseData);
     await tempManager.cleanup();
 }

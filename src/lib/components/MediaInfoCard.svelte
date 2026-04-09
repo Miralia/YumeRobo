@@ -318,6 +318,7 @@
     }
 
     .toggle-hint {
+        font-family: var(--font-sans);
         font-size: var(--text-xs);
         color: var(--color-label-tertiary);
     }
@@ -374,6 +375,7 @@
     }
 
     .loading {
+        font-family: var(--font-sans);
         padding: var(--space-4);
         font-size: var(--text-sm);
         color: var(--color-label-tertiary);
@@ -387,6 +389,7 @@
     }
 
     .column-title {
+        font-family: var(--font-sans);
         font-size: var(--text-xs);
         font-weight: 600;
         color: var(--color-label-secondary);
@@ -408,6 +411,7 @@
     }
 
     .info-row dt {
+        font-family: var(--font-sans);
         color: var(--color-label-tertiary);
         min-width: 70px;
         flex-shrink: 0;
@@ -434,6 +438,7 @@
     }
 
     .audio-index {
+        font-family: var(--font-sans);
         color: var(--color-label-tertiary);
         min-width: 16px;
     }
@@ -454,6 +459,7 @@
     }
 
     .section-title {
+        font-family: var(--font-sans);
         font-size: var(--text-xs);
         font-weight: 600;
         color: var(--color-label-secondary);
@@ -491,5 +497,6 @@
         white-space: pre-wrap;
         word-break: break-all;
         margin: 0;
+        font-variant-numeric: tabular-nums;
     }
 </style>

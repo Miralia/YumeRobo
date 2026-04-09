@@ -33,18 +33,12 @@ export async function promptSearchQuery(): Promise<string> {
  * Prompt for manual metadata entry (fallback mode)
  */
 export async function promptManualMetadata(): Promise<{
-    title_en: string;
-    title_zh: string;
+    title: string;
     year: number;
     media_type: 'movie' | 'tv';
 }> {
-    const title_en = await input({
-        message: 'English title:',
-        validate: (val) => !!val || 'Required'
-    });
-
-    const title_zh = await input({
-        message: 'Chinese title:',
+    const title = await input({
+        message: 'Title:',
         validate: (val) => !!val || 'Required'
     });
 
@@ -63,8 +57,7 @@ export async function promptManualMetadata(): Promise<{
     });
 
     return {
-        title_en,
-        title_zh,
+        title,
         year: parseInt(yearStr),
         media_type
     };
@@ -296,8 +289,7 @@ export async function promptRefineMetadata(
  * Display metadata summary (no emoji)
  */
 export function displayMetadata(data: {
-    title_en: string;
-    title_zh: string;
+    title: string;
     year: number;
     tmdb_id: number;
     media_type: string;
@@ -306,8 +298,7 @@ export function displayMetadata(data: {
     is_complete?: boolean;
 }): void {
     console.log('\n--- Metadata ---');
-    console.log(`  Title (EN): ${data.title_en}`);
-    console.log(`  Title (ZH): ${data.title_zh}`);
+    console.log(`  Title:      ${data.title}`);
     console.log(`  Year:       ${data.year}`);
     console.log(`  TMDB ID:    ${data.tmdb_id}`);
     console.log(`  Type:       ${data.media_type}`);

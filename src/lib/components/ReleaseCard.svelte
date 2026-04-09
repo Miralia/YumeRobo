@@ -2,7 +2,6 @@
     import { spring } from "svelte/motion";
     import { type Release, getReleaseBadges } from "$lib/content/schema";
     import { formatDateTime } from "$lib/utils/date";
-    import { locale, getLocalizedTitle } from "$lib/stores/locale";
     import { springPresets, stagger } from "$lib/utils/animation";
 
     interface Props {
@@ -56,14 +55,8 @@
 
     <!-- Info -->
     <div class="info">
-        <!-- Localized title (switches based on locale) -->
         <h2 class="title" style:view-transition-name="title-{release.slug}">
-            {getLocalizedTitle(
-                $locale,
-                release.title,
-                release.title_en,
-                release.title_zh,
-            )}
+            {release.title}
         </h2>
 
         <!-- Torrent release names -->
@@ -83,7 +76,7 @@
                 {/each}
             </div>
             <time class="date" datetime={release.date}>
-                {formatDateTime(release.date, "medium", $locale)}
+                {formatDateTime(release.date, "medium")}
             </time>
         </div>
     </div>
@@ -151,9 +144,11 @@
     }
 
     .title {
+        font-family: var(--font-display);
         font-size: var(--text-base);
-        font-weight: 600;
+        font-weight: 700;
         line-height: var(--leading-tight);
+        letter-spacing: var(--tracking-tight);
         color: var(--color-label);
         margin: 0;
     }
@@ -199,6 +194,7 @@
     }
 
     .badge {
+        font-family: var(--font-sans);
         font-size: 11px;
         font-weight: 700;
         padding: 3px 8px;
@@ -214,8 +210,10 @@
     }
 
     .date {
+        font-family: var(--font-sans);
         font-size: var(--text-xs);
         color: var(--color-label-tertiary);
         white-space: nowrap;
+        font-variant-numeric: tabular-nums;
     }
 </style>

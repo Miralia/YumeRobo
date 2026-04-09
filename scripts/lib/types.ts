@@ -27,8 +27,6 @@ export interface SpecEntry {
 export interface ReleaseData {
     slug: string;
     title: string;
-    title_en?: string;
-    title_zh?: string;
     date: string;
     tmdb_id: number;
     media_type: 'movie' | 'tv';

@@ -4,15 +4,16 @@
  */
 
 export type DateFormatStyle = 'short' | 'medium' | 'long' | 'full';
+const DEFAULT_LOCALE = 'en-US';
 
 /**
  * Get user's preferred locale (from browser or default to 'en-US')
  */
 export function getUserLocale(): string {
     if (typeof navigator !== 'undefined') {
-        return navigator.language || 'en-US';
+        return navigator.language || DEFAULT_LOCALE;
     }
-    return 'en-US';
+    return DEFAULT_LOCALE;
 }
 
 /**
@@ -34,7 +35,7 @@ export function formatDate(
     locale?: string
 ): string {
     const dateObj = typeof date === 'string' ? new Date(date) : date;
-    const userLocale = locale || getUserLocale();
+    const userLocale = locale || DEFAULT_LOCALE;
 
     const options: Intl.DateTimeFormatOptions = {
         timeZone: getUserTimezone(),
@@ -52,7 +53,7 @@ export function formatDate(
  */
 export function formatRelativeTime(date: string | Date, locale?: string): string {
     const dateObj = typeof date === 'string' ? new Date(date) : date;
-    const userLocale = locale || getUserLocale();
+    const userLocale = locale || DEFAULT_LOCALE;
     const now = new Date();
     const diffMs = dateObj.getTime() - now.getTime();
     const diffSeconds = Math.round(diffMs / 1000);
@@ -83,10 +84,7 @@ export function formatDateTime(
 ): string {
     const dateObj = typeof date === 'string' ? new Date(date) : date;
 
-    // Map internal locale codes to full BCP 47 codes
-    let userLocale = locale || getUserLocale();
-    if (userLocale === 'en') userLocale = 'en-US';
-    if (userLocale === 'zh') userLocale = 'zh-CN';
+    const userLocale = locale || DEFAULT_LOCALE;
 
     const options: Intl.DateTimeFormatOptions = {
         timeZone: getUserTimezone(),

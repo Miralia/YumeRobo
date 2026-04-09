@@ -3,7 +3,6 @@
     import { slide } from "svelte/transition";
     import { cubicOut } from "svelte/easing";
     import { formatDateTime } from "$lib/utils/date";
-    import { locale, t, getLocalizedTitle } from "$lib/stores/locale";
     import MediaInfoCard from "$lib/components/MediaInfoCard.svelte";
     import { type Release, getReleaseBadges } from "$lib/content/schema";
     import { externalIcons } from "$lib/utils/icons";
@@ -114,14 +113,7 @@
 </script>
 
 <svelte:head>
-    <title
-        >{getLocalizedTitle(
-            $locale,
-            data.release.title,
-            data.release.title_en,
-            data.release.title_zh,
-        )} | 夢みる機械</title
-    >
+    <title>{data.release.title} | 夢みる機械</title>
     <meta
         name="description"
         content="{data.release.year} · {data.release.media_type === 'movie'
@@ -132,12 +124,7 @@
     <!-- Open Graph -->
     <meta
         property="og:title"
-        content={getLocalizedTitle(
-            $locale,
-            data.release.title,
-            data.release.title_en,
-            data.release.title_zh,
-        )}
+        content={data.release.title}
     />
     <meta
         property="og:description"
@@ -158,12 +145,7 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta
         name="twitter:title"
-        content={getLocalizedTitle(
-            $locale,
-            data.release.title,
-            data.release.title_en,
-            data.release.title_zh,
-        )}
+        content={data.release.title}
     />
     <meta
         name="twitter:description"
@@ -204,7 +186,7 @@
             >
                 <path d="m15 18-6-6 6-6" />
             </svg>
-            {$t.backToReleases}
+            Back to releases
         </a>
     </nav>
 
@@ -245,17 +227,11 @@
                 easing: animEasing,
             }}
         >
-            <!-- Single localized title -->
             <h1
                 class="title"
                 style:view-transition-name="title-{data.release.slug}"
             >
-                {getLocalizedTitle(
-                    $locale,
-                    data.release.title,
-                    data.release.title_en,
-                    data.release.title_zh,
-                )}
+                {data.release.title}
             </h1>
 
             <div class="meta-row">
@@ -266,11 +242,7 @@
                     <span class="meta-item">Season {data.release.season}</span>
                 {/if}
                 <span class="meta-item"
-                    >{formatDateTime(
-                        data.release.date,
-                        "medium",
-                        $locale,
-                    )}</span
+                    >{formatDateTime(data.release.date, "medium")}</span
                 >
             </div>
 
@@ -483,7 +455,7 @@
             easing: animEasing,
         }}
     >
-        <h2 class="section-title">{$t.mediaInfo}</h2>
+        <h2 class="section-title">MediaInfo</h2>
         <div class="mediainfo-list">
             {#each data.release.torrents as torrent, tIndex}
                 {#each torrent.mediainfo as mi, miIndex}
@@ -524,7 +496,7 @@
             easing: animEasing,
         }}
     >
-        <h2 class="section-title">{$t.torrents}</h2>
+        <h2 class="section-title">Torrents</h2>
         <div class="torrent-list">
             {#each data.release.torrents as torrent, index}
                 <div
@@ -703,6 +675,7 @@
     }
 
     .badge {
+        font-family: var(--font-sans);
         font-size: 14px;
         font-weight: 700;
         padding: 6px 12px;
@@ -731,6 +704,7 @@
     }
 
     .title {
+        font-family: var(--font-display);
         font-size: var(--text-2xl);
         font-weight: 700;
         letter-spacing: var(--tracking-tight);
@@ -751,8 +725,10 @@
     }
 
     .meta-item {
+        font-family: var(--font-sans);
         font-size: var(--text-sm);
         color: var(--color-label-secondary);
+        font-variant-numeric: tabular-nums;
     }
 
     .meta-item:not(:last-child)::after {
@@ -796,8 +772,10 @@
 
     /* Sections */
     .section-title {
+        font-family: var(--font-sans);
         font-size: var(--text-lg);
         font-weight: 600;
+        letter-spacing: 0.01em;
         color: var(--color-label);
         margin: 0 0 var(--space-3) 0;
     }
@@ -835,6 +813,7 @@
     }
 
     .spec-title {
+        font-family: var(--font-sans);
         font-size: var(--text-sm);
         font-weight: 600;
         color: var(--color-label);
@@ -941,9 +920,11 @@
     }
 
     .file-count {
+        font-family: var(--font-sans);
         font-size: var(--text-xs);
         color: var(--color-label-tertiary);
         white-space: nowrap;
+        font-variant-numeric: tabular-nums;
     }
 
     .chevron {

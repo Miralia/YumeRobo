@@ -1,6 +1,6 @@
 /**
  * TMDB API Client (Simplified)
- * Only fetches: title_en, title_zh, year, tmdb_id, media_type
+ * Only fetches: title, year, tmdb_id, media_type
  */
 
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
@@ -16,8 +16,7 @@ export interface TMDBSearchResult {
 
 export interface TMDBMetadata {
     tmdb_id: number;
-    title_en: string;
-    title_zh: string;
+    title: string;
     year: number;
     media_type: 'movie' | 'tv';
     number_of_seasons?: number;
@@ -55,29 +54,22 @@ export async function searchMulti(query: string): Promise<TMDBSearchResult[]> {
  */
 export async function getMovieMetadata(id: number): Promise<TMDBMetadata> {
     const apiKey = getApiKey();
-    const urlEn = `${TMDB_BASE_URL}/movie/${id}?api_key=${apiKey}&language=en-US`;
-    const urlZh = `${TMDB_BASE_URL}/movie/${id}?api_key=${apiKey}&language=zh-CN`;
+    const url = `${TMDB_BASE_URL}/movie/${id}?api_key=${apiKey}&language=en-US`;
+    const res = await fetch(url);
 
-    const [resEn, resZh] = await Promise.all([
-        fetch(urlEn),
-        fetch(urlZh)
-    ]);
-
-    if (!resEn.ok) {
-        throw new Error(`TMDB API error: ${resEn.status} ${resEn.statusText}`);
+    if (!res.ok) {
+        throw new Error(`TMDB API error: ${res.status} ${res.statusText}`);
     }
 
-    const dataEn = await resEn.json();
-    const dataZh = resZh.ok ? await resZh.json() : null;
+    const data = await res.json();
 
-    const year = dataEn.release_date
-        ? parseInt(dataEn.release_date.split('-')[0])
+    const year = data.release_date
+        ? parseInt(data.release_date.split('-')[0])
         : new Date().getFullYear();
 
     return {
-        tmdb_id: dataEn.id,
-        title_en: dataEn.title,
-        title_zh: dataZh?.title || dataEn.title,
+        tmdb_id: data.id,
+        title: data.title,
         year,
         media_type: 'movie'
     };
@@ -88,32 +80,25 @@ export async function getMovieMetadata(id: number): Promise<TMDBMetadata> {
  */
 export async function getTVMetadata(id: number): Promise<TMDBMetadata> {
     const apiKey = getApiKey();
-    const urlEn = `${TMDB_BASE_URL}/tv/${id}?api_key=${apiKey}&language=en-US`;
-    const urlZh = `${TMDB_BASE_URL}/tv/${id}?api_key=${apiKey}&language=zh-CN`;
+    const url = `${TMDB_BASE_URL}/tv/${id}?api_key=${apiKey}&language=en-US`;
+    const res = await fetch(url);
 
-    const [resEn, resZh] = await Promise.all([
-        fetch(urlEn),
-        fetch(urlZh)
-    ]);
-
-    if (!resEn.ok) {
-        throw new Error(`TMDB API error: ${resEn.status} ${resEn.statusText}`);
+    if (!res.ok) {
+        throw new Error(`TMDB API error: ${res.status} ${res.statusText}`);
     }
 
-    const dataEn = await resEn.json();
-    const dataZh = resZh.ok ? await resZh.json() : null;
+    const data = await res.json();
 
-    const year = dataEn.first_air_date
-        ? parseInt(dataEn.first_air_date.split('-')[0])
+    const year = data.first_air_date
+        ? parseInt(data.first_air_date.split('-')[0])
         : new Date().getFullYear();
 
     return {
-        tmdb_id: dataEn.id,
-        title_en: dataEn.name,
-        title_zh: dataZh?.name || dataEn.name,
+        tmdb_id: data.id,
+        title: data.name,
         year,
         media_type: 'tv',
-        number_of_seasons: dataEn.number_of_seasons
+        number_of_seasons: data.number_of_seasons
     };
 }
 
@@ -158,12 +143,12 @@ export function formatSearchResult(result: TMDBSearchResult | TMDBMetadata): str
     // Handle both SearchResult and Metadata types
     if ('media_type' in result) {
         if (result.media_type === 'movie') {
-            const title = (result as TMDBSearchResult).title || (result as TMDBMetadata).title_en;
+            const title = (result as TMDBSearchResult).title || (result as TMDBMetadata).title;
             const date = (result as TMDBSearchResult).release_date || (result as TMDBMetadata).year?.toString();
             const year = date ? date.substring(0, 4) : 'N/A';
             return `[Movie] ${title} (${year})`;
         } else {
-            const name = (result as TMDBSearchResult).name || (result as TMDBMetadata).title_en;
+            const name = (result as TMDBSearchResult).name || (result as TMDBMetadata).title;
             const date = (result as TMDBSearchResult).first_air_date || (result as TMDBMetadata).year?.toString();
             const year = date ? date.substring(0, 4) : 'N/A';
             return `[TV] ${name} (${year})`;
