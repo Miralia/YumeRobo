@@ -66,7 +66,13 @@ import { processPoster } from './lib/images';
 import { buildCaption, sendPhotoWithRetry, isSupportedFormat } from './lib/telegram';
 import { tempManager } from './lib/cleanup';
 import { getCliUsage, resolveCliCommand } from './lib/cli';
-import { ensurePagesProject, getDeployCommand } from './lib/deploy';
+import {
+    ensurePagesProject,
+    formatDeployPreflightIssues,
+    getDeployCommand,
+    getDeployPreflightIssues,
+    hasDeployPreflightIssues,
+} from './lib/deploy';
 import { getCliConfig, getReleaseUrl, getTelegramConfig } from './lib/config';
 import {
     clearCreateDraft,
@@ -1126,6 +1132,12 @@ async function deleteRelease(slug: string) {
 async function deploy() {
     console.log('\n=== Deploy to Cloudflare ===\n');
     const config = getCliConfig();
+    const preflightIssues = getDeployPreflightIssues(config);
+    if (hasDeployPreflightIssues(preflightIssues)) {
+        console.log(formatDeployPreflightIssues(preflightIssues));
+        process.exitCode = 1;
+        return;
+    }
     try {
         console.log('[1/3] Building project...');
         await exec('npm run build');

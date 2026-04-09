@@ -14,7 +14,14 @@ const config = {
 			strict: true
 		}),
 		prerender: {
-			handleUnseenRoutes: 'ignore'
+			handleUnseenRoutes: 'ignore',
+			handleHttpError: ({ path, message }) => {
+				if (path === '/favicon.ico' || path.startsWith('/mediainfo/')) {
+					return;
+				}
+
+				throw new Error(message);
+			}
 		}
 	}
 };
