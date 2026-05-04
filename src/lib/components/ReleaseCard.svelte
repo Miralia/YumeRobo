@@ -30,59 +30,63 @@
     let animDelay = $derived(`${stagger(index)}ms`);
 </script>
 
-<a
-    href="/{release.slug}"
-    class="release-card"
-    class:animate-fade-up={animate}
-    style:animation-delay={animDelay}
-    style:transform="scale({$scale})"
-    onmouseenter={() => handleHover(true)}
-    onmouseleave={() => handleHover(false)}
->
-    <!-- Poster -->
-    <div
-        class="poster-container"
-        style:view-transition-name="poster-{release.slug}"
+<div class:animate-fade-up={animate} style:animation-delay={animDelay}>
+    <a
+        href="/{release.slug}"
+        class="release-card"
+        style:transform="scale({$scale})"
+        onmouseenter={() => handleHover(true)}
+        onmouseleave={() => handleHover(false)}
     >
-        <img
-            src={release.poster}
-            alt={release.title}
-            class="poster"
-            loading="lazy"
-        />
-        <div class="poster-overlay"></div>
-    </div>
-
-    <!-- Info -->
-    <div class="info">
-        <h2 class="title" style:view-transition-name="title-{release.slug}">
-            {release.title}
-        </h2>
-
-        <!-- Torrent release names -->
-        <div class="release-names">
-            {#each getTorrentNames() as name}
-                <p class="release-name">{name}</p>
-            {/each}
+        <!-- Poster -->
+        <div
+            class="poster-container"
+            style:view-transition-name="poster-{release.slug}"
+        >
+            <img
+                src={release.poster}
+                alt={release.title}
+                class="poster"
+                loading="lazy"
+            />
+            <div class="poster-overlay"></div>
         </div>
 
-        <!-- Footer: Badges (left) and Date (right) -->
-        <div class="card-footer">
-            <div class="badges">
-                {#each getReleaseBadges(release) as badge}
-                    <span class="badge {badge === 'Fin' ? 'badge-fin' : ''}"
-                        >{badge}</span
-                    >
+        <!-- Info -->
+        <div class="info">
+            <h2 class="title" style:view-transition-name="title-{release.slug}">
+                {release.title}
+            </h2>
+
+            <!-- Torrent release names -->
+            <div class="release-names">
+                {#each getTorrentNames() as name}
+                    <p class="release-name">{name}</p>
                 {/each}
             </div>
-            <time class="date" datetime={release.date}>
-                {formatDateTime(release.date, "medium")}
-            </time>
+
+            <!-- Footer: Badges (left) and Date (right) -->
+            <div class="card-footer">
+                <div class="badges">
+                    {#each getReleaseBadges(release) as badge}
+                        <span class="badge {badge === 'Fin' ? 'badge-fin' : ''}"
+                            >{badge}</span
+                        >
+                    {/each}
+                </div>
+                <time class="date" datetime={release.date}>
+                    {formatDateTime(release.date, "medium")}
+                </time>
+            </div>
         </div>
-    </div>
-</a>
+    </a>
+</div>
 
 <style>
+    .animate-fade-up {
+        display: block;
+    }
+
     .release-card {
         display: flex;
         gap: var(--space-4);

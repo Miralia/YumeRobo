@@ -145,11 +145,12 @@
 		<a
 			href="/"
 			class="logo"
-			style:transform="scale({$logoScale})"
 			onmouseenter={() => handleLogoHover(true)}
 			onmouseleave={() => handleLogoHover(false)}
 		>
-			<img src="/icon.svg" alt="YumeRobo" class="logo-icon" />
+			<span class="logo-scale" style:transform="scale({$logoScale})">
+				<img src="/icon.svg" alt="YumeRobo" class="logo-icon" />
+			</span>
 		</a>
 
 		<div class="search-wrapper" class:focused={isSearchFocused}>
@@ -378,6 +379,10 @@
 		flex-shrink: 0;
 		color: var(--color-label);
 		text-decoration: none;
+	}
+
+	.logo-scale {
+		display: inline-flex;
 	}
 
 	.logo-icon {
