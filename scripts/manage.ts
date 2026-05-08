@@ -395,6 +395,38 @@ async function stepPoster(slug: string): Promise<string> {
     return posterPath;
 }
 
+function getPosterAssetId(posterPath: string): string | undefined {
+    const normalized = posterPath.replace(/\\/g, '/').split('?')[0];
+    const basename = path.posix.basename(normalized);
+    return basename.endsWith('.avif') ? basename.slice(0, -'.avif'.length) : undefined;
+}
+
+async function fileExists(filePath: string): Promise<boolean> {
+    try {
+        await fs.access(filePath);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+async function generateFreshPosterAssetId(previousPosterPath: string): Promise<string> {
+    const previousAssetId = getPosterAssetId(previousPosterPath);
+
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+        const assetId = generateHash(8);
+        if (assetId === previousAssetId) continue;
+
+        const posterPath = path.join(STATIC_PATH, 'posters', `${assetId}.avif`);
+        const ogPath = path.join(STATIC_PATH, 'og', `${assetId}.jpg`);
+        if (!await fileExists(posterPath) && !await fileExists(ogPath)) {
+            return assetId;
+        }
+    }
+
+    throw new Error('Failed to generate a unique poster asset id');
+}
+
 async function stepTorrents(): Promise<TorrentEntry[]> {
     console.log('\n--- Torrents ---');
     const torrents: TorrentEntry[] = [];
@@ -951,7 +983,7 @@ export const release: Release = ${cleanCode};
                 }));
             }
         } else if (action === 'poster') {
-            posterPath = await stepPoster(slug);
+            posterPath = await stepPoster(await generateFreshPosterAssetId(posterPath));
             await persistEditDraft(buildEditDraftState({
                 slug,
                 originalRelease,

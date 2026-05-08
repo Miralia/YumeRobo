@@ -118,6 +118,11 @@ export function getOgRelativePath(slug: string): string {
 	return `${OG_DIR}/${slug}.jpg`;
 }
 
+export function getOgRelativePathForPoster(posterPath: string): string {
+	const basename = path.posix.basename(posterPath);
+	return `${OG_DIR}/${basename.replace(/\.avif$/, ".jpg")}`;
+}
+
 export function getMediainfoRelativePath(rawHash: string): string {
 	return `${MEDIAINFO_DIR}/${rawHash}`;
 }
@@ -205,7 +210,17 @@ export function getReleaseAssetReferences(
 		entries.push(poster.entry);
 	}
 
-	entries.push(createAssetEntry(rootDir, "og", getOgRelativePath(release.slug), release.slug));
+	const posterEntry = entries.find((entry) => entry.kind === "poster");
+	if (posterEntry) {
+		entries.push(
+			createAssetEntry(
+				rootDir,
+				"og",
+				getOgRelativePathForPoster(posterEntry.path),
+				release.slug,
+			),
+		);
+	}
 
 	const mediainfo = getMediainfoReferences(release, rootDir);
 	issues.push(...mediainfo.issues);
@@ -257,18 +272,6 @@ function toReferenceMap(
 		const { issues, entries } = getReleaseAssetReferences(release, rootDir);
 		malformedReferences.push(...issues);
 
-		const expectedPosterPath = getPosterRelativePath(release.slug);
-		const posterRef = entries.find((entry) => entry.kind === "poster");
-		if (posterRef && posterRef.path !== expectedPosterPath) {
-			derivedMismatches.push({
-				kind: "poster",
-				path: posterRef.path,
-				releaseSlug: release.slug,
-				expectedPath: expectedPosterPath,
-				detail: "poster does not match the slug-derived location",
-			});
-		}
-
 		for (const entry of entries) {
 			const key = `${entry.kind}:${entry.path}`;
 			const existing = refs.get(key) ?? [];
@@ -312,22 +315,6 @@ export async function auditManagedAssets({
 				kind: ref.kind,
 				path: ref.path,
 				releaseSlug: ref.ownerSlug,
-			});
-		}
-	}
-
-	for (const release of releases) {
-		const posterPath = getPosterRelativePath(release.slug);
-		const ogPath = getOgRelativePath(release.slug);
-		const posterKey = `poster:${posterPath}`;
-		const ogKey = `og:${ogPath}`;
-		if (diskKeys.has(posterKey) && !diskKeys.has(ogKey)) {
-			derivedMismatches.push({
-				kind: "og",
-				path: ogPath,
-				releaseSlug: release.slug,
-				expectedPath: ogPath,
-				detail: "poster exists but the derived OG image is missing",
 			});
 		}
 	}
@@ -381,37 +368,11 @@ export async function validateReleaseAssets({
 		}
 	}
 
-	const posterPath = getPosterRelativePath(release.slug);
-	const ogPath = getOgRelativePath(release.slug);
-	const posterExists = entries.some((entry) => entry.kind === "poster" && entry.path === posterPath)
-		? await exists(path.join(rootDir, STATIC_DIR, posterPath))
-		: false;
-	const ogExists = await exists(path.join(rootDir, STATIC_DIR, ogPath));
-
-	if (posterExists && !ogExists) {
-		derivedMismatches.push({
-			kind: "og",
-			path: ogPath,
-			releaseSlug: release.slug,
-			expectedPath: ogPath,
-			detail: "poster exists but the derived OG image is missing",
-		});
-	}
-
 	return {
 		missingReferences: sortIssues(missingReferences),
 		malformedReferences: issues,
 		derivedMismatches: sortIssues(derivedMismatches),
 	};
-}
-
-async function exists(absolutePath: string): Promise<boolean> {
-	try {
-		await fs.access(absolutePath);
-		return true;
-	} catch {
-		return false;
-	}
 }
 
 function refKey(entry: Pick<ManagedAssetReference, "kind" | "path">): string {

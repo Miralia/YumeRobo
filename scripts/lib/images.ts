@@ -21,7 +21,7 @@ const OG_DIR = 'static/og';
  * 
  * @returns The relative path to the saved main image (e.g., '/posters/slug.avif')
  */
-export async function processPoster(source: string, slug: string): Promise<string> {
+export async function processPoster(source: string, assetId: string): Promise<string> {
     try {
         let buffer: Buffer | ArrayBuffer;
 
@@ -41,8 +41,8 @@ export async function processPoster(source: string, slug: string): Promise<strin
         await fs.mkdir(OUTPUT_DIR, { recursive: true });
         await fs.mkdir(OG_DIR, { recursive: true });
 
-        const filenameAvif = `${slug}.avif`;
-        const filenameJpg = `${slug}.jpg`;
+        const filenameAvif = `${assetId}.avif`;
+        const filenameJpg = `${assetId}.jpg`;
         const outputPathAvif = path.join(OUTPUT_DIR, filenameAvif);
         const outputPathJpg = path.join(OG_DIR, filenameJpg);
 
