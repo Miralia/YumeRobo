@@ -1206,7 +1206,7 @@ async function main() {
             await create();
             break;
         case 'delete':
-            await deleteRelease(args[1]);
+            await deleteRelease(args[0]);
             break;
         case 'deploy':
             await deploy();
