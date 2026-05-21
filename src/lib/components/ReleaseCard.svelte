@@ -26,6 +26,10 @@
         return release.torrents.map((t) => t.name);
     }
 
+    function getCardPosterPath(posterPath: string): string {
+        return posterPath.replace(/\.avif$/i, ".card.avif");
+    }
+
     // Stagger delay for CSS animation
     let animDelay = $derived(`${stagger(index)}ms`);
 </script>
@@ -44,10 +48,15 @@
             style:view-transition-name="poster-{release.slug}"
         >
             <img
-                src={release.poster}
+                src={getCardPosterPath(release.poster)}
+                srcset={`${getCardPosterPath(release.poster)} 200w, ${release.poster} 500w`}
+                sizes="(min-width: 640px) 100px, 80px"
                 alt={release.title}
                 class="poster"
+                width="200"
+                height="300"
                 loading="lazy"
+                decoding="async"
             />
             <div class="poster-overlay"></div>
         </div>

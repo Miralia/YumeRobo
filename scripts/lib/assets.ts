@@ -114,8 +114,17 @@ export function getPosterRelativePath(slug: string): string {
 	return `${POSTERS_DIR}/${slug}.avif`;
 }
 
+export function getCardPosterRelativePath(slug: string): string {
+	return `${POSTERS_DIR}/${slug}.card.avif`;
+}
+
 export function getOgRelativePath(slug: string): string {
 	return `${OG_DIR}/${slug}.jpg`;
+}
+
+export function getCardPosterRelativePathForPoster(posterPath: string): string {
+	const basename = path.posix.basename(posterPath);
+	return `${POSTERS_DIR}/${basename.replace(/\.avif$/, ".card.avif")}`;
 }
 
 export function getOgRelativePathForPoster(posterPath: string): string {
@@ -212,6 +221,14 @@ export function getReleaseAssetReferences(
 
 	const posterEntry = entries.find((entry) => entry.kind === "poster");
 	if (posterEntry) {
+		entries.push(
+			createAssetEntry(
+				rootDir,
+				"poster",
+				getCardPosterRelativePathForPoster(posterEntry.path),
+				release.slug,
+			),
+		);
 		entries.push(
 			createAssetEntry(
 				rootDir,

@@ -62,7 +62,7 @@ import { parseBBCodeSpecs } from './lib/bbcode';
 import { addExternalLink, buildInitialExternalLinks, isValidUrl } from './lib/links';
 import { generateReleaseCode } from './lib/templates';
 import { generateHash, type ReleaseData, type TorrentEntry, type MediaInfoEntry, type SpecEntry } from './lib/types';
-import { processPoster } from './lib/images';
+import { backfillCardPoster, processPoster } from './lib/images';
 import { buildCaption, sendPhotoWithRetry, isSupportedFormat } from './lib/telegram';
 import { tempManager } from './lib/cleanup';
 import { getCliUsage, resolveCliCommand } from './lib/cli';
@@ -418,8 +418,9 @@ async function generateFreshPosterAssetId(previousPosterPath: string): Promise<s
         if (assetId === previousAssetId) continue;
 
         const posterPath = path.join(STATIC_PATH, 'posters', `${assetId}.avif`);
+        const cardPosterPath = path.join(STATIC_PATH, 'posters', `${assetId}.card.avif`);
         const ogPath = path.join(STATIC_PATH, 'og', `${assetId}.jpg`);
-        if (!await fileExists(posterPath) && !await fileExists(ogPath)) {
+        if (!await fileExists(posterPath) && !await fileExists(cardPosterPath) && !await fileExists(ogPath)) {
             return assetId;
         }
     }
@@ -1114,6 +1115,58 @@ async function pruneAssets() {
     }
 }
 
+async function backfillCardPosters() {
+    const records = await loadReleaseRecords();
+    if (records.length === 0) {
+        console.log('[i] No releases found');
+        return;
+    }
+
+    let generated = 0;
+
+    for (const record of records) {
+        const assetId = getPosterAssetId(record.data.poster);
+        if (!assetId) {
+            console.log(`[!] Skipping ${record.slug}: malformed poster path ${record.data.poster}`);
+            process.exitCode = 1;
+            continue;
+        }
+
+        const sourcePosterPath = path.join(STATIC_PATH, 'posters', `${assetId}.avif`);
+        const cardPosterPath = path.join(STATIC_PATH, 'posters', `${assetId}.card.avif`);
+
+        if (!await fileExists(sourcePosterPath)) {
+            console.log(`[!] Skipping ${record.slug}: missing source poster ${sourcePosterPath}`);
+            process.exitCode = 1;
+            continue;
+        }
+
+        if (await fileExists(cardPosterPath)) {
+            continue;
+        }
+
+        await backfillCardPoster(sourcePosterPath, assetId);
+        generated += 1;
+    }
+
+    console.log(`[✓] Generated ${generated} card poster asset(s)`);
+
+    const report = await auditManagedAssets({
+        releases: records.map((record) => record.data),
+    });
+    console.log(formatAuditReport(report));
+
+    const hasPosterRelatedIssues =
+        report.missingReferences.some((issue) => issue.kind === 'poster' || issue.kind === 'og') ||
+        report.malformedReferences.some((issue) => issue.kind === 'poster' || issue.kind === 'og') ||
+        report.derivedMismatches.some((issue) => issue.kind === 'poster' || issue.kind === 'og') ||
+        report.orphanedFiles.some((issue) => issue.kind === 'poster' || issue.kind === 'og');
+
+    if (hasPosterRelatedIssues) {
+        process.exitCode = 1;
+    }
+}
+
 async function deleteRelease(slug: string) {
     if (!slug) {
         console.log('[!] Slug required for delete. Usage: bun run cli delete <slug>');
@@ -1222,6 +1275,9 @@ async function main() {
             break;
         case 'prune-assets':
             await pruneAssets();
+            break;
+        case 'backfill-card-posters':
+            await backfillCardPosters();
             break;
         case 'help':
             console.log(getCliUsage());

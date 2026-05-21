@@ -6,6 +6,7 @@ export type CliCommand =
 	| "telegram"
 	| "audit-assets"
 	| "prune-assets"
+	| "backfill-card-posters"
 	| "help";
 
 export function resolveCliCommand(argv: string[]): {
@@ -38,6 +39,7 @@ export function getCliUsage(): string {
 		"  telegram             Push an existing release to Telegram",
 		"  audit-assets         Audit managed media assets for drift or orphaning",
 		"  prune-assets         Delete orphaned managed media assets after confirmation",
+		"  backfill-card-posters Generate missing card poster assets for all releases",
 		"  deploy               Build and deploy to Cloudflare Pages",
 		"  help                 Show this help message",
 	].join("\n");
