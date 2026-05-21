@@ -3,6 +3,7 @@
     import { type Release, getReleaseBadges } from "$lib/content/schema";
     import { formatDateTime } from "$lib/utils/date";
     import { springPresets, stagger } from "$lib/utils/animation";
+    import { getPosterLoadingAttributes } from "$lib/utils/poster-loading";
 
     interface Props {
         /** The release data to display */
@@ -32,6 +33,7 @@
 
     // Stagger delay for CSS animation
     let animDelay = $derived(`${stagger(index)}ms`);
+    let posterLoading = $derived(getPosterLoadingAttributes(index));
 </script>
 
 <div class:animate-fade-up={animate} style:animation-delay={animDelay}>
@@ -55,7 +57,8 @@
                 class="poster"
                 width="200"
                 height="300"
-                loading="lazy"
+                loading={posterLoading.loading}
+                fetchpriority={posterLoading.fetchpriority}
                 decoding="async"
             />
             <div class="poster-overlay"></div>
