@@ -92,17 +92,28 @@
         gap: var(--space-4);
         padding: var(--space-3);
         background: var(--color-background-secondary);
+        border: 1px solid color-mix(
+            in srgb,
+            var(--color-label) 8%,
+            transparent
+        );
         border-radius: var(--radius-lg);
         text-decoration: none;
         color: inherit;
         transition:
             transform var(--duration-fast) var(--ease-spring),
+            border-color var(--duration-fast) var(--ease-out),
             box-shadow var(--duration-normal) var(--ease-out),
             background var(--duration-fast) var(--ease-out);
     }
 
     .release-card:hover {
         background: var(--color-background-tertiary);
+        border-color: color-mix(
+            in srgb,
+            var(--color-label) 12%,
+            transparent
+        );
         box-shadow: var(--shadow-md);
     }
 
@@ -174,7 +185,11 @@
     .release-name {
         font-family: var(--font-mono);
         font-size: var(--text-xs);
-        color: var(--color-label-secondary);
+        color: color-mix(
+            in srgb,
+            var(--color-label) 64%,
+            var(--color-background-secondary)
+        );
         line-height: var(--leading-normal);
         word-break: break-all;
         margin: 0;
@@ -215,8 +230,13 @@
 
     .date {
         font-family: var(--font-sans);
-        font-size: var(--text-xs);
-        color: var(--color-label-tertiary);
+        font-size: var(--text-sm);
+        color: color-mix(
+            in srgb,
+            var(--color-label) 68%,
+            var(--color-background-secondary)
+        );
+        line-height: 1.35;
         white-space: nowrap;
         font-variant-numeric: tabular-nums;
     }
