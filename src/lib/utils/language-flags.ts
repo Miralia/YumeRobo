@@ -109,6 +109,19 @@ const languageToCountry: Record<string, string> = {
 };
 
 /**
+ * Fansub/scene-specific language codes (not real ISO 639).
+ * Community conventions used in release MediaInfo.
+ */
+const sceneAliases: Record<string, string> = {
+    // 'emn' = English subtitles with honorifics preserved (e.g. Senpai/Kun/Chan left untranslated)
+    'emn': 'english',
+};
+
+function resolveAlias(language: string): string {
+    return sceneAliases[language.toLowerCase().trim()] ?? language;
+}
+
+/**
  * Convert a country code to flag emoji
  * Uses regional indicator symbols (works on most systems)
  */
@@ -128,7 +141,7 @@ function countryCodeToFlag(code: string): string {
 export function getLanguageFlag(language: string): string {
     if (!language) return '🏳️';
 
-    const normalized = language.toLowerCase().trim();
+    const normalized = resolveAlias(language).toLowerCase().trim();
 
     // Try exact match first
     if (languageToCountry[normalized]) {
@@ -152,8 +165,11 @@ export function getLanguageFlag(language: string): string {
 export function normalizeLanguage(language: string): string {
     if (!language) return '';
 
+    // Resolve scene-specific codes first (e.g., 'emn' -> 'english')
+    const aliased = resolveAlias(language);
+
     // Extract base language (before any parentheses or special markers)
-    let base = language
+    let base = aliased
         .toLowerCase()
         .split('(')[0]
         .replace(/\s*(sdh|cc|forced|commentary|descriptive|hearing impaired)\s*/gi, '')
