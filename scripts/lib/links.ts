@@ -21,6 +21,32 @@ export type LinkCollectionResult =
     | { status: 'duplicate'; platform: SupportedPlatform; links: Record<string, string> }
     | { status: 'unsupported'; platform: null; links: Record<string, string> };
 
+export function collectExternalLinks(
+    initialLinks: Record<string, string>,
+    editorContent: string,
+): { links: Record<string, string>; added: SupportedPlatform[]; skipped: number } {
+    let links = { ...initialLinks };
+    const added: SupportedPlatform[] = [];
+    let skipped = 0;
+
+    for (const rawLine of editorContent.split(/\r?\n/)) {
+        const url = rawLine.trim();
+        if (!url || url.startsWith('#') || !isValidUrl(url)) {
+            if (url && !url.startsWith('#')) skipped += 1;
+            continue;
+        }
+        const result = addExternalLink(links, url);
+        if (result.status === 'added') {
+            links = result.links;
+            added.push(result.platform);
+        } else {
+            skipped += 1;
+        }
+    }
+
+    return { links, added, skipped };
+}
+
 /**
  * Detect platform from URL
  * Returns platform key if supported, null otherwise

@@ -4,7 +4,8 @@
 
 export interface TorrentEntry {
     name: string;
-    display_name: string;        // 简短名: "**KWTR** BD 1080p DD+ x265"
+    telegram_label?: string;     // Manual Telegram link label for new releases
+    display_name?: string;       // Legacy Telegram display name
     files: TorrentFile[];
     mediainfo: MediaInfoEntry[]; // 内嵌 MediaInfo
 }

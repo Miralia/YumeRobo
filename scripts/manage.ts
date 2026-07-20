@@ -42,8 +42,8 @@ import {
     promptAddMore,
     promptMediaInfo,
     promptBBCode,
-    promptLink,
-    promptDisplayName,
+    promptTelegramLabel,
+    promptLinksEditor,
     promptComparisons,
     promptTelegramImage,
     promptRefineMetadata,
@@ -59,7 +59,8 @@ import {
 } from './lib/tmdb';
 import { parseTorrent, formatSize } from './lib/torrent';
 import { parseBBCodeSpecs } from './lib/bbcode';
-import { addExternalLink, buildInitialExternalLinks, isValidUrl } from './lib/links';
+import { buildInitialExternalLinks, collectExternalLinks } from './lib/links';
+import { classifyTorrentTelegramLabel } from './lib/torrent-label';
 import { generateReleaseCode } from './lib/templates';
 import { generateHash, type ReleaseData, type TorrentEntry, type MediaInfoEntry, type SpecEntry } from './lib/types';
 import { backfillCardPoster, processPoster } from './lib/images';
@@ -438,7 +439,10 @@ async function stepTorrents(): Promise<TorrentEntry[]> {
             const parsedTorrent = await parseTorrent(torrentPath);
             console.log(`[+] Parsed: ${parsedTorrent.name} (${parsedTorrent.files.length} files)`);
 
-            const display_name = await promptDisplayName(parsedTorrent.name);
+            const labelClassification = classifyTorrentTelegramLabel(parsedTorrent.name);
+            const telegram_label = labelClassification.requiresManualLabel
+                ? await promptTelegramLabel()
+                : undefined;
 
             console.log(`\n--- MediaInfo for this Torrent ---`);
             const mediainfo: MediaInfoEntry[] = [];
@@ -464,7 +468,7 @@ async function stepTorrents(): Promise<TorrentEntry[]> {
 
             torrents.push({
                 name: parsedTorrent.name,
-                display_name,
+                telegram_label,
                 files: parsedTorrent.files,
                 mediainfo
             });
@@ -507,32 +511,13 @@ async function stepLinks(tmdbId: number, mediaType: string): Promise<Record<stri
         console.log(`[+] Auto-added: tmdb`);
     }
 
-    const shouldAddManualLinks = await confirm({
-        message: 'Add external links manually?',
-        default: false,
-    });
-    if (!shouldAddManualLinks) {
-        return links;
+    const result = collectExternalLinks(links, await promptLinksEditor());
+    for (const platform of result.added) {
+        console.log(`[+] Added: ${platform}`);
     }
+    if (result.skipped > 0) console.log(`[i] Skipped ${result.skipped} unusable or duplicate link(s)`);
 
-    let addMoreLinks = true;
-    while (addMoreLinks) {
-        const url = await promptLink();
-        if (isValidUrl(url)) {
-            const result = addExternalLink(links, url);
-            if (result.status === 'added') {
-                links = result.links;
-                console.log(`[+] Added: ${result.platform}`);
-            } else if (result.status === 'duplicate') {
-                console.log(`[!] ${result.platform} already exists, skipped`);
-            } else {
-                console.log(`[!] Unknown platform, skipped`);
-            }
-        }
-        addMoreLinks = await promptAddMore('link');
-    }
-
-    return links;
+    return result.links;
 }
 
 async function stepTelegram(release: ReleaseData): Promise<void> {

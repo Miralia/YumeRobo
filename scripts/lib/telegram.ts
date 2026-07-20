@@ -7,6 +7,7 @@ import path from 'node:path';
 import { parseMediaInfo, toStructured } from '../../src/lib/utils/mediainfo-parser';
 import { getUniqueLanguageFlags } from '../../src/lib/utils/language-flags';
 import type { ReleaseData } from './types';
+import { classifyTorrentTelegramLabel } from './torrent-label';
 
 const TELEGRAM_API = 'https://api.telegram.org/bot';
 
@@ -78,6 +79,12 @@ function formatDisplayName(displayName: string): string {
     }).join('');
 }
 
+function getTorrentTelegramLabel(torrent: ReleaseData['torrents'][number]): string {
+    if (torrent.telegram_label?.trim()) return torrent.telegram_label.trim();
+    const classification = classifyTorrentTelegramLabel(torrent.name);
+    return classification.label || torrent.display_name || 'MediaInfo';
+}
+
 /**
  * Build Telegram caption from release data
  */
@@ -112,25 +119,19 @@ export async function buildCaption(
         }
     }
 
-    // Each torrent
+    // Combine all torrent MediaInfo links into one compact line.
+    const linkParts: string[] = [];
     for (const torrent of release.torrents) {
-        lines.push('————————————');
-        lines.push('');
-        lines.push(formatDisplayName(torrent.display_name));
-
-        // Links
-        const linkParts: string[] = [];
         if (torrent.mediainfo.length > 0) {
             const miUrl = `${siteUrl}/mediainfo/${torrent.mediainfo[0].raw_hash}`;
-            linkParts.push(`[Mediainfo](${escapeMarkdown(miUrl)})`);
+            linkParts.push(`[${escapeMarkdown(getTorrentTelegramLabel(torrent))}](${escapeMarkdown(miUrl)})`);
         }
-        if (comparisonsLink) {
-            linkParts.push(`[Comparisons](${escapeMarkdown(comparisonsLink)})`);
-        }
-        if (linkParts.length > 0) {
-            lines.push(linkParts.join(' \\| '));
-        }
-        lines.push('');
+    }
+    if (comparisonsLink) {
+        linkParts.push(`[Comparisons](${escapeMarkdown(comparisonsLink)})`);
+    }
+    if (linkParts.length > 0) {
+        lines.push(linkParts.join(' \\| '));
     }
 
     return lines.join('\n');

@@ -93,14 +93,19 @@ export async function promptPoster(): Promise<string> {
     return method === 'local' ? result.trim().replace(/\\(.)/g, '$1') : result.trim();
 }
 
-/**
- * Prompt for torrent display name (for Telegram)
- */
-export async function promptDisplayName(torrentName: string): Promise<string> {
+/** Prompt for a manual Telegram MediaInfo link label. */
+export async function promptTelegramLabel(): Promise<string> {
     return input({
-        message: 'Display name for Telegram (e.g. KWTR BD 1080p FLAC x265):',
-        default: torrentName.substring(0, 50),
-        validate: (val) => !!val.trim() || 'Display name is required'
+        message: 'Telegram MediaInfo link label:',
+        validate: (val) => !!val.trim() || 'Label is required',
+    });
+}
+
+/** Prompt for newline-separated external links. */
+export async function promptLinksEditor(): Promise<string> {
+    return editor({
+        message: 'External links (one URL per line):',
+        default: '# One URL per line\n',
     });
 }
 
@@ -183,24 +188,6 @@ export async function promptSpec(): Promise<{ title: string; bbcode: string }> {
     });
 
     return { title, bbcode };
-}
-
-/**
- * Prompt for external link
- */
-export async function promptLink(): Promise<string> {
-    return input({
-        message: 'External link URL:',
-        validate: (val) => {
-            if (!val) return 'URL is required';
-            try {
-                new URL(val);
-                return true;
-            } catch {
-                return 'Invalid URL';
-            }
-        }
-    });
 }
 
 /**

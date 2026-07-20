@@ -33,7 +33,8 @@ export const MediaInfoEntrySchema = z.object({
  */
 export const TorrentEntrySchema = z.object({
     name: z.string().describe('Torrent top-level folder name'),
-    display_name: z.string().describe('Short display name for Telegram: "**KWTR** BD 1080p FLAC x265"'),
+    telegram_label: z.string().optional().describe('Manual MediaInfo link label for Telegram'),
+    display_name: z.string().optional().describe('Legacy Telegram display name'),
     files: z.array(
         z.string().or(z.object({
             name: z.string(),

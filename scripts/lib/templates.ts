@@ -37,7 +37,12 @@ export function generateReleaseCode(data: ReleaseData): string {
     for (const torrent of data.torrents) {
         lines.push(`            {`);
         lines.push(`                name: '${escapeString(torrent.name)}',`);
-        lines.push(`                display_name: '${escapeString(torrent.display_name)}',`);
+        if (torrent.telegram_label) {
+            lines.push(`                telegram_label: '${escapeString(torrent.telegram_label)}',`);
+        } else if (torrent.display_name) {
+            // Preserve legacy data when an existing release is edited.
+            lines.push(`                display_name: '${escapeString(torrent.display_name)}',`);
+        }
         // Format files array - extract path from TorrentFile objects
         const filesArray = torrent.files.map(f => {
             if (typeof f === 'string') return `'${escapeString(f)}'`;
