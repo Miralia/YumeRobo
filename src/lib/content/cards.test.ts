@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { toCardData, filterCards, type ReleaseCardData } from "./cards.ts";
+import { filterCards, type ReleaseCardData } from "./cards.ts";
+import { toCardData } from "./cards.server.ts";
 import type { Release } from "./schema.ts";
 
 const release: Release = {

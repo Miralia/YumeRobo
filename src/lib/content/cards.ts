@@ -1,13 +1,11 @@
 /**
- * Card projection for the home page list.
+ * Card projection consumed by the home page list.
  *
- * The home route must not import full release modules on the client:
- * shipping every release (specs, torrent trees, mediainfo hashes) costs
- * hundreds of KB of JS. Instead the server load projects each release
- * down to exactly what a list card renders, and the client receives it
- * as prerendered data.
+ * This module is imported by client code, so it must stay free of
+ * runtime imports from the zod schema module — top-level schema
+ * construction is not tree-shakeable and would drag zod into the
+ * client bundle. The projection itself lives in `cards.server.ts`.
  */
-import { getReleaseBadges, type Release } from './schema';
 
 export interface ReleaseCardData {
 	slug: string;
@@ -16,21 +14,6 @@ export interface ReleaseCardData {
 	date: string;
 	badges: string[];
 	torrentNames: string[];
-}
-
-/**
- * Project a full release down to list-card data.
- * Badges are precomputed here so the client never imports the zod schema.
- */
-export function toCardData(release: Release): ReleaseCardData {
-	return {
-		slug: release.slug,
-		title: release.title,
-		poster: release.poster,
-		date: release.date,
-		badges: getReleaseBadges(release),
-		torrentNames: release.torrents.map((t) => t.name)
-	};
 }
 
 /**

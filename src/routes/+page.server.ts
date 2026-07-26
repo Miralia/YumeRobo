@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { getAllReleases } from '$lib/content/loader';
-import { toCardData } from '$lib/content/cards';
+import { toCardData } from '$lib/content/cards.server';
 
 export const prerender = true;
 
