@@ -1,11 +1,8 @@
 <script lang="ts">
-	import { cubicOut } from "svelte/easing";
-	import { fly } from "svelte/transition";
-
 	const currentYear = new Date().getFullYear();
 </script>
 
-<footer class="footer" in:fly={{ y: 20, duration: 400, easing: cubicOut }}>
+<footer class="footer">
 	<div class="footer-content container">
 		<p class="copyright">
 			© {currentYear}

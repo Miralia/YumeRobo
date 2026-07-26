@@ -4,18 +4,14 @@
  * Supports Light/Dark mode with semantic color tokens
  */
 
+/*
+ * Both Source families are variable fonts (wght axis), so a single
+ * @font-face per family covers every weight without synthetic bolding.
+ */
 @font-face {
 	font-family: 'Source Serif 4';
 	src: url('/fonts/source-serif-4-latin.woff2') format('woff2');
-	font-weight: 600;
-	font-style: normal;
-	font-display: swap;
-}
-
-@font-face {
-	font-family: 'Source Serif 4';
-	src: url('/fonts/source-serif-4-latin.woff2') format('woff2');
-	font-weight: 700;
+	font-weight: 200 900;
 	font-style: normal;
 	font-display: swap;
 }
@@ -23,31 +19,7 @@
 @font-face {
 	font-family: 'Source Sans 3';
 	src: url('/fonts/source-sans-3-latin.woff2') format('woff2');
-	font-weight: 400;
-	font-style: normal;
-	font-display: swap;
-}
-
-@font-face {
-	font-family: 'Source Sans 3';
-	src: url('/fonts/source-sans-3-latin.woff2') format('woff2');
-	font-weight: 500;
-	font-style: normal;
-	font-display: swap;
-}
-
-@font-face {
-	font-family: 'Source Sans 3';
-	src: url('/fonts/source-sans-3-latin.woff2') format('woff2');
-	font-weight: 600;
-	font-style: normal;
-	font-display: swap;
-}
-
-@font-face {
-	font-family: 'Source Sans 3';
-	src: url('/fonts/source-sans-3-latin.woff2') format('woff2');
-	font-weight: 700;
+	font-weight: 200 900;
 	font-style: normal;
 	font-display: swap;
 }
@@ -78,14 +50,18 @@
 
 /* ===== COLOR TOKENS ===== */
 :root {
+	color-scheme: light dark;
+
 	/* System Colors - Light Mode */
 	--color-background: #ffffff;
 	--color-background-secondary: #f2f2f7;
 	--color-background-tertiary: #e5e5ea;
 
 	--color-label: #000000;
-	--color-label-secondary: rgba(60, 60, 67, 0.6);
-	--color-label-tertiary: rgba(60, 60, 67, 0.3);
+	/* ≥4.5:1 on every light surface (composited ≈ #62626b on #f2f2f7) */
+	--color-label-secondary: rgba(60, 60, 67, 0.78);
+	/* Decorative only: icons, dividers, disabled glyphs — not body text */
+	--color-label-tertiary: rgba(60, 60, 67, 0.45);
 
 	--color-separator: rgba(60, 60, 67, 0.29);
 	--color-separator-opaque: #c6c6c8;
@@ -96,6 +72,15 @@
 	/* Accent - Purple (YumeRobo Brand) */
 	--color-accent: #5856d6;
 	--color-accent-hover: #7674e0;
+
+	/* Badges — paired bg/fg tokens keep text ≥4.5:1 in both themes */
+	--badge-bg: #5856d6;
+	--badge-fg: #ffffff;
+	--badge-fin-bg: #10b981;
+	--badge-fin-fg: #06281c;
+
+	/* Success */
+	--color-success: #059669;
 
 	/* Glass Effect */
 	--glass-background: rgba(255, 255, 255, 0.72);
@@ -115,8 +100,8 @@
 		--color-background-tertiary: #2c2c2e;
 
 		--color-label: #ffffff;
-		--color-label-secondary: rgba(235, 235, 245, 0.6);
-		--color-label-tertiary: rgba(235, 235, 245, 0.3);
+		--color-label-secondary: rgba(235, 235, 245, 0.64);
+		--color-label-tertiary: rgba(235, 235, 245, 0.45);
 
 		--color-separator: rgba(84, 84, 88, 0.65);
 		--color-separator-opaque: #38383a;
@@ -127,6 +112,14 @@
 		/* Accent - Purple (YumeRobo Brand) */
 		--color-accent: #7b7aff;
 		--color-accent-hover: #9d9cff;
+
+		/* White on #7b7aff is 3.5:1 — flip to dark ink on the bright badge */
+		--badge-bg: #7b7aff;
+		--badge-fg: #14143c;
+		--badge-fin-bg: #30d158;
+		--badge-fin-fg: #05310f;
+
+		--color-success: #30d158;
 
 		/* Glass Effect */
 		--glass-background: rgba(28, 28, 30, 0.72);
@@ -140,13 +133,15 @@
 
 /* Force Dark Mode */
 :root[data-theme="dark"] {
+	color-scheme: dark;
+
 	--color-background: #000000;
 	--color-background-secondary: #1c1c1e;
 	--color-background-tertiary: #2c2c2e;
 
 	--color-label: #ffffff;
-	--color-label-secondary: rgba(235, 235, 245, 0.6);
-	--color-label-tertiary: rgba(235, 235, 245, 0.3);
+	--color-label-secondary: rgba(235, 235, 245, 0.64);
+	--color-label-tertiary: rgba(235, 235, 245, 0.45);
 
 	--color-separator: rgba(84, 84, 88, 0.65);
 	--color-separator-opaque: #38383a;
@@ -158,6 +153,13 @@
 	--color-accent: #7b7aff;
 	--color-accent-hover: #9d9cff;
 
+	--badge-bg: #7b7aff;
+	--badge-fg: #14143c;
+	--badge-fin-bg: #30d158;
+	--badge-fin-fg: #05310f;
+
+	--color-success: #30d158;
+
 	/* Glass Effect */
 	--glass-background: rgba(28, 28, 30, 0.72);
 
@@ -165,6 +167,33 @@
 	--shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
 	--shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
 	--shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.5);
+}
+
+:root[data-theme="light"] {
+	color-scheme: light;
+}
+
+/* Users who ask for more contrast get near-solid text and opaque rules */
+@media (prefers-contrast: more) {
+	:root {
+		--color-label-secondary: rgba(60, 60, 67, 0.95);
+		--color-label-tertiary: rgba(60, 60, 67, 0.7);
+		--color-separator: var(--color-separator-opaque);
+	}
+
+	@media (prefers-color-scheme: dark) {
+		:root:not([data-theme="light"]) {
+			--color-label-secondary: rgba(235, 235, 245, 0.95);
+			--color-label-tertiary: rgba(235, 235, 245, 0.7);
+			--color-separator: var(--color-separator-opaque);
+		}
+	}
+
+	:root[data-theme="dark"] {
+		--color-label-secondary: rgba(235, 235, 245, 0.95);
+		--color-label-tertiary: rgba(235, 235, 245, 0.7);
+		--color-separator: var(--color-separator-opaque);
+	}
 }
 
 /* ===== TYPOGRAPHY ===== */
@@ -229,15 +258,23 @@
 	--radius-lg: 14px;
 	--radius-xl: 20px;
 	--radius-full: 9999px;
+
+	/* Shared by card and detail posters so Magic Move never pops corners */
+	--radius-poster: 12px;
 }
 
 /* ===== TRANSITIONS ===== */
 :root {
 	--ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 	--ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+	/* Standard morph curve for Magic Move position/size interpolation */
+	--ease-morph: cubic-bezier(0.4, 0, 0.2, 1);
 	--duration-fast: 150ms;
 	--duration-normal: 250ms;
 	--duration-slow: 400ms;
+	--duration-entrance: 450ms;
+	/* Single source of truth for the Magic Move morph + its choreography */
+	--vt-morph-duration: 350ms;
 }
 
 /* ===== RESET & BASE ===== */
@@ -255,6 +292,7 @@ html {
 	-moz-osx-font-smoothing: grayscale;
 	text-rendering: optimizeLegibility;
 	font-kerning: normal;
+	scrollbar-gutter: stable;
 }
 
 body {
@@ -296,6 +334,18 @@ pre {
 	overflow-x: auto;
 }
 
+::selection {
+	background: color-mix(in srgb, var(--color-accent) 25%, transparent);
+}
+
+/* ===== FOCUS ===== */
+/* Keyboard-only focus ring; pointer interactions stay clean */
+:focus-visible {
+	outline: 2px solid var(--color-accent);
+	outline-offset: 2px;
+	border-radius: var(--radius-sm);
+}
+
 /* ===== UTILITY CLASSES ===== */
 .glass {
 	background: var(--glass-background);
@@ -314,6 +364,42 @@ pre {
 	.container {
 		padding-inline: var(--space-6);
 	}
+}
+
+/* Screen-reader-only content */
+.visually-hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+/* Hidden until keyboard-focused, then floats above the header */
+.skip-link {
+	position: fixed;
+	top: var(--space-2);
+	left: var(--space-2);
+	z-index: 1000;
+	padding: var(--space-2) var(--space-4);
+	background: var(--color-accent);
+	color: #ffffff;
+	font-size: var(--text-sm);
+	font-weight: 600;
+	border-radius: var(--radius-md);
+	box-shadow: var(--shadow-md);
+	transform: translateY(calc(-100% - var(--space-4)));
+	transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.skip-link:focus-visible {
+	transform: translateY(0);
+	color: #ffffff;
+	outline-offset: 0;
 }
 
 /* ===== VIEW TRANSITIONS ===== */
@@ -341,39 +427,54 @@ pre {
 /* Stabilize persistent elements */
 ::view-transition-group(app-header) {
 	animation: none;
+}
+
+::view-transition-old(app-header),
+::view-transition-new(app-header) {
+	animation: none;
 	mix-blend-mode: normal;
 }
 
 /* ===== MAGIC MOVE TRANSITIONS ===== */
-/* Poster transition: smooth morph from card to detail */
-::view-transition-group(poster-*) {
-	animation-duration: 350ms;
-	animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-	border-radius: var(--radius-md);
+/*
+ * Shared-element morphs are matched by view-transition-class (the
+ * elements declare `view-transition-class: poster` / `title` alongside
+ * their unique view-transition-name). Prefix wildcards like
+ * `poster-*` are not valid pseudo-element arguments and get dropped,
+ * so classes are the only way to style the whole family.
+ */
+::view-transition-group(*.poster) {
+	animation-duration: var(--vt-morph-duration);
+	animation-timing-function: var(--ease-morph);
+}
+
+::view-transition-image-pair(*.poster) {
+	border-radius: var(--radius-poster);
 	overflow: hidden;
 }
 
-::view-transition-old(poster-*),
-::view-transition-new(poster-*) {
+::view-transition-old(*.poster),
+::view-transition-new(*.poster) {
 	animation: none;
 	mix-blend-mode: normal;
-	border-radius: var(--radius-md);
+	height: 100%;
+	object-fit: cover;
 	overflow: hidden;
 }
 
-/* Title transition */
-::view-transition-group(title-*) {
-	animation-duration: 300ms;
-	animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+/* Title morph rides the same clock as the poster so they land together */
+::view-transition-group(*.title) {
+	animation-duration: var(--vt-morph-duration);
+	animation-timing-function: var(--ease-morph);
 }
 
-::view-transition-old(title-*),
-::view-transition-new(title-*) {
+::view-transition-old(*.title),
+::view-transition-new(*.title) {
 	animation: none;
 	mix-blend-mode: normal;
 }
 
-/* Badge transition: fly in from left after poster completes */
+/* Badge transition: fly in from left as the poster morph settles */
 @keyframes badge-fly-in {
 	from {
 		opacity: 0;
@@ -401,7 +502,8 @@ pre {
 }
 
 ::view-transition-new(detail-badges) {
-	animation: 280ms var(--ease-out) 350ms both badge-fly-in;
+	animation: 280ms var(--ease-out) both badge-fly-in;
+	animation-delay: calc(var(--vt-morph-duration) - 80ms);
 }
 
 /* ===== ENTRANCE ANIMATIONS ===== */
@@ -418,7 +520,26 @@ pre {
 }
 
 .animate-fade-up {
-	animation: fade-up var(--duration-slow) var(--ease-out) both;
+	animation: fade-up var(--duration-entrance) var(--ease-out) both;
+}
+
+/* ===== SKELETONS ===== */
+@keyframes skeleton-pulse {
+
+	0%,
+	100% {
+		opacity: 0.55;
+	}
+
+	50% {
+		opacity: 1;
+	}
+}
+
+.skeleton {
+	background: var(--color-fill-secondary);
+	border-radius: var(--radius-sm);
+	animation: skeleton-pulse 1.4s var(--ease-out) infinite;
 }
 
 /* Reduce motion for accessibility */

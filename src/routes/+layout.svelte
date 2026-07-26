@@ -3,13 +3,17 @@
 	import Header from "$lib/components/Header.svelte";
 	import Footer from "$lib/components/Footer.svelte";
 	import { onNavigate } from "$app/navigation";
+	import { prefersReducedMotion } from "svelte/motion";
 	import { boundaryIndicator } from "$lib/utils/overscroll";
 
 	let { children } = $props();
 
 	onNavigate((navigation) => {
 		if (!document.startViewTransition) return;
-		if (navigation.from?.url.href === navigation.to?.url.href) return;
+		if (prefersReducedMotion.current) return;
+		// Query-only navigations (debounced search keystrokes) must not
+		// trigger a full-page transition — Magic Move is for route changes.
+		if (navigation.from?.url.pathname === navigation.to?.url.pathname) return;
 
 		return new Promise((resolve) => {
 			document.startViewTransition(async () => {
@@ -21,13 +25,13 @@
 </script>
 
 <svelte:head>
-	<meta name="viewport" content="width=device-width, initial-scale=1" />
 	<title>夢みる機械</title>
 </svelte:head>
 
-<div class="app-shell" use:boundaryIndicator={{ enableLoadMore: false }}>
+<div class="app-shell" use:boundaryIndicator>
+	<a href="#main" class="skip-link">Skip to content</a>
 	<Header />
-	<main class="main-content">
+	<main id="main" tabindex="-1" class="main-content">
 		{@render children()}
 	</main>
 	<Footer />
@@ -43,5 +47,9 @@
 	.main-content {
 		flex: 1;
 		padding: var(--space-6) 0;
+	}
+
+	.main-content:focus {
+		outline: none;
 	}
 </style>
