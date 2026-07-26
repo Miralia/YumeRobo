@@ -1,13 +1,12 @@
 <script lang="ts">
-    import { fly } from "svelte/transition";
-    import { slide } from "svelte/transition";
-    import { cubicOut } from "svelte/easing";
+    import { fly, slide } from "svelte/transition";
+    import { untrack } from "svelte";
     import { formatDateTime } from "$lib/utils/date";
     import MediaInfoCard from "$lib/components/MediaInfoCard.svelte";
-    import type { Release } from "$lib/content/schema";
+    import type { Release, ExternalLinks } from "$lib/content/schema";
     import { externalIcons } from "$lib/utils/icons";
     import { env } from "$env/dynamic/public";
-    import { duration, sectionDelay } from "$lib/utils/animation";
+    import { entranceFly, slideParams } from "$lib/utils/animation";
 
     const SITE_URL = env.PUBLIC_SITE_URL || "https://yumerobo.moe";
 
@@ -20,84 +19,128 @@
 
     let { data }: Props = $props();
 
-    const animDuration = duration.entrance;
-    const animEasing = cubicOut;
-    const animY = 15;
-    const slideConfig = { duration: 250, easing: cubicOut };
+    /**
+     * External link metadata. `darkText` flips the hover ink for bright
+     * brand colors where white text would fail contrast.
+     */
+    const LINK_DEFS: Array<{
+        key: keyof ExternalLinks;
+        label: string;
+        color: string;
+        darkText: boolean;
+    }> = [
+        { key: "tmdb", label: "TMDB", color: "#01b4e4", darkText: true },
+        { key: "imdb", label: "IMDb", color: "#f5c518", darkText: true },
+        { key: "douban", label: "Douban", color: "#007722", darkText: false },
+        { key: "bangumi", label: "Bangumi", color: "#f09199", darkText: true },
+        { key: "letterboxd", label: "Letterboxd", color: "#40bcf4", darkText: true },
+        { key: "rotten_tomatoes", label: "Rotten Tomatoes", color: "#fa320a", darkText: true },
+        { key: "anidb", label: "AniDB", color: "#000000", darkText: false },
+        { key: "anilist", label: "AniList", color: "#02a9ff", darkText: true },
+        { key: "myanimelist", label: "MAL", color: "#2e51a2", darkText: false },
+        { key: "tvdb", label: "TVDB", color: "#3bb300", darkText: true },
+    ];
 
-    let expandedSpecs = $state<Set<number>>(new Set());
+    let availableLinks = $derived(
+        LINK_DEFS.filter((def) => data.release.links?.[def.key]),
+    );
 
-    $effect(() => {
-        if (data.release.specs) {
-            const initialSet = new Set<number>();
-            const collapseKeywords = ["x264", "x265", "av1"];
-            data.release.specs.forEach((spec, i) => {
-                const titleLower = spec.title.toLowerCase();
-                const shouldCollapse = collapseKeywords.some((kw) =>
-                    titleLower.includes(kw),
-                );
-                if (!shouldCollapse) {
-                    initialSet.add(i);
-                }
-            });
-            expandedSpecs = initialSet;
-        }
-    });
+    /*
+     * Expanded state is derived from defaults plus explicit user
+     * overrides keyed by slug, so prerendered HTML ships the sections
+     * open (no post-hydration expand flash) and client-side navigation
+     * between releases resets cleanly.
+     */
+    const collapseKeywords = ["x264", "x265", "av1"];
 
-    function toggleSpec(index: number) {
-        const newSet = new Set(expandedSpecs);
-        if (newSet.has(index)) {
-            newSet.delete(index);
-        } else {
-            newSet.add(index);
-        }
-        expandedSpecs = newSet;
+    let specOverrides = $state<Record<string, boolean>>({});
+    let torrentOverrides = $state<Record<string, boolean>>({});
+
+    function specDefault(title: string): boolean {
+        const titleLower = title.toLowerCase();
+        return !collapseKeywords.some((kw) => titleLower.includes(kw));
     }
 
-    // Torrent expansion state
-    let expandedTorrents = $state<Set<number>>(new Set());
+    function isSpecExpanded(index: number): boolean {
+        const spec = data.release.specs?.[index];
+        if (!spec) return false;
+        return (
+            specOverrides[`${data.release.slug}:${index}`] ??
+            specDefault(spec.title)
+        );
+    }
+
+    function toggleSpec(index: number) {
+        specOverrides[`${data.release.slug}:${index}`] = !isSpecExpanded(index);
+    }
+
+    function isTorrentExpanded(index: number): boolean {
+        return torrentOverrides[`${data.release.slug}:${index}`] ?? false;
+    }
 
     function toggleTorrent(index: number) {
-        const newSet = new Set(expandedTorrents);
-        if (newSet.has(index)) {
-            newSet.delete(index);
-        } else {
-            newSet.add(index);
-        }
-        expandedTorrents = newSet;
+        torrentOverrides[`${data.release.slug}:${index}`] =
+            !isTorrentExpanded(index);
     }
 
     // MediaInfo state - stores raw text
     let loadedMediaInfo = $state<Map<string, string>>(new Map());
     let loadingMediaInfo = $state<Set<string>>(new Set());
 
-    async function loadMediaInfoContent(hash: string) {
-        if (loadedMediaInfo.has(hash) || loadingMediaInfo.has(hash)) return;
+    // Flattened so entrance stagger runs on a true running index
+    let mediaInfoEntries = $derived(
+        data.release.torrents.flatMap((torrent) =>
+            torrent.mediainfo.map((mi) => mi),
+        ),
+    );
 
-        loadingMediaInfo = new Set(loadingMediaInfo).add(hash);
+    async function loadMediaInfoContent(hash: string) {
+        const alreadyHandled = untrack(
+            () => loadedMediaInfo.has(hash) || loadingMediaInfo.has(hash),
+        );
+        if (alreadyHandled) return;
+
+        loadingMediaInfo = new Set(untrack(() => loadingMediaInfo)).add(hash);
 
         try {
             const response = await fetch(`/mediainfo/${hash}`);
             if (response.ok) {
                 const rawText = await response.text();
-                loadedMediaInfo = new Map(loadedMediaInfo).set(hash, rawText);
+                loadedMediaInfo = new Map(untrack(() => loadedMediaInfo)).set(
+                    hash,
+                    rawText,
+                );
             }
         } catch (e) {
             console.error("Failed to load MediaInfo:", e);
         } finally {
-            const newLoading = new Set(loadingMediaInfo);
+            const newLoading = new Set(untrack(() => loadingMediaInfo));
             newLoading.delete(hash);
             loadingMediaInfo = newLoading;
         }
     }
 
-    // Pre-load all MediaInfo on mount (from embedded torrent.mediainfo)
+    /*
+     * Prefetch raw MediaInfo once the browser is idle so the requests
+     * never compete with the LCP poster or the entrance choreography.
+     */
     $effect(() => {
-        for (const torrent of data.release.torrents) {
-            for (const mi of torrent.mediainfo) {
-                loadMediaInfoContent(mi.raw_hash);
+        const torrents = data.release.torrents;
+
+        const idle =
+            window.requestIdleCallback ??
+            ((cb: () => void) => window.setTimeout(cb, 250));
+        const cancelIdle = window.cancelIdleCallback ?? window.clearTimeout;
+
+        const handle = idle(() => {
+            for (const torrent of torrents) {
+                for (const mi of torrent.mediainfo) {
+                    loadMediaInfoContent(mi.raw_hash);
+                }
             }
-        }
+        });
+
+        return () => cancelIdle(handle);
     });
 
     function formatSize(bytes: number): string {
@@ -166,12 +209,8 @@
     <!-- Back Button -->
     <nav
         class="breadcrumb"
-        in:fly={{
-            y: -animY,
-            duration: animDuration,
-            delay: 0,
-            easing: animEasing,
-        }}
+        aria-label="Breadcrumb"
+        in:fly={entranceFly("breadcrumb", 0, { offset: -15 })}
     >
         <a href="/" class="back-link">
             <svg
@@ -184,6 +223,7 @@
                 stroke-width="2"
                 stroke-linecap="round"
                 stroke-linejoin="round"
+                aria-hidden="true"
             >
                 <path d="m15 18-6-6 6-6" />
             </svg>
@@ -193,17 +233,25 @@
 
     <!-- Hero Section -->
     <header class="hero">
+        <div
+            class="hero-ambient"
+            aria-hidden="true"
+            style:background-image="url({data.release.poster})"
+        ></div>
+
         <!-- Poster -->
         <div
-            class="poster-container"
+            class="poster-container poster-hero"
             style:view-transition-name="poster-{data.release.slug}"
         >
             <img
                 src={data.release.poster}
-                alt={data.release.title}
+                alt="{data.release.title} poster"
                 class="poster"
+                width="500"
+                height="750"
                 fetchpriority="high"
-                decoding="sync"
+                decoding="async"
             />
             <div class="poster-gradient"></div>
             <div
@@ -221,12 +269,7 @@
         <!-- Info -->
         <div
             class="info"
-            in:fly={{
-                x: animY,
-                duration: animDuration,
-                delay: sectionDelay("hero"),
-                easing: animEasing,
-            }}
+            in:fly={entranceFly("hero", 0, { axis: "x" })}
         >
             <h1
                 class="title"
@@ -247,178 +290,89 @@
                 >
             </div>
 
-            <!-- Action Buttons -->
-            <div class="actions">
-                <!-- External Links -->
-                {#if data.release.links}
-                    {@const links = data.release.links}
-
-                    {#snippet linkButton(
-                        url: string,
-                        label: string,
-                        color: string,
-                        iconKey: string,
-                    )}
-                        <a
-                            href={url}
-                            class="action-button external-link"
-                            style:--link-color={color}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                        >
-                            {#if externalIcons[iconKey]}
-                                {@const icon = externalIcons[iconKey]}
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="16"
-                                    height="16"
-                                    viewBox={typeof icon === "string"
-                                        ? "0 0 24 24"
-                                        : icon.viewBox}
-                                    fill="currentColor"
-                                >
-                                    <path
-                                        d={typeof icon === "string"
-                                            ? icon
-                                            : icon.d}
-                                    />
-                                </svg>
-                            {/if}
-                            {label}
-                        </a>
-                    {/snippet}
-
-                    {#if links.tmdb}<div class="link-group">
-                            {@render linkButton(
-                                links.tmdb,
-                                "TMDB",
-                                "#01b4e4",
-                                "tmdb",
-                            )}
-                        </div>{/if}
-                    {#if links.imdb}<div class="link-group">
-                            {@render linkButton(
-                                links.imdb,
-                                "IMDb",
-                                "#f5c518",
-                                "imdb",
-                            )}
-                        </div>{/if}
-                    {#if links.douban}<div class="link-group">
-                            {@render linkButton(
-                                links.douban,
-                                "Douban",
-                                "#007722",
-                                "douban",
-                            )}
-                        </div>{/if}
-                    {#if links.bangumi}<div class="link-group">
-                            {@render linkButton(
-                                links.bangumi,
-                                "Bangumi",
-                                "#f09199",
-                                "bangumi",
-                            )}
-                        </div>{/if}
-                    {#if links.letterboxd}<div class="link-group">
-                            {@render linkButton(
-                                links.letterboxd,
-                                "Letterboxd",
-                                "#40bcf4",
-                                "letterboxd",
-                            )}
-                        </div>{/if}
-                    {#if links.rotten_tomatoes}<div class="link-group">
-                            {@render linkButton(
-                                links.rotten_tomatoes,
-                                "Rotten Tomatoes",
-                                "#fa320a",
-                                "rotten_tomatoes",
-                            )}
-                        </div>{/if}
-                    {#if links.anidb}<div class="link-group">
-                            {@render linkButton(
-                                links.anidb,
-                                "AniDB",
-                                "#000000",
-                                "anidb",
-                            )}
-                        </div>{/if}
-                    {#if links.anilist}<div class="link-group">
-                            {@render linkButton(
-                                links.anilist,
-                                "AniList",
-                                "#02a9ff",
-                                "anilist",
-                            )}
-                        </div>{/if}
-                    {#if links.myanimelist}<div class="link-group">
-                            {@render linkButton(
-                                links.myanimelist,
-                                "MAL",
-                                "#2e51a2",
-                                "myanimelist",
-                            )}
-                        </div>{/if}
-                    {#if links.tvdb}<div class="link-group">
-                            {@render linkButton(
-                                links.tvdb,
-                                "TVDB",
-                                "#3bb300",
-                                "tvdb",
-                            )}
-                        </div>{/if}
-                {/if}
-            </div>
+            <!-- External Links -->
+            {#if availableLinks.length > 0}
+                <ul class="actions" aria-label="External links">
+                    {#each availableLinks as def (def.key)}
+                        {@const url = data.release.links?.[def.key]}
+                        {@const icon = externalIcons[def.key]}
+                        <li>
+                            <a
+                                href={url}
+                                class="action-button external-link"
+                                class:dark-text={def.darkText}
+                                style:--link-color={def.color}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                {#if icon}
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="16"
+                                        height="16"
+                                        viewBox={typeof icon === "string"
+                                            ? "0 0 24 24"
+                                            : icon.viewBox}
+                                        fill="currentColor"
+                                        aria-hidden="true"
+                                    >
+                                        <path
+                                            d={typeof icon === "string"
+                                                ? icon
+                                                : icon.d}
+                                        />
+                                    </svg>
+                                {/if}
+                                {def.label}
+                            </a>
+                        </li>
+                    {/each}
+                </ul>
+            {/if}
         </div>
     </header>
 
     <!-- Tech Info Section -->
     {#if data.release.specs && data.release.specs.length > 0}
-        <section
-            class="specs-section"
-            in:fly={{
-                y: animY,
-                duration: animDuration,
-                delay: sectionDelay("specs"),
-                easing: animEasing,
-            }}
-        >
+        <section class="specs-section" aria-label="Technical information">
             {#each data.release.specs as spec, i}
                 <div
                     class="spec-block"
-                    in:fly={{
-                        y: 20,
-                        duration: 400,
-                        delay: sectionDelay("specs", i),
-                        easing: cubicOut,
-                    }}
+                    in:fly={entranceFly("specs", i)}
                 >
-                    <button
-                        class="spec-header"
-                        onclick={() => toggleSpec(i)}
-                        aria-expanded={expandedSpecs.has(i)}
-                    >
-                        <h2 class="spec-title">{spec.title}</h2>
-                        <svg
-                            class="chevron"
-                            class:expanded={expandedSpecs.has(i)}
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="20"
-                            height="20"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
+                    <h2 class="spec-heading">
+                        <button
+                            class="spec-header"
+                            onclick={() => toggleSpec(i)}
+                            aria-expanded={isSpecExpanded(i)}
+                            aria-controls="spec-panel-{i}"
                         >
-                            <path d="m6 9 6 6 6-6" />
-                        </svg>
-                    </button>
+                            <span class="spec-title">{spec.title}</span>
+                            <svg
+                                class="chevron"
+                                class:expanded={isSpecExpanded(i)}
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="20"
+                                height="20"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                aria-hidden="true"
+                            >
+                                <path d="m6 9 6 6 6-6" />
+                            </svg>
+                        </button>
+                    </h2>
 
-                    {#if expandedSpecs.has(i)}
-                        <div class="spec-body" transition:slide={slideConfig}>
+                    {#if isSpecExpanded(i)}
+                        <div
+                            class="spec-body"
+                            id="spec-panel-{i}"
+                            transition:slide={slideParams()}
+                        >
                             {#if spec.content}
                                 <div class="spec-content">
                                     {@html spec.content}
@@ -446,73 +400,51 @@
         </section>
     {/if}
 
-    <!-- MediaInfo Section (grouped by torrent) -->
-    <section
-        class="mediainfo-section"
-        in:fly={{
-            y: animY,
-            duration: animDuration,
-            delay: sectionDelay("mediainfo"),
-            easing: animEasing,
-        }}
-    >
-        <h2 class="section-title">MediaInfo</h2>
+    <!-- MediaInfo Section -->
+    <section class="mediainfo-section" aria-label="MediaInfo">
+        <h2
+            class="section-title"
+            in:fly={entranceFly("mediainfo", 0, { lead: 60 })}
+        >
+            MediaInfo
+        </h2>
         <div class="mediainfo-list">
-            {#each data.release.torrents as torrent, tIndex}
-                {#each torrent.mediainfo as mi, miIndex}
-                    {@const rawContent =
-                        loadedMediaInfo.get(mi.raw_hash) ?? null}
-                    {@const isLoading = loadingMediaInfo.has(mi.raw_hash)}
-                    <div
-                        class="mediainfo-wrapper"
-                        in:fly={{
-                            y: 20,
-                            duration: 400,
-                            delay: sectionDelay(
-                                "mediainfo",
-                                tIndex * torrent.mediainfo.length + miIndex,
-                            ),
-                            easing: cubicOut,
-                        }}
-                    >
-                        <MediaInfoCard
-                            filename={mi.filename}
-                            rawHash={mi.raw_hash}
-                            {rawContent}
-                            {isLoading}
-                        />
-                    </div>
-                {/each}
+            {#each mediaInfoEntries as mi, flatIndex}
+                <div
+                    class="mediainfo-wrapper"
+                    in:fly={entranceFly("mediainfo", flatIndex)}
+                >
+                    <MediaInfoCard
+                        filename={mi.filename}
+                        rawHash={mi.raw_hash}
+                        rawContent={loadedMediaInfo.get(mi.raw_hash) ?? null}
+                        isLoading={loadingMediaInfo.has(mi.raw_hash)}
+                        onexpand={() => loadMediaInfoContent(mi.raw_hash)}
+                    />
+                </div>
             {/each}
         </div>
     </section>
 
     <!-- Torrents Section -->
-    <section
-        class="torrents-section"
-        in:fly={{
-            y: animY,
-            duration: animDuration,
-            delay: sectionDelay("torrents"),
-            easing: animEasing,
-        }}
-    >
-        <h2 class="section-title">Torrents</h2>
+    <section class="torrents-section" aria-label="Torrents">
+        <h2
+            class="section-title"
+            in:fly={entranceFly("torrents", 0, { lead: 60 })}
+        >
+            Torrents
+        </h2>
         <div class="torrent-list">
             {#each data.release.torrents as torrent, index}
                 <div
                     class="torrent-item"
-                    in:fly={{
-                        y: 20,
-                        duration: 400,
-                        delay: sectionDelay("torrents", index),
-                        easing: cubicOut,
-                    }}
+                    in:fly={entranceFly("torrents", index)}
                 >
                     <button
                         class="torrent-header"
                         onclick={() => toggleTorrent(index)}
-                        aria-expanded={expandedTorrents.has(index)}
+                        aria-expanded={isTorrentExpanded(index)}
+                        aria-controls="torrent-panel-{index}"
                     >
                         <span class="torrent-name">{torrent.name}</span>
                         <span class="file-count"
@@ -523,7 +455,7 @@
                         >
                         <svg
                             class="chevron"
-                            class:expanded={expandedTorrents.has(index)}
+                            class:expanded={isTorrentExpanded(index)}
                             xmlns="http://www.w3.org/2000/svg"
                             width="18"
                             height="18"
@@ -533,13 +465,18 @@
                             stroke-width="2"
                             stroke-linecap="round"
                             stroke-linejoin="round"
+                            aria-hidden="true"
                         >
                             <path d="m6 9 6 6 6-6" />
                         </svg>
                     </button>
 
-                    {#if expandedTorrents.has(index)}
-                        <div class="torrent-files">
+                    {#if isTorrentExpanded(index)}
+                        <div
+                            class="torrent-files"
+                            id="torrent-panel-{index}"
+                            transition:slide={slideParams()}
+                        >
                             {#each torrent.files as file}
                                 <div class="file-item">
                                     <svg
@@ -553,6 +490,7 @@
                                         stroke-linecap="round"
                                         stroke-linejoin="round"
                                         class="file-icon"
+                                        aria-hidden="true"
                                     >
                                         <path
                                             d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"
@@ -603,12 +541,24 @@
         transition: color var(--duration-fast) var(--ease-out);
     }
 
-    .back-link:hover {
+    .back-link svg {
+        transition: transform var(--duration-fast) var(--ease-spring);
+    }
+
+    .back-link:hover,
+    .back-link:focus-visible {
         color: var(--color-accent);
+    }
+
+    /* Reinforce the list ← detail spatial model */
+    .back-link:hover svg,
+    .back-link:focus-visible svg {
+        transform: translateX(-3px);
     }
 
     /* Hero */
     .hero {
+        position: relative;
         display: flex;
         flex-direction: column;
         gap: var(--space-6);
@@ -621,15 +571,38 @@
         }
     }
 
+    /* Soft poster-derived glow behind the hero */
+    .hero-ambient {
+        position: absolute;
+        inset: -15% -8%;
+        background-size: cover;
+        background-position: center;
+        filter: blur(64px) saturate(1.4);
+        opacity: 0.16;
+        pointer-events: none;
+        z-index: -1;
+        mask-image: linear-gradient(to bottom, black 40%, transparent);
+        -webkit-mask-image: linear-gradient(to bottom, black 40%, transparent);
+    }
+
+    @media (prefers-reduced-transparency: reduce), (forced-colors: active) {
+        .hero-ambient {
+            display: none;
+        }
+    }
+
     .poster-container {
         position: relative;
         flex-shrink: 0;
         width: 180px;
         aspect-ratio: 2/3;
-        border-radius: var(--radius-lg);
+        border-radius: var(--radius-poster);
         background: var(--color-fill);
         box-shadow: var(--shadow-lg);
         overflow: hidden;
+        view-transition-class: poster;
+        /* Lets the shadow settle in after the Magic Move lands */
+        transition: box-shadow 280ms var(--ease-out);
     }
 
     @media (min-width: 640px) {
@@ -642,10 +615,8 @@
         width: 100%;
         height: 100%;
         object-fit: cover;
-        border-radius: var(--radius-lg);
+        border-radius: var(--radius-poster);
     }
-
-    /* Sheen Effect */
 
     /* Gradient layer (always visible, no transition) */
     .poster-gradient {
@@ -657,7 +628,7 @@
             transparent 50%
         );
         pointer-events: none;
-        border-radius: var(--radius-lg);
+        border-radius: var(--radius-poster);
     }
 
     /* Badges container (separate from gradient for clean animation) */
@@ -680,13 +651,12 @@
         font-size: 14px;
         font-weight: 700;
         padding: 6px 12px;
-        background: var(--color-accent);
-        color: white;
+        background: var(--badge-bg);
+        color: var(--badge-fg);
         border-radius: var(--radius-sm);
         line-height: 1;
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-        transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-        will-change: transform;
+        transition: transform var(--duration-fast) var(--ease-spring);
     }
 
     .badge:hover {
@@ -694,7 +664,8 @@
     }
 
     .badge-fin {
-        background: var(--color-success, #10b981);
+        background: var(--badge-fin-bg);
+        color: var(--badge-fin-fg);
     }
 
     .info {
@@ -711,6 +682,7 @@
         letter-spacing: var(--tracking-tight);
         color: var(--color-label);
         margin: 0;
+        text-wrap: pretty;
     }
 
     @media (min-width: 640px) {
@@ -743,6 +715,8 @@
         flex-wrap: wrap;
         gap: var(--space-2);
         margin-top: var(--space-2);
+        list-style: none;
+        padding: 0;
     }
 
     .action-button {
@@ -754,7 +728,11 @@
         font-weight: 500;
         text-decoration: none;
         border-radius: var(--radius-md);
-        transition: all var(--duration-fast) var(--ease-out);
+        transition:
+            color var(--duration-fast) var(--ease-out),
+            background-color var(--duration-fast) var(--ease-out),
+            border-color var(--duration-fast) var(--ease-out),
+            transform var(--duration-fast) var(--ease-spring);
     }
 
     .external-link {
@@ -765,10 +743,17 @@
         border: 1px solid transparent;
     }
 
-    .external-link:hover {
-        color: white;
+    .external-link:hover,
+    .external-link:focus-visible {
+        color: #ffffff;
         background: var(--link-color, var(--color-accent));
         border-color: var(--link-color, var(--color-accent));
+        transform: translateY(-1px);
+    }
+
+    .external-link.dark-text:hover,
+    .external-link.dark-text:focus-visible {
+        color: rgba(0, 0, 0, 0.88);
     }
 
     /* Sections */
@@ -796,6 +781,11 @@
         overflow: hidden;
     }
 
+    .spec-heading {
+        margin: 0;
+        font-size: inherit;
+    }
+
     .spec-header {
         width: 100%;
         display: flex;
@@ -806,11 +796,23 @@
         border: none;
         cursor: pointer;
         text-align: left;
-        transition: background var(--duration-fast) var(--ease-out);
+        transition:
+            background var(--duration-fast) var(--ease-out),
+            transform var(--duration-fast) var(--ease-out);
     }
 
     .spec-header:hover {
         background: var(--color-fill);
+    }
+
+    .spec-header:active {
+        transform: scale(0.995);
+    }
+
+    .spec-header:focus-visible {
+        outline: 2px solid var(--color-accent);
+        outline-offset: -2px;
+        border-radius: var(--radius-md);
     }
 
     .spec-title {
@@ -818,8 +820,6 @@
         font-size: var(--text-sm);
         font-weight: 600;
         color: var(--color-label);
-        margin: 0;
-        /* text-transform: uppercase; removed to preserve original case */
         letter-spacing: 0.05em;
     }
 
@@ -901,7 +901,9 @@
         border: none;
         cursor: pointer;
         text-align: left;
-        transition: background var(--duration-fast) var(--ease-out);
+        transition:
+            background var(--duration-fast) var(--ease-out),
+            transform var(--duration-fast) var(--ease-out);
     }
 
     .torrent-header:hover {
@@ -909,7 +911,13 @@
     }
 
     .torrent-header:active {
-        transform: scale(0.99);
+        transform: scale(0.995);
+    }
+
+    .torrent-header:focus-visible {
+        outline: 2px solid var(--color-accent);
+        outline-offset: -2px;
+        border-radius: var(--radius-md);
     }
 
     .torrent-name {
@@ -923,7 +931,7 @@
     .file-count {
         font-family: var(--font-sans);
         font-size: var(--text-xs);
-        color: var(--color-label-tertiary);
+        color: var(--color-label-secondary);
         white-space: nowrap;
         font-variant-numeric: tabular-nums;
     }
@@ -969,7 +977,7 @@
 
     .file-size {
         font-size: var(--text-xs);
-        color: var(--color-label-tertiary);
+        color: var(--color-label-secondary);
         white-space: nowrap;
         font-feature-settings: "tnum";
     }
@@ -997,7 +1005,7 @@
         font-family: var(--font-mono);
         font-size: var(--text-xs);
         padding: var(--space-2);
-        color: var(--color-label-tertiary);
+        color: var(--color-label-secondary);
         white-space: pre-wrap;
     }
 

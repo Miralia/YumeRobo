@@ -1,22 +1,14 @@
 import { cubicOut } from "svelte/easing";
+import { prefersReducedMotion } from "svelte/motion";
 
 /**
- * Duration presets (synced with CSS variables in design-system.css)
+ * Duration presets (synced with the --duration-* tokens in design-system.css)
  */
 export const duration = {
     fast: 150,
     normal: 250,
     slow: 400,
-    entrance: 500,
-} as const;
-
-/**
- * Spring presets for svelte/motion
- */
-export const springPresets = {
-    gentle: { stiffness: 0.1, damping: 0.8 },
-    snappy: { stiffness: 0.3, damping: 0.7 },
-    bouncy: { stiffness: 0.4, damping: 0.5 },
+    entrance: 450,
 } as const;
 
 /**
@@ -27,39 +19,15 @@ export function stagger(index: number, base = 50): number {
 }
 
 /**
- * Fly transition config factory
- */
-export function flyConfig(
-    index = 0,
-    options: {
-        direction?: "up" | "down" | "left" | "right";
-        offset?: number;
-        staggerBase?: number;
-    } = {}
-) {
-    const { direction = "up", offset = 15, staggerBase = 80 } = options;
-
-    const axis = direction === "left" || direction === "right" ? "x" : "y";
-    const sign = direction === "down" || direction === "right" ? 1 : -1;
-
-    return {
-        [axis]: offset * sign,
-        duration: duration.entrance,
-        delay: stagger(index, staggerBase),
-        easing: cubicOut,
-    };
-}
-
-/**
  * Section-based stagger delays for detail page
  * Provides consistent timing across all page sections
  */
 export const sections = {
     breadcrumb: { base: 0 },
-    hero: { base: 160 },
-    specs: { base: 240, offset: 50 },
-    mediainfo: { base: 320, offset: 50 },
-    torrents: { base: 400, offset: 50 },
+    hero: { base: 120 },
+    specs: { base: 200, offset: 60 },
+    mediainfo: { base: 300, offset: 60 },
+    torrents: { base: 400, offset: 60 },
 } as const;
 
 /**
@@ -71,4 +39,41 @@ export function sectionDelay(section: keyof typeof sections, index = 0): number 
     const config = sections[section];
     const offset = "offset" in config ? config.offset : 0;
     return config.base + index * offset;
+}
+
+/**
+ * Svelte's fly/slide transitions run through WAAPI, which the global
+ * CSS reduced-motion clamp cannot reach — every JS-driven duration must
+ * flow through here so the preference is honoured.
+ */
+export function motionSafe(ms: number): number {
+    return prefersReducedMotion.current ? 0 : ms;
+}
+
+/**
+ * Entrance fly config for detail-page sections: section-timed,
+ * reduced-motion aware, on the shared easing family.
+ */
+export function entranceFly(
+    section: keyof typeof sections,
+    index = 0,
+    options: { axis?: "x" | "y"; offset?: number; lead?: number } = {}
+) {
+    const { axis = "y", offset = 15, lead = 0 } = options;
+    return {
+        [axis]: offset,
+        duration: motionSafe(duration.entrance),
+        delay: motionSafe(Math.max(0, sectionDelay(section, index) - lead)),
+        easing: cubicOut,
+    };
+}
+
+/**
+ * Shared accordion slide config (reduced-motion aware).
+ */
+export function slideParams() {
+    return {
+        duration: motionSafe(duration.normal),
+        easing: cubicOut,
+    };
 }

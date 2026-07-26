@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { slide } from "svelte/transition";
+    import { slideParams } from "$lib/utils/animation";
     import {
         parseMediaInfo,
         toStructured,
@@ -15,9 +17,17 @@
         rawHash: string;
         rawContent: string | null;
         isLoading?: boolean;
+        /** Invoked when the user expands the raw view before content arrived */
+        onexpand?: () => void;
     }
 
-    let { filename, rawHash, rawContent, isLoading = false }: Props = $props();
+    let {
+        filename,
+        rawHash,
+        rawContent,
+        isLoading = false,
+        onexpand,
+    }: Props = $props();
 
     // Toggle state: false = show structured view, true = show raw MediaInfo
     let showRaw = $state(false);
@@ -98,181 +108,228 @@
 
     function toggleView() {
         showRaw = !showRaw;
+        if (showRaw && !rawContent) {
+            onexpand?.();
+        }
     }
 </script>
 
 <div class="mediainfo-card">
-    <!-- Clickable Header - toggles between structured and raw view -->
-    <button class="card-header" onclick={toggleView}>
-        <span class="filename">{filename}</span>
-        <div class="header-actions">
-            <span class="toggle-hint">{showRaw ? "Hide" : "Expand"}</span>
+    <!-- Header: toggle button and raw link are siblings (a link may not
+         live inside a button) -->
+    <div class="card-header">
+        <h3 class="card-heading">
+            <button
+                class="card-toggle"
+                onclick={toggleView}
+                aria-expanded={showRaw}
+                aria-controls="mediainfo-panel-{rawHash}"
+            >
+                <span class="filename">{filename}</span>
+                <span class="header-actions">
+                    <span class="toggle-hint" aria-hidden="true"
+                        >{showRaw ? "Hide" : "Expand"}</span
+                    >
+                    <svg
+                        class="chevron"
+                        class:expanded={showRaw}
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                    >
+                        <path d="m6 9 6 6 6-6" />
+                    </svg>
+                </span>
+            </button>
+        </h3>
+        <a
+            href="/mediainfo/{rawHash}"
+            class="raw-link"
+            target="_blank"
+            rel="noopener"
+            aria-label="Open raw MediaInfo in new tab"
+        >
             <svg
-                class="chevron"
-                class:expanded={showRaw}
                 xmlns="http://www.w3.org/2000/svg"
-                width="18"
-                height="18"
+                width="16"
+                height="16"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
                 stroke-width="2"
                 stroke-linecap="round"
                 stroke-linejoin="round"
+                aria-hidden="true"
             >
-                <path d="m6 9 6 6 6-6" />
+                <path
+                    d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+                />
+                <polyline points="15 3 21 3 21 9" />
+                <line x1="10" x2="21" y1="14" y2="3" />
             </svg>
-            <a
-                href="/mediainfo/{rawHash}"
-                class="raw-link"
-                target="_blank"
-                rel="noopener"
-                title="Open raw MediaInfo in new tab"
-                onclick={(e) => e.stopPropagation()}
-            >
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                >
-                    <path
-                        d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
-                    />
-                    <polyline points="15 3 21 3 21 9" />
-                    <line x1="10" x2="21" y1="14" y2="3" />
-                </svg>
-            </a>
-        </div>
-    </button>
+        </a>
+    </div>
 
-    {#if isLoading}
-        <div class="loading">Loading MediaInfo...</div>
-    {:else if showRaw && rawContent}
-        <!-- Raw MediaInfo view -->
-        <div class="raw-view">
-            <pre class="raw-content">{rawContent}</pre>
-        </div>
-    {:else if structured}
-        <!-- Structured view (columns) -->
-        <div class="card-body">
-            <div class="columns">
-                <!-- General -->
-                <div class="column">
-                    <h4 class="column-title">GENERAL</h4>
-                    <dl class="info-list">
-                        {#if general?.format}
-                            <div class="info-row">
-                                <dt>Format</dt>
-                                <dd>{general.format}</dd>
-                            </div>
-                        {/if}
-                        {#if general?.duration}
-                            <div class="info-row">
-                                <dt>Duration</dt>
-                                <dd>{general.duration}</dd>
-                            </div>
-                        {/if}
-                        {#if general?.bit_rate}
-                            <div class="info-row">
-                                <dt>Bitrate</dt>
-                                <dd>{formatBitrate(general.bit_rate)}</dd>
-                            </div>
-                        {/if}
-                        {#if general?.file_size}
-                            <div class="info-row">
-                                <dt>Size</dt>
-                                <dd>{general.file_size}</dd>
-                            </div>
-                        {/if}
-                    </dl>
-                </div>
-
-                <!-- Video -->
-                <div class="column">
-                    <h4 class="column-title">VIDEO</h4>
-                    <dl class="info-list">
-                        {#if video?.format}
-                            <div class="info-row">
-                                <dt>Format</dt>
-                                <dd>
-                                    {video.format}
-                                    {video.bit_depth
-                                        ? `(${video.bit_depth})`
-                                        : ""}
-                                </dd>
-                            </div>
-                        {/if}
-                        {#if getResolution()}
-                            <div class="info-row">
-                                <dt>Resolution</dt>
-                                <dd>{getResolution()}</dd>
-                            </div>
-                        {/if}
-                        {#if video?.frame_rate}
-                            <div class="info-row">
-                                <dt>Frame rate</dt>
-                                <dd>{video.frame_rate}</dd>
-                            </div>
-                        {/if}
-                        {#if video?.bit_rate}
-                            <div class="info-row">
-                                <dt>Bit rate</dt>
-                                <dd>{formatBitrate(video.bit_rate)}</dd>
-                            </div>
-                        {/if}
-                    </dl>
-                </div>
-
-                <!-- Audio -->
-                <div class="column audio-column">
-                    <h4 class="column-title">AUDIO</h4>
-                    <div class="audio-list">
-                        {#each audios as audio, i}
-                            <div class="audio-item">
-                                <span class="audio-index">{i + 1}.</span>
-                                <span class="audio-flag"
-                                    >{getLanguageFlag(
-                                        audio.language ?? "",
-                                    )}</span
-                                >
-                                <span class="audio-info"
-                                    >{getAudioFormat(audio)}</span
-                                >
-                            </div>
-                        {/each}
-                    </div>
+    <div id="mediainfo-panel-{rawHash}">
+        {#if isLoading}
+            <!-- Skeleton mirrors the structured layout to avoid a jump -->
+            <div class="card-body" aria-hidden="true">
+                <div class="columns">
+                    {#each [0, 1, 2] as column (column)}
+                        <div class="column">
+                            <div class="skeleton skeleton-title"></div>
+                            <div class="skeleton skeleton-row"></div>
+                            <div class="skeleton skeleton-row"></div>
+                            <div class="skeleton skeleton-row short"></div>
+                        </div>
+                    {/each}
                 </div>
             </div>
+            <p class="visually-hidden">Loading MediaInfo</p>
+        {:else if showRaw && rawContent}
+            <!-- Raw MediaInfo view -->
+            <div class="raw-view" transition:slide={slideParams()}>
+                <pre class="raw-content">{rawContent}</pre>
+            </div>
+        {:else if structured}
+            <!-- Structured view (columns) -->
+            <div class="card-body">
+                <div class="columns">
+                    <!-- General -->
+                    <div class="column">
+                        <h4 class="column-title">GENERAL</h4>
+                        <dl class="info-list">
+                            {#if general?.format}
+                                <div class="info-row">
+                                    <dt>Format</dt>
+                                    <dd>{general.format}</dd>
+                                </div>
+                            {/if}
+                            {#if general?.duration}
+                                <div class="info-row">
+                                    <dt>Duration</dt>
+                                    <dd>{general.duration}</dd>
+                                </div>
+                            {/if}
+                            {#if general?.bit_rate}
+                                <div class="info-row">
+                                    <dt>Bitrate</dt>
+                                    <dd>{formatBitrate(general.bit_rate)}</dd>
+                                </div>
+                            {/if}
+                            {#if general?.file_size}
+                                <div class="info-row">
+                                    <dt>Size</dt>
+                                    <dd>{general.file_size}</dd>
+                                </div>
+                            {/if}
+                        </dl>
+                    </div>
 
-            <!-- Subtitles (flags only, deduplicated) -->
-            {#if subtitleFlags.length > 0}
-                <div class="subtitles-section">
-                    <h4 class="section-title">SUBTITLES</h4>
-                    <div class="flag-list">
-                        {#each subtitleFlags as { flag, language }}
-                            <span class="flag" title={language}>{flag}</span>
-                        {/each}
+                    <!-- Video -->
+                    <div class="column">
+                        <h4 class="column-title">VIDEO</h4>
+                        <dl class="info-list">
+                            {#if video?.format}
+                                <div class="info-row">
+                                    <dt>Format</dt>
+                                    <dd>
+                                        {video.format}
+                                        {video.bit_depth
+                                            ? `(${video.bit_depth})`
+                                            : ""}
+                                    </dd>
+                                </div>
+                            {/if}
+                            {#if getResolution()}
+                                <div class="info-row">
+                                    <dt>Resolution</dt>
+                                    <dd>{getResolution()}</dd>
+                                </div>
+                            {/if}
+                            {#if video?.frame_rate}
+                                <div class="info-row">
+                                    <dt>Frame rate</dt>
+                                    <dd>{video.frame_rate}</dd>
+                                </div>
+                            {/if}
+                            {#if video?.bit_rate}
+                                <div class="info-row">
+                                    <dt>Bit rate</dt>
+                                    <dd>{formatBitrate(video.bit_rate)}</dd>
+                                </div>
+                            {/if}
+                        </dl>
+                    </div>
+
+                    <!-- Audio -->
+                    <div class="column audio-column">
+                        <h4 class="column-title">AUDIO</h4>
+                        <div class="audio-list">
+                            {#each audios as audio, i}
+                                <div class="audio-item">
+                                    <span class="audio-index" aria-hidden="true"
+                                        >{i + 1}.</span
+                                    >
+                                    {#if audio.language}
+                                        <span
+                                            class="audio-flag"
+                                            role="img"
+                                            aria-label={audio.language}
+                                            >{getLanguageFlag(
+                                                audio.language,
+                                            )}</span
+                                        >
+                                    {:else}
+                                        <span class="audio-flag" aria-hidden="true"
+                                            >{getLanguageFlag("")}</span
+                                        >
+                                    {/if}
+                                    <span class="audio-info"
+                                        >{getAudioFormat(audio)}</span
+                                    >
+                                </div>
+                            {/each}
+                        </div>
                     </div>
                 </div>
-            {/if}
 
-            <!-- Encode Settings -->
-            {#if encodingSettings}
-                <div class="encode-section">
-                    <h4 class="section-title">ENCODE SETTINGS</h4>
-                    <pre class="encode-settings">{encodingSettings}</pre>
-                </div>
-            {/if}
-        </div>
-    {:else}
-        <div class="loading">No MediaInfo available</div>
-    {/if}
+                <!-- Subtitles (flags only, deduplicated) -->
+                {#if subtitleFlags.length > 0}
+                    <div class="subtitles-section">
+                        <h4 class="section-title">SUBTITLES</h4>
+                        <div class="flag-list">
+                            {#each subtitleFlags as { flag, language }}
+                                <span
+                                    class="flag"
+                                    role="img"
+                                    aria-label="{language} subtitles"
+                                    title={language}>{flag}</span
+                                >
+                            {/each}
+                        </div>
+                    </div>
+                {/if}
+
+                <!-- Encode Settings -->
+                {#if encodingSettings}
+                    <div class="encode-section">
+                        <h4 class="section-title">ENCODE SETTINGS</h4>
+                        <pre class="encode-settings">{encodingSettings}</pre>
+                    </div>
+                {/if}
+            </div>
+        {:else}
+            <div class="loading">No MediaInfo available</div>
+        {/if}
+    </div>
 </div>
 
 <style>
@@ -284,21 +341,42 @@
 
     .card-header {
         display: flex;
+        align-items: stretch;
+        background: var(--color-background-tertiary);
+        border-bottom: 1px solid var(--color-separator);
+    }
+
+    .card-heading {
+        flex: 1;
+        min-width: 0;
+        margin: 0;
+        font-size: inherit;
+        font-weight: inherit;
+        display: flex;
+    }
+
+    .card-toggle {
+        flex: 1;
+        min-width: 0;
+        display: flex;
         align-items: center;
         justify-content: space-between;
         gap: var(--space-3);
-        width: 100%;
         padding: var(--space-3) var(--space-4);
-        background: var(--color-background-tertiary);
+        background: transparent;
         border: none;
-        border-bottom: 1px solid var(--color-separator);
         cursor: pointer;
         text-align: left;
         transition: background var(--duration-fast) var(--ease-out);
     }
 
-    .card-header:hover {
+    .card-toggle:hover {
         background: var(--color-fill);
+    }
+
+    .card-toggle:focus-visible {
+        outline: 2px solid var(--color-accent);
+        outline-offset: -2px;
     }
 
     .filename {
@@ -320,12 +398,12 @@
     .toggle-hint {
         font-family: var(--font-sans);
         font-size: var(--text-xs);
-        color: var(--color-label-tertiary);
+        color: var(--color-label-secondary);
     }
 
     .chevron {
         color: var(--color-label-tertiary);
-        transition: transform var(--duration-fast) var(--ease-out);
+        transition: transform var(--duration-normal) var(--ease-spring);
     }
 
     .chevron.expanded {
@@ -336,11 +414,15 @@
         display: flex;
         align-items: center;
         justify-content: center;
+        align-self: center;
         width: 28px;
         height: 28px;
+        margin-right: var(--space-3);
         color: var(--color-label-secondary);
         border-radius: var(--radius-sm);
-        transition: all var(--duration-fast) var(--ease-out);
+        transition:
+            background-color var(--duration-fast) var(--ease-out),
+            color var(--duration-fast) var(--ease-out);
     }
 
     .raw-link:hover {
@@ -378,7 +460,24 @@
         font-family: var(--font-sans);
         padding: var(--space-4);
         font-size: var(--text-sm);
-        color: var(--color-label-tertiary);
+        color: var(--color-label-secondary);
+    }
+
+    /* Skeleton */
+    .skeleton-title {
+        width: 40%;
+        height: 12px;
+        margin-bottom: var(--space-2);
+    }
+
+    .skeleton-row {
+        width: 90%;
+        height: 10px;
+        margin-bottom: var(--space-1);
+    }
+
+    .skeleton-row.short {
+        width: 60%;
     }
 
     /* Columns */
@@ -412,7 +511,7 @@
 
     .info-row dt {
         font-family: var(--font-sans);
-        color: var(--color-label-tertiary);
+        color: var(--color-label-secondary);
         min-width: 70px;
         flex-shrink: 0;
     }
@@ -439,7 +538,7 @@
 
     .audio-index {
         font-family: var(--font-sans);
-        color: var(--color-label-tertiary);
+        color: var(--color-label-secondary);
         min-width: 16px;
     }
 

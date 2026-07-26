@@ -505,6 +505,15 @@ pre {
 	animation-delay: calc(var(--vt-morph-duration) - 80ms);
 }
 
+/*
+ * While a Magic Move is in flight the hero shadow stays off; the
+ * poster container's own box-shadow transition then settles it in
+ * once the morph lands — a deliberate afterbeat, like the badges.
+ */
+html:active-view-transition .poster-hero {
+	box-shadow: none;
+}
+
 /* ===== ENTRANCE ANIMATIONS ===== */
 @keyframes fade-up {
 	from {
