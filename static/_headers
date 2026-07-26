@@ -1,5 +1,18 @@
 # Cloudflare Pages Headers
 
+# Baseline security headers for all routes
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+# SvelteKit content-hashed chunks are immutable by construction
+/_app/immutable/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Fonts are stable, versioned by filename
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
 # Ensure images are displayed inline
 /posters/*.avif
   Content-Type: image/avif
@@ -21,13 +34,11 @@
   Content-Disposition: inline
   Cache-Control: public, max-age=31536000, immutable
 
-# Text files
+# Raw MediaInfo files are content-addressed by hash, immutable
 /mediainfo/*
   Content-Type: text/plain; charset=utf-8
   Content-Disposition: inline
   Cache-Control: public, max-age=31536000, immutable
-
-  Cache-Control: public, max-age=3600
 
 # JSON
 /*.json
