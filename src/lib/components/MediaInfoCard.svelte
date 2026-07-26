@@ -16,7 +16,8 @@
         filename: string;
         rawHash: string;
         rawContent: string | null;
-        isLoading?: boolean;
+        /** True when fetching the raw MediaInfo definitively failed */
+        hasFailed?: boolean;
         /** Invoked when the user expands the raw view before content arrived */
         onexpand?: () => void;
     }
@@ -25,7 +26,7 @@
         filename,
         rawHash,
         rawContent,
-        isLoading = false,
+        hasFailed = false,
         onexpand,
     }: Props = $props();
 
@@ -178,22 +179,7 @@
     </div>
 
     <div id="mediainfo-panel-{rawHash}">
-        {#if isLoading}
-            <!-- Skeleton mirrors the structured layout to avoid a jump -->
-            <div class="card-body" aria-hidden="true">
-                <div class="columns">
-                    {#each [0, 1, 2] as column (column)}
-                        <div class="column">
-                            <div class="skeleton skeleton-title"></div>
-                            <div class="skeleton skeleton-row"></div>
-                            <div class="skeleton skeleton-row"></div>
-                            <div class="skeleton skeleton-row short"></div>
-                        </div>
-                    {/each}
-                </div>
-            </div>
-            <p class="visually-hidden">Loading MediaInfo</p>
-        {:else if showRaw && rawContent}
+        {#if showRaw && rawContent}
             <!-- Raw MediaInfo view -->
             <div class="raw-view" transition:slide={slideParams()}>
                 <pre class="raw-content">{rawContent}</pre>
@@ -326,8 +312,24 @@
                     </div>
                 {/if}
             </div>
-        {:else}
+        {:else if hasFailed}
             <div class="loading">No MediaInfo available</div>
+        {:else}
+            <!-- Prerendered + loading state: skeleton mirrors the
+                 structured layout to avoid a jump when content lands -->
+            <div class="card-body" aria-hidden="true">
+                <div class="columns">
+                    {#each [0, 1, 2] as column (column)}
+                        <div class="column">
+                            <div class="skeleton skeleton-title"></div>
+                            <div class="skeleton skeleton-row"></div>
+                            <div class="skeleton skeleton-row"></div>
+                            <div class="skeleton skeleton-row short"></div>
+                        </div>
+                    {/each}
+                </div>
+            </div>
+            <p class="visually-hidden">Loading MediaInfo</p>
         {/if}
     </div>
 </div>

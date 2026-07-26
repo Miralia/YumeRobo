@@ -86,6 +86,7 @@
     // MediaInfo state - stores raw text
     let loadedMediaInfo = $state<Map<string, string>>(new Map());
     let loadingMediaInfo = $state<Set<string>>(new Set());
+    let failedMediaInfo = $state<Set<string>>(new Set());
 
     // Flattened so entrance stagger runs on a true running index
     let mediaInfoEntries = $derived(
@@ -110,9 +111,14 @@
                     hash,
                     rawText,
                 );
+            } else {
+                failedMediaInfo = new Set(untrack(() => failedMediaInfo)).add(
+                    hash,
+                );
             }
         } catch (e) {
             console.error("Failed to load MediaInfo:", e);
+            failedMediaInfo = new Set(untrack(() => failedMediaInfo)).add(hash);
         } finally {
             const newLoading = new Set(untrack(() => loadingMediaInfo));
             newLoading.delete(hash);
@@ -418,7 +424,7 @@
                         filename={mi.filename}
                         rawHash={mi.raw_hash}
                         rawContent={loadedMediaInfo.get(mi.raw_hash) ?? null}
-                        isLoading={loadingMediaInfo.has(mi.raw_hash)}
+                        hasFailed={failedMediaInfo.has(mi.raw_hash)}
                         onexpand={() => loadMediaInfoContent(mi.raw_hash)}
                     />
                 </div>
