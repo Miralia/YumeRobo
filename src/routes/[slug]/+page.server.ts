@@ -1,5 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { getAllReleases, getReleaseBySlug } from '$lib/content/loader';
+import { getReleaseBadges } from '$lib/content/schema';
 import { error } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async ({ params }) => {
@@ -12,7 +13,9 @@ export const load: PageServerLoad = async ({ params }) => {
     }
 
     return {
-        release
+        release,
+        // Precomputed so the client never imports the zod schema module
+        badges: getReleaseBadges(release)
     };
 };
 

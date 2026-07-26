@@ -4,7 +4,7 @@
     import { cubicOut } from "svelte/easing";
     import { formatDateTime } from "$lib/utils/date";
     import MediaInfoCard from "$lib/components/MediaInfoCard.svelte";
-    import { type Release, getReleaseBadges } from "$lib/content/schema";
+    import type { Release } from "$lib/content/schema";
     import { externalIcons } from "$lib/utils/icons";
     import { env } from "$env/dynamic/public";
     import { duration, sectionDelay } from "$lib/utils/animation";
@@ -14,6 +14,7 @@
     interface Props {
         data: {
             release: Release;
+            badges: string[];
         };
     }
 
@@ -209,7 +210,7 @@
                 class="poster-badges"
                 style:view-transition-name="detail-badges"
             >
-                {#each getReleaseBadges(data.release) as badge}
+                {#each data.badges as badge}
                     <span class="badge {badge === 'Fin' ? 'badge-fin' : ''}"
                         >{badge}</span
                     >

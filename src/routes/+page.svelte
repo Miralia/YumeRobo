@@ -1,86 +1,103 @@
 <script lang="ts">
-	import { browser } from "$app/environment";
-	import { page } from "$app/stores";
-	import { env } from "$env/dynamic/public";
-	import { tick } from "svelte";
-	import ReleaseCard from "$lib/components/ReleaseCard.svelte";
-	import { getAllReleases, searchReleases } from "$lib/content/loader";
-	import {
-		HOME_RELEASE_BATCH_SIZE,
-		getNextDisplayCount,
-	} from "$lib/utils/infinite-scroll";
+    import type { PageProps } from "./$types";
+    import { browser } from "$app/environment";
+    import { page } from "$app/state";
+    import { env } from "$env/dynamic/public";
+    import { tick } from "svelte";
+    import { flip } from "svelte/animate";
+    import { fade } from "svelte/transition";
+    import { cubicOut } from "svelte/easing";
+    import { prefersReducedMotion } from "svelte/motion";
+    import ReleaseCard from "$lib/components/ReleaseCard.svelte";
+    import { filterCards } from "$lib/content/cards";
+    import { stagger } from "$lib/utils/animation";
+    import {
+        HOME_RELEASE_BATCH_SIZE,
+        getNextDisplayCount,
+    } from "$lib/utils/infinite-scroll";
 
-	const SITE_URL = env.PUBLIC_SITE_URL || "https://yumerobo.moe";
-	const allReleases = getAllReleases();
-	const initialQuery = browser ? $page.url.searchParams.get("q") || "" : "";
+    const SITE_URL = env.PUBLIC_SITE_URL || "https://yumerobo.moe";
 
-	let searchQuery = $state(initialQuery);
-	let displayCount = $state(HOME_RELEASE_BATCH_SIZE);
-	let restoredCount = $state(0);
-	let sentinel = $state<HTMLDivElement | null>(null);
-	let previousQuery = initialQuery;
+    let { data }: PageProps = $props();
 
-	$effect(() => {
-		if (!browser) return;
+    // Starts empty to match the prerendered document; the URL sync effect
+    // below applies ?q= after hydration, avoiding a server/client
+    // first-render divergence.
+    let searchQuery = $state("");
+    let displayCount = $state(HOME_RELEASE_BATCH_SIZE);
+    let restoredCount = $state(0);
+    let sentinel = $state<HTMLDivElement | null>(null);
+    let previousQuery = "";
 
-		const urlQuery = $page.url.searchParams.get("q") || "";
-		if (searchQuery !== urlQuery) {
-			searchQuery = urlQuery;
-		}
-	});
+    $effect(() => {
+        const urlQuery = page.url.searchParams.get("q") || "";
+        if (searchQuery !== urlQuery) {
+            searchQuery = urlQuery;
+        }
+    });
 
-	let filteredReleases = $derived(
-		searchQuery.trim() ? searchReleases(searchQuery) : allReleases,
-	);
-	let displayedReleases = $derived(filteredReleases.slice(0, displayCount));
-	let hasMore = $derived(displayCount < filteredReleases.length);
+    let filteredCards = $derived(filterCards(data.cards, searchQuery));
+    let displayedCards = $derived(filteredCards.slice(0, displayCount));
+    let hasMore = $derived(displayCount < filteredCards.length);
+    let isSearching = $derived(searchQuery.trim().length > 0);
 
-	$effect(() => {
-		if (searchQuery === previousQuery) return;
+    $effect(() => {
+        if (searchQuery === previousQuery) return;
 
-		displayCount = HOME_RELEASE_BATCH_SIZE;
-		restoredCount = 0;
-		previousQuery = searchQuery;
-	});
+        displayCount = HOME_RELEASE_BATCH_SIZE;
+        restoredCount = 0;
+        previousQuery = searchQuery;
+    });
 
-	$effect(() => {
-		if (displayCount > filteredReleases.length) {
-			displayCount = filteredReleases.length || HOME_RELEASE_BATCH_SIZE;
-		}
-	});
+    export const snapshot = {
+        capture: () => ({ displayCount, scrollY: window.scrollY }),
+        restore: (value: { displayCount: number; scrollY: number }) => {
+            displayCount = value.displayCount;
+            restoredCount = value.displayCount;
+            if (browser) {
+                tick().then(() => {
+                    window.scrollTo(0, value.scrollY);
+                });
+            }
+        },
+    };
 
-	export const snapshot = {
-		capture: () => ({ displayCount, scrollY: window.scrollY }),
-		restore: (value: { displayCount: number; scrollY: number }) => {
-			displayCount = value.displayCount;
-			restoredCount = value.displayCount;
-			if (browser) {
-				tick().then(() => {
-					window.scrollTo(0, value.scrollY);
-				});
-			}
-		},
-	};
+    function loadMore() {
+        displayCount = getNextDisplayCount(displayCount, filteredCards.length);
+    }
 
-	function loadMore() {
-		displayCount = getNextDisplayCount(displayCount, filteredReleases.length);
-	}
+    $effect(() => {
+        if (!browser || !sentinel || !hasMore) return;
 
-	$effect(() => {
-		if (!browser || !sentinel || !hasMore) return;
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries.some((entry) => entry.isIntersecting)) {
+                    loadMore();
+                }
+            },
+            { rootMargin: "320px 0px" },
+        );
 
-		const observer = new IntersectionObserver(
-			(entries) => {
-				if (entries.some((entry) => entry.isIntersecting)) {
-					loadMore();
-				}
-			},
-			{ rootMargin: "320px 0px" },
-		);
+        observer.observe(sentinel);
+        return () => observer.disconnect();
+    });
 
-		observer.observe(sentinel);
-		return () => observer.disconnect();
-	});
+    /**
+     * Entrance delay relative to the batch a card arrived in, so cards
+     * appended by infinite scroll animate immediately instead of waiting
+     * out an absolute-index stagger.
+     */
+    function entranceDelay(index: number): string {
+        return `${stagger(index % HOME_RELEASE_BATCH_SIZE)}ms`;
+    }
+
+    let flipParams = $derived({
+        duration: prefersReducedMotion.current ? 0 : 250,
+        easing: cubicOut,
+    });
+    let fadeParams = $derived({
+        duration: prefersReducedMotion.current ? 0 : 150,
+    });
 </script>
 
 <svelte:head>
@@ -92,10 +109,10 @@
     <meta property="og:description" content="Latest release" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="夢みる機械" />
-    {#if allReleases.length > 0}
+    {#if data.cards.length > 0}
         <meta
             property="og:image"
-            content="{SITE_URL}{allReleases[0].poster
+            content="{SITE_URL}{data.cards[0].poster
                 .replace('.avif', '.jpg')
                 .replace('/posters/', '/og/')}"
         />
@@ -108,23 +125,34 @@
 </svelte:head>
 
 <div class="home-page container">
+    <!-- Search result announcement for assistive tech -->
+    {#if isSearching}
+        <p class="visually-hidden" role="status">
+            {filteredCards.length === 0
+                ? `No releases match “${searchQuery}”`
+                : `${filteredCards.length} release${filteredCards.length === 1 ? "" : "s"} match “${searchQuery}”`}
+        </p>
+    {/if}
+
     <!-- Release List -->
-    <section class="release-list">
-        {#if displayedReleases.length > 0}
-            {#each displayedReleases as release, index (release.slug)}
-                <ReleaseCard
-                    {release}
-                    {index}
-                    animate={index >= restoredCount}
-                />
+    <section class="release-list" aria-label="Releases">
+        {#if displayedCards.length > 0}
+            {#each displayedCards as card, index (card.slug)}
+                <div
+                    class:animate-fade-up={index >= restoredCount}
+                    style:animation-delay={entranceDelay(index)}
+                    animate:flip={flipParams}
+                >
+                    <ReleaseCard {card} {index} />
+                </div>
             {/each}
-        {:else if searchQuery}
-            <div class="empty-state">
+        {:else if isSearching}
+            <div class="empty-state" in:fade={fadeParams}>
                 <p class="empty-title">No results found</p>
                 <p class="empty-desc">No releases match "{searchQuery}"</p>
             </div>
         {:else}
-            <div class="empty-state">
+            <div class="empty-state" in:fade={fadeParams}>
                 <p class="empty-title">No results found</p>
                 <p class="empty-desc">Check back soon for new content</p>
             </div>

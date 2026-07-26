@@ -1,104 +1,73 @@
 <script lang="ts">
-    import { spring } from "svelte/motion";
-    import { type Release, getReleaseBadges } from "$lib/content/schema";
+    import type { ReleaseCardData } from "$lib/content/cards";
     import { formatDateTime } from "$lib/utils/date";
-    import { springPresets, stagger } from "$lib/utils/animation";
     import { getPosterLoadingAttributes } from "$lib/utils/poster-loading";
 
     interface Props {
-        /** The release data to display */
-        release: Release;
-        /** Index for staggered animation delay */
+        /** Trimmed card projection of the release */
+        card: ReleaseCardData;
+        /** Index in the visible list, used for image loading priority */
         index?: number;
-        /** Whether to play the entrance animation */
-        animate?: boolean;
     }
 
-    let { release, index = 0, animate = true }: Props = $props();
-
-    // Hover animation
-    const scale = spring(1, springPresets.snappy);
-
-    function handleHover(hovering: boolean) {
-        scale.set(hovering ? 1.02 : 1);
-    }
-
-    function getTorrentNames(): string[] {
-        return release.torrents.map((t) => t.name);
-    }
+    let { card, index = 0 }: Props = $props();
 
     function getCardPosterPath(posterPath: string): string {
         return posterPath.replace(/\.avif$/i, ".card.avif");
     }
 
-    // Stagger delay for CSS animation
-    let animDelay = $derived(`${stagger(index)}ms`);
     let posterLoading = $derived(getPosterLoadingAttributes(index));
 </script>
 
-<div class:animate-fade-up={animate} style:animation-delay={animDelay}>
-    <a
-        href="/{release.slug}"
-        class="release-card"
-        style:transform="scale({$scale})"
-        onmouseenter={() => handleHover(true)}
-        onmouseleave={() => handleHover(false)}
+<a href="/{card.slug}" class="release-card">
+    <!-- Poster -->
+    <div
+        class="poster-container"
+        style:view-transition-name="poster-{card.slug}"
     >
-        <!-- Poster -->
-        <div
-            class="poster-container"
-            style:view-transition-name="poster-{release.slug}"
-        >
-            <img
-                src={getCardPosterPath(release.poster)}
-                srcset={`${getCardPosterPath(release.poster)} 200w, ${release.poster} 500w`}
-                sizes="(min-width: 640px) 100px, 80px"
-                alt={release.title}
-                class="poster"
-                width="200"
-                height="300"
-                loading={posterLoading.loading}
-                fetchpriority={posterLoading.fetchpriority}
-                decoding="async"
-            />
-            <div class="poster-overlay"></div>
+        <img
+            src={getCardPosterPath(card.poster)}
+            alt="{card.title} poster"
+            class="poster"
+            width="200"
+            height="300"
+            loading={posterLoading.loading}
+            fetchpriority={posterLoading.fetchpriority}
+            decoding="async"
+        />
+        <div class="poster-overlay"></div>
+    </div>
+
+    <!-- Info -->
+    <div class="info">
+        <h2 class="title" style:view-transition-name="title-{card.slug}">
+            {card.title}
+        </h2>
+
+        <!-- Torrent release names -->
+        <div class="release-names">
+            {#each card.torrentNames as name}
+                <p class="release-name">{name}</p>
+            {/each}
         </div>
 
-        <!-- Info -->
-        <div class="info">
-            <h2 class="title" style:view-transition-name="title-{release.slug}">
-                {release.title}
-            </h2>
-
-            <!-- Torrent release names -->
-            <div class="release-names">
-                {#each getTorrentNames() as name}
-                    <p class="release-name">{name}</p>
+        <!-- Footer: Badges (left) and Date (right) -->
+        <div class="card-footer">
+            <div class="badges">
+                {#each card.badges as badge}
+                    <span class="badge {badge === 'Fin' ? 'badge-fin' : ''}"
+                        >{badge}</span
+                    >
                 {/each}
             </div>
-
-            <!-- Footer: Badges (left) and Date (right) -->
-            <div class="card-footer">
-                <div class="badges">
-                    {#each getReleaseBadges(release) as badge}
-                        <span class="badge {badge === 'Fin' ? 'badge-fin' : ''}"
-                            >{badge}</span
-                        >
-                    {/each}
-                </div>
-                <time class="date" datetime={release.date}>
-                    {formatDateTime(release.date, "medium")}
-                </time>
-            </div>
+            <time class="date" datetime={card.date}>
+                {formatDateTime(card.date, "medium")}
+            </time>
         </div>
-    </a>
-</div>
+    </div>
+</a>
 
 <style>
-    .animate-fade-up {
-        display: block;
-    }
-
     .release-card {
         display: flex;
         gap: var(--space-4);
@@ -113,7 +82,7 @@
         text-decoration: none;
         color: inherit;
         transition:
-            transform var(--duration-fast) var(--ease-spring),
+            transform var(--duration-normal) var(--ease-spring),
             border-color var(--duration-fast) var(--ease-out),
             box-shadow var(--duration-normal) var(--ease-out),
             background var(--duration-fast) var(--ease-out);
@@ -127,6 +96,13 @@
             transparent
         );
         box-shadow: var(--shadow-md);
+        transform: translateY(-2px);
+    }
+
+    .release-card:focus-visible {
+        outline: 2px solid var(--color-accent);
+        outline-offset: 2px;
+        border-radius: var(--radius-lg);
     }
 
     .poster-container {
@@ -134,9 +110,10 @@
         flex-shrink: 0;
         width: 80px;
         aspect-ratio: 2/3;
-        border-radius: var(--radius-md);
+        border-radius: var(--radius-poster);
         overflow: hidden;
         background: var(--color-fill);
+        view-transition-class: poster;
     }
 
     @media (min-width: 640px) {
@@ -149,6 +126,11 @@
         width: 100%;
         height: 100%;
         object-fit: cover;
+        transition: transform var(--duration-slow) var(--ease-out);
+    }
+
+    .release-card:hover .poster {
+        transform: scale(1.05);
     }
 
     /* Gradient overlay */
@@ -178,6 +160,7 @@
         letter-spacing: var(--tracking-tight);
         color: var(--color-label);
         margin: 0;
+        view-transition-class: title;
     }
 
     @media (min-width: 640px) {
@@ -229,15 +212,16 @@
         font-size: 11px;
         font-weight: 700;
         padding: 3px 8px;
-        background: var(--color-accent);
-        color: white;
+        background: var(--badge-bg);
+        color: var(--badge-fg);
         border-radius: var(--radius-sm);
         line-height: 1;
         letter-spacing: 0.02em;
     }
 
     .badge-fin {
-        background: var(--color-success, #10b981);
+        background: var(--badge-fin-bg);
+        color: var(--badge-fin-fg);
     }
 
     .date {
