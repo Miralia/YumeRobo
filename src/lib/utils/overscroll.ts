@@ -1,13 +1,17 @@
 /**
- * Scroll Boundary Indicator with optional Load More Trigger
- * 
- * Shows a subtle glow when user reaches top/bottom of page.
- * Dispatches 'boundary-loadmore' event when user intentionally over-scrolls at bottom.
- * 
+ * Scroll Boundary Indicator
+ *
+ * Shows a subtle glow when the user over-scrolls at the top/bottom of
+ * the page. Built to be invisible in profiles:
+ * - scrollHeight/innerHeight are cached (ResizeObserver + resize) so
+ *   wheel/touch handlers never force layout
+ * - indicator elements are created lazily on the first boundary hit
+ * - fade-out is delegated to a CSS transition instead of a rAF loop
+ * - honours prefers-reduced-motion
+ *
  * @example
  * ```svelte
  * <div use:boundaryIndicator>...</div>
- * <div use:boundaryIndicator={{ enableLoadMore: false }}>...</div>
  * ```
  */
 
@@ -18,24 +22,12 @@ export interface BoundaryIndicatorOptions {
     maxOpacity?: number;
     /** Glow gradient height in pixels */
     size?: number;
-    /** Enable load more trigger at bottom */
-    enableLoadMore?: boolean;
-    /** Cumulative scroll threshold to trigger load more */
-    loadMoreThreshold?: number;
-    /** Cooldown after triggering load more (ms) */
-    loadMoreCooldown?: number;
-    /** Time to wait before considering scroll "settled" (ms) */
-    settleDelay?: number;
 }
 
 const defaultOptions: Required<BoundaryIndicatorOptions> = {
     color: "var(--color-accent)",
     maxOpacity: 0.08,
     size: 60,
-    enableLoadMore: false,
-    loadMoreThreshold: 400,
-    loadMoreCooldown: 1000,
-    settleDelay: 200,
 };
 
 /**
@@ -44,200 +36,116 @@ const defaultOptions: Required<BoundaryIndicatorOptions> = {
  */
 export function boundaryIndicator(node: HTMLElement, options: BoundaryIndicatorOptions = {}) {
     const opts = { ...defaultOptions, ...options };
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-    const topIndicator = document.createElement("div");
-    const bottomIndicator = document.createElement("div");
+    let topIndicator: HTMLDivElement | null = null;
+    let bottomIndicator: HTMLDivElement | null = null;
 
-    const baseStyle = `
-        position: fixed;
-        left: 0;
-        right: 0;
-        height: ${opts.size}px;
-        pointer-events: none;
-        opacity: 0;
-        transition: opacity 0.15s ease-out;
-        z-index: 9999;
-    `;
+    let cachedScrollHeight = document.documentElement.scrollHeight;
+    let cachedInnerHeight = window.innerHeight;
 
-    topIndicator.style.cssText = baseStyle + `
-        top: 0;
-        background: linear-gradient(to bottom, ${opts.color}, transparent);
-    `;
+    // Track content growth (infinite scroll, accordions) without forcing
+    // layout from inside scroll-linked handlers.
+    const resizeObserver = new ResizeObserver(() => {
+        cachedScrollHeight = document.documentElement.scrollHeight;
+    });
+    resizeObserver.observe(document.body);
 
-    bottomIndicator.style.cssText = baseStyle + `
-        bottom: 0;
-        background: linear-gradient(to top, ${opts.color}, transparent);
-    `;
-
-    document.body.appendChild(topIndicator);
-    document.body.appendChild(bottomIndicator);
-
-    let topGlow = 0;
-    let bottomGlow = 0;
-    let fadeFrame: number | null = null;
-
-    let cumulativeScroll = 0;
-    let isInCooldown = false;
-    let resetTimeout: number | null = null;
-    let settledAtBottom = false;
-    let scrollSettleTimeout: number | null = null;
+    function handleResize() {
+        cachedInnerHeight = window.innerHeight;
+        cachedScrollHeight = document.documentElement.scrollHeight;
+    }
 
     const isAtTop = () => window.scrollY <= 0;
     const isAtBottom = () =>
-        window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 1;
+        window.scrollY + cachedInnerHeight >= cachedScrollHeight - 1;
 
-    function updateIndicators() {
-        topIndicator.style.opacity = String(topGlow * opts.maxOpacity);
-
-        const loadMoreProgress = opts.enableLoadMore && settledAtBottom
-            ? Math.min(1, cumulativeScroll / opts.loadMoreThreshold)
-            : 0;
-        const bottomOpacity = Math.max(bottomGlow, loadMoreProgress) * opts.maxOpacity;
-        bottomIndicator.style.opacity = String(bottomOpacity);
+    function createIndicator(edge: "top" | "bottom"): HTMLDivElement {
+        const el = document.createElement("div");
+        el.style.cssText = `
+            position: fixed;
+            left: 0;
+            right: 0;
+            ${edge}: 0;
+            height: ${opts.size}px;
+            pointer-events: none;
+            opacity: 0;
+            z-index: 9999;
+            background: linear-gradient(to ${edge === "top" ? "bottom" : "top"}, ${opts.color}, transparent);
+            transition: opacity 100ms ease-out;
+        `;
+        document.body.appendChild(el);
+        return el;
     }
 
-    function triggerLoadMore() {
-        if (isInCooldown) return;
+    let topGlow = 0;
+    let bottomGlow = 0;
+    let hideTimer: number | null = null;
 
-        isInCooldown = true;
-        cumulativeScroll = 0;
-        settledAtBottom = false;
+    function showGlow(edge: "top" | "bottom", strength: number) {
+        if (reducedMotion.matches) return;
 
-        bottomIndicator.style.opacity = String(opts.maxOpacity * 1.5);
-        setTimeout(() => {
-            bottomIndicator.style.opacity = "0";
-        }, 120);
-
-        window.dispatchEvent(new CustomEvent("boundary-loadmore"));
-
-        setTimeout(() => {
-            isInCooldown = false;
-        }, opts.loadMoreCooldown);
-    }
-
-    function resetCumulativeScroll() {
-        cumulativeScroll = 0;
-        updateIndicators();
-    }
-
-    function checkScrollSettle() {
-        if (scrollSettleTimeout) clearTimeout(scrollSettleTimeout);
-
-        if (isAtBottom()) {
-            scrollSettleTimeout = window.setTimeout(() => {
-                if (isAtBottom()) {
-                    settledAtBottom = true;
-                }
-            }, opts.settleDelay);
+        if (edge === "top") {
+            topIndicator ??= createIndicator("top");
+            topGlow = Math.min(1, strength);
+            topIndicator.style.transition = "opacity 100ms ease-out";
+            topIndicator.style.opacity = String(topGlow * opts.maxOpacity);
         } else {
-            settledAtBottom = false;
+            bottomIndicator ??= createIndicator("bottom");
+            bottomGlow = Math.min(1, strength);
+            bottomIndicator.style.transition = "opacity 100ms ease-out";
+            bottomIndicator.style.opacity = String(bottomGlow * opts.maxOpacity);
         }
+
+        if (hideTimer !== null) clearTimeout(hideTimer);
+        hideTimer = window.setTimeout(fadeOut, 160);
     }
 
     function fadeOut() {
-        topGlow = Math.max(0, topGlow - 0.08);
-        bottomGlow = Math.max(0, bottomGlow - 0.08);
-        updateIndicators();
-
-        if (topGlow > 0 || bottomGlow > 0) {
-            fadeFrame = requestAnimationFrame(fadeOut);
-        } else {
-            fadeFrame = null;
-        }
-    }
-
-    function startFadeOut() {
-        if (fadeFrame === null) {
-            fadeFrame = requestAnimationFrame(fadeOut);
+        hideTimer = null;
+        topGlow = 0;
+        bottomGlow = 0;
+        for (const el of [topIndicator, bottomIndicator]) {
+            if (!el) continue;
+            el.style.transition = "opacity 350ms cubic-bezier(0.22, 1, 0.36, 1)";
+            el.style.opacity = "0";
         }
     }
 
     function handleWheel(e: WheelEvent) {
-        if (fadeFrame) {
-            cancelAnimationFrame(fadeFrame);
-            fadeFrame = null;
+        if (isAtTop() && e.deltaY < 0) {
+            showGlow("top", topGlow + 0.2);
+        } else if (isAtBottom() && e.deltaY > 0) {
+            showGlow("bottom", bottomGlow + 0.2);
         }
-
-        const atBottom = isAtBottom();
-        const atTop = isAtTop();
-
-        if (atTop && e.deltaY < 0) {
-            topGlow = Math.min(1, topGlow + 0.2);
-            updateIndicators();
-        } else if (atBottom && e.deltaY > 0) {
-            bottomGlow = Math.min(1, bottomGlow + 0.2);
-
-            if (opts.enableLoadMore && !isInCooldown && settledAtBottom) {
-                cumulativeScroll += Math.abs(e.deltaY);
-
-                if (resetTimeout) clearTimeout(resetTimeout);
-                resetTimeout = window.setTimeout(resetCumulativeScroll, 500);
-
-                if (cumulativeScroll >= opts.loadMoreThreshold) {
-                    triggerLoadMore();
-                }
-            }
-
-            updateIndicators();
-        } else {
-            cumulativeScroll = 0;
-            settledAtBottom = false;
-        }
-
-        checkScrollSettle();
-        startFadeOut();
     }
 
     let touchStartY = 0;
-    let touchSettledAtBottom = false;
 
     function handleTouchStart(e: TouchEvent) {
         touchStartY = e.touches[0].clientY;
-        touchSettledAtBottom = settledAtBottom && isAtBottom();
     }
 
     function handleTouchMove(e: TouchEvent) {
-        if (fadeFrame) {
-            cancelAnimationFrame(fadeFrame);
-            fadeFrame = null;
-        }
-
-        const currentY = e.touches[0].clientY;
-        const deltaY = touchStartY - currentY;
+        const deltaY = touchStartY - e.touches[0].clientY;
 
         if (isAtTop() && deltaY < 0) {
-            topGlow = Math.min(1, Math.abs(deltaY) / 120);
-            updateIndicators();
+            showGlow("top", Math.abs(deltaY) / 120);
         } else if (isAtBottom() && deltaY > 0) {
-            bottomGlow = Math.min(1, Math.abs(deltaY) / 120);
-
-            if (opts.enableLoadMore && !isInCooldown && touchSettledAtBottom) {
-                cumulativeScroll = Math.abs(deltaY);
-
-                if (cumulativeScroll >= opts.loadMoreThreshold) {
-                    triggerLoadMore();
-                }
-            }
-
-            updateIndicators();
+            showGlow("bottom", Math.abs(deltaY) / 120);
         }
     }
 
     function handleTouchEnd() {
-        startFadeOut();
-        cumulativeScroll = 0;
-        checkScrollSettle();
-    }
-
-    function handleScroll() {
-        checkScrollSettle();
+        if (hideTimer !== null) clearTimeout(hideTimer);
+        fadeOut();
     }
 
     window.addEventListener("wheel", handleWheel, { passive: true });
     window.addEventListener("touchstart", handleTouchStart, { passive: true });
     window.addEventListener("touchmove", handleTouchMove, { passive: true });
     window.addEventListener("touchend", handleTouchEnd, { passive: true });
-    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", handleResize, { passive: true });
 
     return {
         destroy() {
@@ -245,15 +153,11 @@ export function boundaryIndicator(node: HTMLElement, options: BoundaryIndicatorO
             window.removeEventListener("touchstart", handleTouchStart);
             window.removeEventListener("touchmove", handleTouchMove);
             window.removeEventListener("touchend", handleTouchEnd);
-            window.removeEventListener("scroll", handleScroll);
-            if (fadeFrame) cancelAnimationFrame(fadeFrame);
-            if (resetTimeout) clearTimeout(resetTimeout);
-            if (scrollSettleTimeout) clearTimeout(scrollSettleTimeout);
-            topIndicator.remove();
-            bottomIndicator.remove();
-        },
-        update(newOptions: BoundaryIndicatorOptions) {
-            Object.assign(opts, newOptions);
+            window.removeEventListener("resize", handleResize);
+            resizeObserver.disconnect();
+            if (hideTimer !== null) clearTimeout(hideTimer);
+            topIndicator?.remove();
+            bottomIndicator?.remove();
         },
     };
 }
