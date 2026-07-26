@@ -1,13 +1,16 @@
 <script lang="ts">
-	import { goto } from "$app/navigation";
-	import { page } from "$app/stores";
-	import { spring } from "svelte/motion";
+	import { goto, beforeNavigate } from "$app/navigation";
+	import { page } from "$app/state";
+	import { tick } from "svelte";
+	import { scale, slide } from "svelte/transition";
+	import { cubicOut } from "svelte/easing";
+	import { prefersReducedMotion } from "svelte/motion";
 	import { debounce } from "$lib/utils/debounce";
-	import { springPresets } from "$lib/utils/animation";
 
 	type ThemeMode = "auto" | "light" | "dark";
 
 	const TELEGRAM_URL = "https://t.me/YumeRobo_Channel";
+	const THEME_MODES: ThemeMode[] = ["auto", "light", "dark"];
 
 	let themeMode = $state<ThemeMode>("auto");
 	let isThemeMenuOpen = $state(false);
@@ -18,10 +21,22 @@
 	let searchQuery = $state("");
 	let isMobileMenuOpen = $state(false);
 
-	const logoScale = spring(1, springPresets.snappy);
+	let themeButton = $state<HTMLButtonElement | null>(null);
+	let themeMenu = $state<HTMLDivElement | null>(null);
+	let mobileMenuButton = $state<HTMLButtonElement | null>(null);
+
+	let menuTransition = $derived({
+		duration: prefersReducedMotion.current ? 0 : 150,
+		start: 0.95,
+		easing: cubicOut,
+	});
+	let slideTransition = $derived({
+		duration: prefersReducedMotion.current ? 0 : 250,
+		easing: cubicOut,
+	});
 
 	$effect(() => {
-		const urlQuery = $page.url.searchParams.get("q") || "";
+		const urlQuery = page.url.searchParams.get("q") || "";
 		if (!isTyping && searchQuery !== urlQuery) {
 			searchQuery = urlQuery;
 		}
@@ -32,26 +47,39 @@
 
 	const navigateToSearch = debounce((query: string) => {
 		if (isComposing) return;
+		performSearch(query);
+	}, 300);
 
+	function performSearch(query: string) {
 		const trimmed = query.trim();
 		if (trimmed) {
-			const isFirstSearch = !$page.url.searchParams.has("q");
+			const isFirstSearch = !page.url.searchParams.has("q");
 			if (originUrl === null && isFirstSearch) {
-				originUrl = $page.url.pathname;
+				originUrl = page.url.pathname;
 			}
 			goto(`/?q=${encodeURIComponent(trimmed)}`, {
 				replaceState: !isFirstSearch,
 				keepFocus: true,
 			});
-		} else if ($page.url.searchParams.has("q")) {
+		} else if (page.url.searchParams.has("q")) {
 			const returnUrl = originUrl || "/";
 			originUrl = null;
 			goto(returnUrl, { replaceState: true, keepFocus: true });
 		}
 		isTyping = false;
-	}, 300);
+	}
+
+	// A pending debounced search must not fire after the user has
+	// already navigated somewhere else (e.g. clicked a release card).
+	beforeNavigate((navigation) => {
+		if (navigation.to?.url.pathname !== "/") {
+			navigateToSearch.cancel();
+			isTyping = false;
+		}
+	});
 
 	function clearSearch() {
+		navigateToSearch.cancel();
 		searchQuery = "";
 		isTyping = false;
 		const returnUrl = originUrl || "/";
@@ -83,18 +111,30 @@
 		}
 	}
 
-	$effect(() => {
-		if (typeof window === "undefined") return;
+	function handleSearchSubmit(event: SubmitEvent) {
+		event.preventDefault();
+		navigateToSearch.cancel();
+		performSearch(searchQuery);
+	}
 
+	function handleSearchKeydown(event: KeyboardEvent) {
+		if (event.key !== "Escape") return;
+		event.preventDefault();
+		if (searchQuery) {
+			clearSearch();
+		} else {
+			(event.target as HTMLInputElement).blur();
+		}
+	}
+
+	$effect(() => {
 		const saved = localStorage.getItem("theme") as ThemeMode | null;
-		if (saved && ["auto", "light", "dark"].includes(saved)) {
+		if (saved && THEME_MODES.includes(saved)) {
 			themeMode = saved;
 		}
-		applyTheme(themeMode);
 	});
 
 	function applyTheme(mode: ThemeMode) {
-		if (typeof document === "undefined") return;
 		const root = document.documentElement;
 		if (mode === "auto") {
 			root.removeAttribute("data-theme");
@@ -106,12 +146,96 @@
 
 	function setTheme(mode: ThemeMode) {
 		themeMode = mode;
-		applyTheme(mode);
-		isThemeMenuOpen = false;
+		closeThemeMenu();
+		// Cross-fade the recolor with the same primitive Magic Move uses
+		if (document.startViewTransition && !prefersReducedMotion.current) {
+			document.startViewTransition(() => applyTheme(mode));
+		} else {
+			applyTheme(mode);
+		}
 	}
 
-	function handleLogoHover(hovering: boolean) {
-		logoScale.set(hovering ? 1.05 : 1);
+	async function openThemeMenu() {
+		isThemeMenuOpen = true;
+		await tick();
+		focusThemeItem(THEME_MODES.indexOf(themeMode));
+	}
+
+	function closeThemeMenu(returnFocus = false) {
+		if (!isThemeMenuOpen) return;
+		isThemeMenuOpen = false;
+		if (returnFocus) {
+			themeButton?.focus();
+		}
+	}
+
+	function focusThemeItem(index: number) {
+		const items = themeMenu?.querySelectorAll<HTMLButtonElement>(
+			'[role="menuitemradio"]',
+		);
+		if (!items || items.length === 0) return;
+		const clamped = ((index % items.length) + items.length) % items.length;
+		items[clamped]?.focus();
+	}
+
+	function handleThemeButtonKeydown(event: KeyboardEvent) {
+		if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+			event.preventDefault();
+			if (!isThemeMenuOpen) {
+				openThemeMenu();
+			}
+		}
+	}
+
+	function handleThemeMenuKeydown(event: KeyboardEvent, index: number) {
+		switch (event.key) {
+			case "ArrowDown":
+				event.preventDefault();
+				focusThemeItem(index + 1);
+				break;
+			case "ArrowUp":
+				event.preventDefault();
+				focusThemeItem(index - 1);
+				break;
+			case "Home":
+				event.preventDefault();
+				focusThemeItem(0);
+				break;
+			case "End":
+				event.preventDefault();
+				focusThemeItem(THEME_MODES.length - 1);
+				break;
+			case "Escape":
+				event.preventDefault();
+				closeThemeMenu(true);
+				break;
+		}
+	}
+
+	function handleThemeFocusOut(event: FocusEvent) {
+		const container = event.currentTarget as HTMLElement;
+		if (!container.contains(event.relatedTarget as Node | null)) {
+			closeThemeMenu();
+		}
+	}
+
+	function handleWindowKeydown(event: KeyboardEvent) {
+		if (event.key === "Escape" && isMobileMenuOpen) {
+			event.preventDefault();
+			isMobileMenuOpen = false;
+			mobileMenuButton?.focus();
+		}
+	}
+
+	function themeLabel(mode: ThemeMode): string {
+		switch (mode) {
+			case "auto":
+				return "Auto";
+			case "light":
+				return "Light";
+			case "dark":
+				return "Dark";
+		}
 	}
 
 	function getThemeIcon(mode: ThemeMode): string {
@@ -128,32 +252,30 @@
 	function handleClickOutside(event: MouseEvent) {
 		const target = event.target as HTMLElement;
 		if (!target.closest(".theme-dropdown")) {
-			isThemeMenuOpen = false;
+			closeThemeMenu();
 		}
 	}
 
 	$effect(() => {
-		if (typeof window === "undefined") return;
-
 		window.addEventListener("click", handleClickOutside);
 		return () => window.removeEventListener("click", handleClickOutside);
 	});
 </script>
 
+<svelte:window onkeydown={handleWindowKeydown} />
+
 <header class="header glass" style:view-transition-name="app-header">
 	<div class="header-content container">
-		<a
-			href="/"
-			class="logo"
-			onmouseenter={() => handleLogoHover(true)}
-			onmouseleave={() => handleLogoHover(false)}
-		>
-			<span class="logo-scale" style:transform="scale({$logoScale})">
-				<img src="/icon.svg" alt="YumeRobo" class="logo-icon" />
-			</span>
+		<a href="/" class="logo" aria-label="YumeRobo home">
+			<img src="/icon.svg" alt="" class="logo-icon" />
 		</a>
 
-		<div class="search-wrapper" class:focused={isSearchFocused}>
+		<form
+			class="search-wrapper"
+			class:focused={isSearchFocused}
+			role="search"
+			onsubmit={handleSearchSubmit}
+		>
 			<svg
 				class="search-icon"
 				xmlns="http://www.w3.org/2000/svg"
@@ -165,16 +287,19 @@
 				stroke-width="2"
 				stroke-linecap="round"
 				stroke-linejoin="round"
+				aria-hidden="true"
 			>
 				<circle cx="11" cy="11" r="8"></circle>
 				<path d="m21 21-4.3-4.3"></path>
 			</svg>
 			<input
-				type="text"
+				type="search"
 				class="search-input"
 				placeholder="Search releases..."
+				aria-label="Search releases"
 				value={searchQuery}
 				oninput={handleSearchInput}
+				onkeydown={handleSearchKeydown}
 				oncompositionstart={handleCompositionStart}
 				oncompositionend={handleCompositionEnd}
 				onfocus={() => (isSearchFocused = true)}
@@ -182,9 +307,15 @@
 			/>
 			{#if searchQuery}
 				<button
+					type="button"
 					class="clear-btn"
 					onclick={clearSearch}
 					aria-label="Clear search"
+					transition:scale={{
+						duration: prefersReducedMotion.current ? 0 : 120,
+						start: 0.5,
+						easing: cubicOut,
+					}}
 				>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
@@ -196,13 +327,14 @@
 						stroke-width="2"
 						stroke-linecap="round"
 						stroke-linejoin="round"
+						aria-hidden="true"
 					>
 						<path d="M18 6 6 18"></path>
 						<path d="m6 6 12 12"></path>
 					</svg>
 				</button>
 			{/if}
-		</div>
+		</form>
 
 		<nav class="nav-desktop" aria-label="Primary">
 			<a
@@ -210,7 +342,7 @@
 				target="_blank"
 				rel="noopener noreferrer"
 				class="telegram-button"
-				aria-label="Telegram"
+				aria-label="Telegram channel"
 			>
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
@@ -225,33 +357,52 @@
 					/>
 				</svg>
 			</a>
-			<div class="theme-dropdown">
+			<div class="theme-dropdown" onfocusout={handleThemeFocusOut}>
 				<button
 					class="nav-button"
+					bind:this={themeButton}
 					onclick={(event) => {
 						event.stopPropagation();
-						isThemeMenuOpen = !isThemeMenuOpen;
+						if (isThemeMenuOpen) {
+							closeThemeMenu();
+						} else {
+							openThemeMenu();
+						}
 					}}
-					aria-label="Toggle theme"
+					onkeydown={handleThemeButtonKeydown}
+					aria-label="Theme: {themeLabel(themeMode)}"
+					aria-haspopup="menu"
+					aria-expanded={isThemeMenuOpen}
+					aria-controls="theme-menu"
 				>
-					<span class="theme-icon">{getThemeIcon(themeMode)}</span>
+					<span class="theme-icon" aria-hidden="true"
+						>{getThemeIcon(themeMode)}</span
+					>
 				</button>
 				{#if isThemeMenuOpen}
-					<div class="dropdown-menu">
-						{#each ["auto", "light", "dark"] as const as mode}
+					<div
+						class="dropdown-menu"
+						id="theme-menu"
+						role="menu"
+						aria-label="Theme"
+						bind:this={themeMenu}
+						transition:scale={menuTransition}
+					>
+						{#each THEME_MODES as mode, index}
 							<button
 								class="dropdown-item"
 								class:active={themeMode === mode}
+								role="menuitemradio"
+								aria-checked={themeMode === mode}
+								tabindex="-1"
 								onclick={() => setTheme(mode)}
+								onkeydown={(event) =>
+									handleThemeMenuKeydown(event, index)}
 							>
-								<span class="dropdown-icon">{getThemeIcon(mode)}</span>
-								<span
-									>{mode === "auto"
-										? "Auto"
-										: mode === "light"
-											? "Light"
-											: "Dark"}</span
+								<span class="dropdown-icon" aria-hidden="true"
+									>{getThemeIcon(mode)}</span
 								>
+								<span>{themeLabel(mode)}</span>
 							</button>
 						{/each}
 					</div>
@@ -261,8 +412,11 @@
 
 		<button
 			class="mobile-menu-button"
+			bind:this={mobileMenuButton}
 			onclick={() => (isMobileMenuOpen = !isMobileMenuOpen)}
-			aria-label="Toggle menu"
+			aria-label="Menu"
+			aria-expanded={isMobileMenuOpen}
+			aria-controls="mobile-menu"
 		>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
@@ -274,6 +428,7 @@
 				stroke-width="2"
 				stroke-linecap="round"
 				stroke-linejoin="round"
+				aria-hidden="true"
 			>
 				{#if isMobileMenuOpen}
 					<path d="M18 6 6 18"></path>
@@ -288,8 +443,13 @@
 	</div>
 
 	{#if isMobileMenuOpen}
-		<nav class="nav-mobile" aria-label="Mobile menu">
-			<div class="mobile-search-wrapper">
+		<nav
+			class="nav-mobile"
+			id="mobile-menu"
+			aria-label="Mobile menu"
+			transition:slide={slideTransition}
+		>
+			<form class="mobile-search-wrapper" role="search" onsubmit={handleSearchSubmit}>
 				<svg
 					class="search-icon"
 					xmlns="http://www.w3.org/2000/svg"
@@ -301,27 +461,30 @@
 					stroke-width="2"
 					stroke-linecap="round"
 					stroke-linejoin="round"
+					aria-hidden="true"
 				>
 					<circle cx="11" cy="11" r="8"></circle>
 					<path d="m21 21-4.3-4.3"></path>
 				</svg>
 				<input
-					type="text"
+					type="search"
 					class="search-input mobile"
 					placeholder="Search releases..."
+					aria-label="Search releases"
 					value={searchQuery}
 					oninput={handleSearchInput}
+					onkeydown={handleSearchKeydown}
 					oncompositionstart={handleCompositionStart}
 					oncompositionend={handleCompositionEnd}
 				/>
-			</div>
+			</form>
 
 			<a
 				href={TELEGRAM_URL}
 				target="_blank"
 				rel="noopener noreferrer"
 				class="telegram-button mobile"
-				aria-label="Telegram"
+				aria-label="Telegram channel"
 			>
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
@@ -339,15 +502,21 @@
 
 			<div class="mobile-controls">
 				<div class="control-group">
-					<span class="control-label">Theme</span>
-					<div class="control-buttons">
-						{#each ["auto", "light", "dark"] as const as mode}
+					<span class="control-label" id="mobile-theme-label">Theme</span>
+					<div
+						class="control-buttons"
+						role="group"
+						aria-labelledby="mobile-theme-label"
+					>
+						{#each THEME_MODES as mode}
 							<button
 								class="control-btn"
 								class:active={themeMode === mode}
+								aria-label={themeLabel(mode)}
+								aria-pressed={themeMode === mode}
 								onclick={() => setTheme(mode)}
 							>
-								{getThemeIcon(mode)}
+								<span aria-hidden="true">{getThemeIcon(mode)}</span>
 							</button>
 						{/each}
 					</div>
@@ -381,13 +550,15 @@
 		text-decoration: none;
 	}
 
-	.logo-scale {
-		display: inline-flex;
-	}
-
 	.logo-icon {
 		height: 28px;
 		width: auto;
+		transition: transform var(--duration-normal) var(--ease-spring);
+	}
+
+	.logo:hover .logo-icon,
+	.logo:focus-visible .logo-icon {
+		transform: scale(1.06);
 	}
 
 	.search-wrapper {
@@ -428,6 +599,11 @@
 			box-shadow var(--duration-fast) var(--ease-out);
 	}
 
+	.search-input::-webkit-search-cancel-button {
+		-webkit-appearance: none;
+		display: none;
+	}
+
 	.search-input:focus {
 		outline: none;
 		background: var(--color-background);
@@ -436,7 +612,7 @@
 	}
 
 	.search-input::placeholder {
-		color: var(--color-label-tertiary);
+		color: var(--color-label-secondary);
 	}
 
 	.clear-btn {
@@ -527,6 +703,7 @@
 		border-radius: var(--radius-md);
 		box-shadow: var(--shadow-md);
 		z-index: 50;
+		transform-origin: top right;
 	}
 
 	.dropdown-item {
@@ -546,7 +723,8 @@
 		text-align: left;
 	}
 
-	.dropdown-item:hover {
+	.dropdown-item:hover,
+	.dropdown-item:focus-visible {
 		background: var(--color-fill);
 	}
 
@@ -638,7 +816,10 @@
 		border: none;
 		border-radius: var(--radius-sm);
 		cursor: pointer;
-		transition: all var(--duration-fast) var(--ease-out);
+		transition:
+			background-color var(--duration-fast) var(--ease-out),
+			color var(--duration-fast) var(--ease-out),
+			box-shadow var(--duration-fast) var(--ease-out);
 	}
 
 	.control-btn:hover {
