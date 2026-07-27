@@ -1100,6 +1100,50 @@ async function pruneAssets() {
     }
 }
 
+async function backfillPosterMeta() {
+    const records = await loadReleaseRecords();
+    if (records.length === 0) {
+        console.log('[i] No releases found');
+        return;
+    }
+
+    const { extractPosterMeta } = await import('./lib/images');
+    const { writePosterMetaMap } = await import('./lib/poster-meta');
+    const map: Record<string, { accent: string; blur: string }> = {};
+    let failures = 0;
+
+    for (const record of records) {
+        const assetId = getPosterAssetId(record.data.poster);
+        if (!assetId) {
+            console.log(`[!] Skipping ${record.slug}: malformed poster path ${record.data.poster}`);
+            failures += 1;
+            continue;
+        }
+
+        const sourcePosterPath = path.join(STATIC_PATH, 'posters', `${assetId}.avif`);
+        if (!await fileExists(sourcePosterPath)) {
+            console.log(`[!] Skipping ${record.slug}: missing source poster ${sourcePosterPath}`);
+            failures += 1;
+            continue;
+        }
+
+        try {
+            map[assetId] = await extractPosterMeta(sourcePosterPath);
+            console.log(`[+] ${record.slug}: ${map[assetId].accent}`);
+        } catch (error) {
+            console.log(`[!] Failed for ${record.slug}: ${error}`);
+            failures += 1;
+        }
+    }
+
+    await writePosterMetaMap(map);
+    console.log(`[✓] Wrote poster meta for ${Object.keys(map).length} release(s)`);
+
+    if (failures > 0) {
+        process.exitCode = 1;
+    }
+}
+
 async function backfillCardPosters() {
     const records = await loadReleaseRecords();
     if (records.length === 0) {
@@ -1263,6 +1307,9 @@ async function main() {
             break;
         case 'backfill-card-posters':
             await backfillCardPosters();
+            break;
+        case 'backfill-poster-meta':
+            await backfillPosterMeta();
             break;
         case 'help':
             console.log(getCliUsage());

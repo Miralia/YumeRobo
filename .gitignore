@@ -24,6 +24,7 @@ vite.config.ts.timestamp-*
 
 # Private Content
 src/lib/content/releases/
+src/lib/content/poster-meta.json
 static/posters/
 static/mediainfo/
 static/og/

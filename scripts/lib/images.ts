@@ -11,6 +11,10 @@ const CARD_POSTER_WIDTH = 200;
 const CARD_POSTER_QUALITY = 60;
 const OG_WIDTH = 600;
 const OG_QUALITY = 80;
+// Micro thumbnail embedded as a data URI: CSS upscaling of a 24px image
+// gives the detail page its ambient glow without any runtime blur.
+const MICRO_WIDTH = 24;
+const MICRO_QUALITY = 45;
 const OUTPUT_DIR = 'static/posters';
 const OG_DIR = 'static/og';
 
@@ -119,6 +123,12 @@ export async function processPoster(source: string, assetId: string): Promise<st
         console.log(`[+] Card poster saved to ${outputPathCardAvif}`);
         console.log(`[+] OG Image saved to ${outputPathJpg}`);
 
+        // 4. Dynamic color metadata (accent + micro blur thumb)
+        const { upsertPosterMeta } = await import('./poster-meta');
+        const meta = await extractPosterMetaFromSharp(image);
+        await upsertPosterMeta(assetId, meta);
+        console.log(`[+] Poster meta recorded (accent ${meta.accent})`);
+
         return getPosterPath(assetId);
 
     } catch (error) {
@@ -142,4 +152,75 @@ export async function backfillCardPoster(posterSourcePath: string, assetId: stri
         console.error('❌ Error generating card poster:', error);
         throw error;
     }
+}
+
+/**
+ * Build-time poster metadata driving the Ginmaku dynamic color system:
+ * - accent: dominant poster color, normalized into a usable ambient range
+ * - blur: 24px-wide AVIF as a data URI (~0.5-1KB), upscaled by CSS into
+ *   the detail-page glow — replaces runtime blur() entirely
+ */
+export interface PosterMeta {
+    accent: string;
+    blur: string;
+}
+
+/**
+ * Clamp the dominant color into a range that works as an ambient tint:
+ * near-black or near-white dominants produce invisible or washed glows.
+ */
+function normalizeAccent(r: number, g: number, b: number): string {
+    const rn = r / 255, gn = g / 255, bn = b / 255;
+    const max = Math.max(rn, gn, bn), min = Math.min(rn, gn, bn);
+    let h = 0;
+    const l = (max + min) / 2;
+    const d = max - min;
+    let s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+
+    if (d !== 0) {
+        if (max === rn) h = ((gn - bn) / d) % 6;
+        else if (max === gn) h = (bn - rn) / d + 2;
+        else h = (rn - gn) / d + 4;
+        h *= 60;
+        if (h < 0) h += 360;
+    }
+
+    const clampedL = Math.min(0.6, Math.max(0.34, l));
+    const clampedS = Math.min(0.85, s);
+
+    const c = (1 - Math.abs(2 * clampedL - 1)) * clampedS;
+    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+    const m = clampedL - c / 2;
+    let r2 = 0, g2 = 0, b2 = 0;
+    if (h < 60) [r2, g2, b2] = [c, x, 0];
+    else if (h < 120) [r2, g2, b2] = [x, c, 0];
+    else if (h < 180) [r2, g2, b2] = [0, c, x];
+    else if (h < 240) [r2, g2, b2] = [0, x, c];
+    else if (h < 300) [r2, g2, b2] = [x, 0, c];
+    else [r2, g2, b2] = [c, 0, x];
+
+    const toHex = (v: number) =>
+        Math.round((v + m) * 255)
+            .toString(16)
+            .padStart(2, '0');
+    return `#${toHex(r2)}${toHex(g2)}${toHex(b2)}`;
+}
+
+async function extractPosterMetaFromSharp(image: sharp.Sharp): Promise<PosterMeta> {
+    const { dominant } = await image.stats();
+    const accent = normalizeAccent(dominant.r, dominant.g, dominant.b);
+
+    const microBuffer = await image
+        .clone()
+        .resize(MICRO_WIDTH, null, { withoutEnlargement: true })
+        .avif({ quality: MICRO_QUALITY, effort: 4 })
+        .toBuffer();
+    const blur = `data:image/avif;base64,${microBuffer.toString('base64')}`;
+
+    return { accent, blur };
+}
+
+export async function extractPosterMeta(source: string): Promise<PosterMeta> {
+    const buffer = await readImageSource(source);
+    return extractPosterMetaFromSharp(sharp(buffer));
 }
