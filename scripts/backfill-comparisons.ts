@@ -20,6 +20,17 @@ interface ReleaseRecord {
 const releasesDir = path.join(process.cwd(), "src", "lib", "content", "releases");
 const force = process.argv.includes("--force");
 
+if (process.argv.includes("--help") || process.argv.includes("-h")) {
+  console.log([
+    "Usage: bun run backfill:comparisons [--force]",
+    "",
+    "Backfill comparison sidecars for every historical release.",
+    "Existing sidecars are skipped unless --force is provided.",
+    "When Tech Info contains multiple slow.pics links, you must select one.",
+  ].join("\n"));
+  process.exit(0);
+}
+
 async function loadReleases(): Promise<ReleaseRecord[]> {
   const records: ReleaseRecord[] = [];
   for (const file of await fs.readdir(releasesDir)) {
