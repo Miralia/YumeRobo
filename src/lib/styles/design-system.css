@@ -819,7 +819,8 @@ html:not(.theme-vt)::view-transition-old(app-header) {
 /* ===== MAGIC MOVE TRANSITIONS ===== */
 /*
  * Shared-element morphs are matched by view-transition-class (the
- * elements declare `view-transition-class: poster` / `title` / `badge`
+ * elements declare `view-transition-class: poster` / `title` / `timing` /
+ * `badge`
  * alongside their unique view-transition-name). Prefix wildcards like
  * `poster-*` are not valid pseudo-element arguments and get dropped,
  * so classes are the only way to style the whole family.
@@ -855,19 +856,56 @@ html:not(.theme-vt)::view-transition-old(app-header) {
 	animation-timing-function: var(--ease-morph);
 }
 
-/*
- * Text can't cross-fade cleanly: with both snapshots visible the two
- * title sizes double-expose. Hide the old snapshot entirely — the new
- * title alone rides the group's geometry morph.
- */
+@keyframes shared-text-out {
+	0%,
+	38% {
+		opacity: 1;
+	}
+
+	68%,
+	100% {
+		opacity: 0;
+	}
+}
+
+@keyframes shared-text-in {
+	0%,
+	38% {
+		opacity: 0;
+	}
+
+	68%,
+	100% {
+		opacity: 1;
+	}
+}
+
+/* Keep the destination raster hidden until the geometry is close to its
+   final size. This avoids enlarging the compact home title on back nav. */
 ::view-transition-old(*.title) {
-	animation: none;
+	animation: var(--vt-morph-duration) var(--ease-morph) both shared-text-out;
 	mix-blend-mode: normal;
-	opacity: 0;
 }
 
 ::view-transition-new(*.title) {
-	animation: none;
+	animation: var(--vt-morph-duration) var(--ease-morph) both shared-text-in;
+	mix-blend-mode: normal;
+}
+
+/* Year + timestamp is the second shared caption element. It follows the
+   title's handoff so the two lines remain visually attached in motion. */
+::view-transition-group(*.timing) {
+	animation-duration: var(--vt-morph-duration);
+	animation-timing-function: var(--ease-morph);
+}
+
+::view-transition-old(*.timing) {
+	animation: var(--vt-morph-duration) var(--ease-morph) both shared-text-out;
+	mix-blend-mode: normal;
+}
+
+::view-transition-new(*.timing) {
+	animation: var(--vt-morph-duration) var(--ease-morph) both shared-text-in;
 	mix-blend-mode: normal;
 }
 

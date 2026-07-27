@@ -1,12 +1,16 @@
 <script lang="ts">
-    import { fly, slide } from "svelte/transition";
+    import { fade, fly, slide } from "svelte/transition";
     import { untrack } from "svelte";
     import LocalDateTime from "$lib/components/LocalDateTime.svelte";
     import MediaInfoCard from "$lib/components/MediaInfoCard.svelte";
     import type { Release, ExternalLinks } from "$lib/content/schema";
     import { externalIcons } from "$lib/utils/icons";
     import { env } from "$env/dynamic/public";
-    import { entranceFly, slideParams } from "$lib/utils/animation";
+    import {
+        entranceFade,
+        entranceFly,
+        slideParams,
+    } from "$lib/utils/animation";
     import { posterTilt } from "$lib/utils/poster-tilt";
 
     const SITE_URL = env.PUBLIC_SITE_URL || "https://yumerobo.moe";
@@ -270,10 +274,7 @@
         </div>
 
         <!-- Info -->
-        <div
-            class="info"
-            in:fly={entranceFly("hero", 0, { axis: "x" })}
-        >
+        <div class="info">
             <h1
                 class="title"
                 style:view-transition-name="title-{data.release.slug}"
@@ -282,20 +283,28 @@
             </h1>
 
             <div class="meta-row">
-                {#if data.release.year}
-                    <span class="meta-item">{data.release.year}</span>
-                {/if}
+                <div
+                    class="release-timing"
+                    style:view-transition-name="timing-{data.release.slug}"
+                >
+                    {#if data.release.year}
+                        <span>{data.release.year}</span>
+                        <span class="timing-separator" aria-hidden="true">·</span>
+                    {/if}
+                    <span><LocalDateTime value={data.release.date} /></span>
+                </div>
                 {#if (data.release.media_type === "tv" || data.release.media_type === "tva") && data.release.season}
                     <span class="meta-item">Season {data.release.season}</span>
                 {/if}
-                <span class="meta-item">
-                    <LocalDateTime value={data.release.date} />
-                </span>
             </div>
 
             <!-- External Links -->
             {#if availableLinks.length > 0}
-                <ul class="actions" aria-label="External links">
+                <ul
+                    class="actions"
+                    aria-label="External links"
+                    in:fade={entranceFade("hero")}
+                >
                     {#each availableLinks as def (def.key)}
                         {@const url = data.release.links?.[def.key]}
                         {@const icon = externalIcons[def.key]}
@@ -680,10 +689,12 @@
     .meta-row {
         display: flex;
         flex-wrap: wrap;
+        align-items: baseline;
         gap: var(--space-2);
         max-width: 500px;
     }
 
+    .release-timing,
     .meta-item {
         font-family: var(--font-sans);
         font-size: var(--text-sm);
@@ -692,9 +703,20 @@
         line-height: 1.4;
     }
 
-    .meta-item:not(:last-child)::after {
+    .release-timing {
+        display: flex;
+        align-items: baseline;
+        gap: 5px;
+        view-transition-class: timing;
+    }
+
+    .timing-separator {
+        color: var(--color-label-tertiary);
+    }
+
+    .meta-item::before {
         content: "•";
-        margin-left: var(--space-2);
+        margin-right: var(--space-2);
         color: var(--color-label-tertiary);
     }
 

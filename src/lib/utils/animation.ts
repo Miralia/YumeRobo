@@ -68,6 +68,23 @@ export function entranceFly(
 }
 
 /**
+ * Opacity-only counterpart for elements that should join the detail-page
+ * entrance timing without inheriting directional movement.
+ */
+export function entranceFade(
+    section: keyof typeof sections,
+    index = 0,
+    options: { lead?: number } = {},
+) {
+    const { lead = 0 } = options;
+    return {
+        duration: motionSafe(duration.entrance),
+        delay: motionSafe(Math.max(0, sectionDelay(section, index) - lead)),
+        easing: cubicOut,
+    };
+}
+
+/**
  * Shared accordion slide config (reduced-motion aware).
  */
 export function slideParams() {

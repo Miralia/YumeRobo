@@ -76,7 +76,12 @@
         >
             {card.title}
         </h2>
-        <p class="sub">
+        <p
+            class="sub"
+            style:view-transition-name={isTransitioning
+                ? `timing-${card.slug}`
+                : undefined}
+        >
             {#if card.year}<span class="release-year"
                     >{card.year}<span class="sep" aria-hidden="true"
                         >·</span
@@ -184,6 +189,7 @@
         flex-wrap: wrap;
         align-items: baseline;
         column-gap: 5px;
+        view-transition-class: timing;
     }
 
     .sep {
