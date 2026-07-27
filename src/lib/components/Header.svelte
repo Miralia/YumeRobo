@@ -454,7 +454,7 @@
 					href={TELEGRAM_URL}
 					target="_blank"
 					rel="noopener noreferrer"
-					class="telegram-button"
+					class="contact-button"
 					aria-label="Telegram channel"
 				>
 				<svg
@@ -472,7 +472,7 @@
 				</a>
 				<a
 					href={EMAIL_URL}
-					class="telegram-button"
+					class="contact-button"
 					aria-label="Email YumeRobo@proton.me"
 				>
 				<svg
@@ -563,7 +563,7 @@
 		>
 			{#each THEME_MODES as mode, index}
 				<button
-					class="dropdown-item liquid-control"
+					class="dropdown-item"
 					class:active={themeMode === mode}
 					role="menuitemradio"
 					aria-checked={themeMode === mode}
@@ -610,7 +610,7 @@
 				</svg>
 				<input
 					type="search"
-					class="search-input mobile liquid-control"
+					class="search-input mobile"
 					placeholder="Search releases..."
 					aria-label="Search releases"
 					value={searchQuery}
@@ -626,7 +626,7 @@
 					href={TELEGRAM_URL}
 					target="_blank"
 					rel="noopener noreferrer"
-					class="telegram-button mobile liquid-control"
+					class="contact-button mobile"
 					aria-label="Telegram channel"
 				>
 					<svg
@@ -644,7 +644,7 @@
 				</a>
 				<a
 					href={EMAIL_URL}
-					class="telegram-button mobile liquid-control"
+					class="contact-button mobile"
 					aria-label="Email YumeRobo@proton.me"
 				>
 					<svg
@@ -675,7 +675,7 @@
 					>
 						{#each THEME_MODES as mode}
 							<button
-								class="control-btn liquid-control"
+								class="control-btn"
 								class:active={themeMode === mode}
 								aria-label={themeLabel(mode)}
 								aria-pressed={themeMode === mode}
@@ -850,7 +850,7 @@
 		overflow: hidden;
 	}
 
-	.telegram-button {
+	.contact-button {
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
@@ -865,7 +865,7 @@
 			background-color var(--duration-fast) var(--ease-out);
 	}
 
-	.telegram-button:hover {
+	.contact-button:hover {
 		background-color: var(--liquid-control-hover);
 		color: var(--color-accent);
 	}
@@ -984,11 +984,18 @@
 		width: 100%;
 		padding: var(--space-3);
 		padding-left: calc(var(--space-3) + 18px + var(--space-2));
+		background: var(--liquid-control);
+		border: 1px solid transparent;
+		border-radius: var(--radius-lg);
 	}
 
 	.mobile-links {
 		display: flex;
-		gap: var(--space-2);
+		align-self: flex-start;
+		background: var(--liquid-control);
+		border: 1px solid transparent;
+		border-radius: var(--radius-full);
+		overflow: hidden;
 	}
 
 	/* Between 481-639px the header search is already visible; the
@@ -999,7 +1006,7 @@
 		}
 	}
 
-	.telegram-button.mobile {
+	.contact-button.mobile {
 		width: 44px;
 		height: 44px;
 	}
@@ -1052,9 +1059,8 @@
 	}
 
 	.control-btn.active {
-		background: var(--liquid-surface-opaque);
+		background: var(--liquid-control-hover);
 		color: var(--color-accent);
-		box-shadow: var(--shadow-sm);
 	}
 
 	@media (min-width: 640px) {
@@ -1104,7 +1110,7 @@
 		.contact-group,
 		.search-input,
 		.clear-btn,
-		.telegram-button,
+		.contact-button,
 		.nav-button,
 		.mobile-menu-button,
 		.context-back,

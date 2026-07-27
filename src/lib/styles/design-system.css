@@ -389,6 +389,8 @@ pre {
 }
 
 /* ===== UTILITY CLASSES ===== */
+/* A surface owns the backdrop sample. Keep surfaces as siblings on the
+   navigation plane; never place another sampling surface inside one. */
 .liquid-surface {
 	position: relative;
 	isolation: isolate;
@@ -422,6 +424,8 @@ pre {
 	}
 }
 
+/* Non-sampling interaction fill. This can sit inside a Liquid Glass surface
+   without creating glass-on-glass or another backdrop-filter pass. */
 .liquid-control {
 	background-color: var(--liquid-control);
 	border: 1px solid transparent;
