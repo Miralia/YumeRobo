@@ -63,6 +63,7 @@ import { classifyTorrentTelegramLabel } from './lib/torrent-label';
 import { generateReleaseCode } from './lib/templates';
 import { generateHash, type ReleaseData, type TorrentEntry, type MediaInfoEntry, type SpecEntry } from './lib/types';
 import { backfillCardPoster, processPoster } from './lib/images';
+import { generateHomeSocialCard, generateReleaseSocialCard } from './lib/social-cards';
 import { buildCaption, sendPhotoWithRetry, isSupportedFormat } from './lib/telegram';
 import { tempManager } from './lib/cleanup';
 import { getCliUsage, resolveCliCommand } from './lib/cli';
@@ -845,6 +846,7 @@ export const release: Release = ${cleanCode};
             }
             const targetPath = path.join(RELEASES_DIR, `${slug}.ts`);
             await fs.writeFile(targetPath, fileContent, 'utf-8');
+            await generateReleaseSocialCard(releaseData);
             const validation = await validateReleaseAssets({ release: releaseData });
             if (hasValidationIssues(validation)) {
                 console.log(`\n[!] Release written to: ${targetPath}`);
@@ -1037,6 +1039,7 @@ async function edit() {
 export const release: Release = ${cleanCode};
 `;
             await fs.writeFile(filePath, fileContent);
+            await generateReleaseSocialCard(updatedData);
             const otherReleases = records
                 .filter((record) => record.slug !== slug)
                 .map((record) => record.data);
@@ -1313,6 +1316,19 @@ async function backfillCardPosters() {
     }
 }
 
+async function backfillSocialCards() {
+    const records = await loadReleaseRecords();
+    let generated = 0;
+
+    for (const record of records) {
+        await generateReleaseSocialCard(record.data);
+        generated += 1;
+        console.log(`[+] ${record.slug}: release social card`);
+    }
+    await generateHomeSocialCard();
+    console.log(`[✓] Generated ${generated} release social card(s) and the home card`);
+}
+
 async function deleteRelease(slug: string) {
     if (!slug) {
         console.log('[!] Slug required for delete. Usage: bun run cli delete <slug>');
@@ -1437,6 +1453,9 @@ async function main() {
             break;
         case 'backfill-poster-meta':
             await backfillPosterMeta();
+            break;
+        case 'backfill-social-cards':
+            await backfillSocialCards();
             break;
         case 'help':
             console.log(getCliUsage());

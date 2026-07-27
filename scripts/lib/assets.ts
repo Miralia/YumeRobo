@@ -284,6 +284,8 @@ function toReferenceMap(
 	const refs = new Map<string, ManagedAssetReference[]>();
 	const malformedReferences: ManagedAssetIssue[] = [];
 	const derivedMismatches: ManagedAssetIssue[] = [];
+	const homeSocialCard = createAssetEntry(rootDir, "og", `${OG_DIR}/home.jpg`);
+	refs.set(`og:${homeSocialCard.path}`, [homeSocialCard]);
 
 	for (const release of releases) {
 		const { issues, entries } = getReleaseAssetReferences(release, rootDir);

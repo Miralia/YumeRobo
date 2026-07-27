@@ -9,6 +9,7 @@ export type CliCommand =
 	| "prune-assets"
 	| "backfill-card-posters"
 	| "backfill-poster-meta"
+	| "backfill-social-cards"
 	| "help";
 
 export function resolveCliCommand(argv: string[]): {
@@ -44,6 +45,7 @@ export function getCliUsage(): string {
 		"  prune-assets         Delete orphaned managed media assets after confirmation",
 		"  backfill-card-posters Generate missing card poster assets for all releases",
 		"  backfill-poster-meta Extract accent colors and micro blur thumbs for all releases",
+		"  backfill-social-cards Generate social cards for the home page and all releases",
 		"  deploy               Build and deploy to Cloudflare Pages",
 		"  help                 Show this help message",
 	].join("\n");

@@ -2,21 +2,19 @@
     import type { PageProps } from "./$types";
     import { browser } from "$app/environment";
     import { page } from "$app/state";
-    import { env } from "$env/dynamic/public";
     import { tick } from "svelte";
     import { flip } from "svelte/animate";
     import { fade } from "svelte/transition";
     import { cubicOut } from "svelte/easing";
     import { prefersReducedMotion } from "svelte/motion";
     import ReleaseCard from "$lib/components/ReleaseCard.svelte";
+    import SocialMeta from "$lib/components/SocialMeta.svelte";
     import { filterCards } from "$lib/content/cards";
     import { stagger } from "$lib/utils/animation";
     import {
         HOME_RELEASE_BATCH_SIZE,
         getNextDisplayCount,
     } from "$lib/utils/infinite-scroll";
-
-    const SITE_URL = env.PUBLIC_SITE_URL || "https://yumerobo.moe";
 
     let { data }: PageProps = $props();
 
@@ -109,29 +107,12 @@
     });
 </script>
 
-<svelte:head>
-    <title>夢みる機械</title>
-    <meta name="description" content="Latest release" />
-
-    <!-- Open Graph -->
-    <meta property="og:title" content="夢みる機械" />
-    <meta property="og:description" content="Latest release" />
-    <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="夢みる機械" />
-    {#if data.cards.length > 0}
-        <meta
-            property="og:image"
-            content="{SITE_URL}{data.cards[0].poster
-                .replace('.avif', '.jpg')
-                .replace('/posters/', '/og/')}"
-        />
-    {/if}
-
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="夢みる機械" />
-    <meta name="twitter:description" content="Latest release" />
-</svelte:head>
+<SocialMeta
+    title="夢みる機械"
+    description="A record of some releases."
+    pathname="/"
+    image={{ path: "/og/home.jpg", alt: "夢みる機械 — A record of some releases." }}
+/>
 
 <div class="home-page container">
     <!-- Search result announcement for assistive tech. Permanently
