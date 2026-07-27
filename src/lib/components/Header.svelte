@@ -19,6 +19,7 @@
 	let isTyping = false;
 	let isComposing = false;
 	let originUrl: string | null = null;
+	let canReturnToHomeThroughHistory = false;
 	let searchQuery = $state("");
 	let isMobileMenuOpen = $state(false);
 	let isDetailPage = $derived(Boolean(page.params.slug));
@@ -75,10 +76,37 @@
 	// user initiated elsewhere (card click, back/forward, clear). Only
 	// one timer is ever pending, and the search's own goto fires after
 	// its timer has been consumed, so cancelling unconditionally is safe.
-	beforeNavigate(() => {
+	beforeNavigate(({ from, to }) => {
 		navigateToSearch.cancel();
 		isTyping = false;
+
+		// The home snapshot (including its loaded card count and scroll
+		// position) is restored only when revisiting its history entry.
+		// Remember when the detail entry was reached directly from home so
+		// the header control can use history.back() instead of creating a
+		// fresh home entry at scroll position zero.
+		if (to?.route.id === "/[slug]") {
+			canReturnToHomeThroughHistory = from?.route.id === "/";
+		}
 	});
+
+	function handleBackToHome(event: MouseEvent) {
+		// Preserve native modified/middle-click behavior and retain href="/"
+		// as the safe fallback for directly opened detail pages.
+		if (
+			!canReturnToHomeThroughHistory ||
+			event.button !== 0 ||
+			event.metaKey ||
+			event.ctrlKey ||
+			event.shiftKey ||
+			event.altKey
+		) {
+			return;
+		}
+
+		event.preventDefault();
+		history.back();
+	}
 
 	function clearSearch() {
 		navigateToSearch.cancel();
@@ -311,6 +339,7 @@
 					class="header-leading context-back liquid-control"
 					aria-label="Back to releases"
 					style:view-transition-name="header-leading"
+					onclick={handleBackToHome}
 				>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
