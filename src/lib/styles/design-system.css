@@ -459,8 +459,8 @@ pre {
 /* ===== MAGIC MOVE TRANSITIONS ===== */
 /*
  * Shared-element morphs are matched by view-transition-class (the
- * elements declare `view-transition-class: poster` / `title` alongside
- * their unique view-transition-name). Prefix wildcards like
+ * elements declare `view-transition-class: poster` / `title` / `badge`
+ * alongside their unique view-transition-name). Prefix wildcards like
  * `poster-*` are not valid pseudo-element arguments and get dropped,
  * so classes are the only way to style the whole family.
  */
@@ -505,53 +505,31 @@ pre {
 	mix-blend-mode: normal;
 }
 
-/* Badge transition: fly in from left as the poster morph settles */
-@keyframes badge-fly-in {
-	from {
-		opacity: 0;
-		transform: translateX(-20px);
-	}
-
-	to {
-		opacity: 1;
-		transform: translateX(0);
-	}
+/* The poster badge is a shared element and lands on the same clock. */
+::view-transition-group(*.badge) {
+	animation-duration: var(--vt-morph-duration);
+	animation-timing-function: var(--ease-morph);
 }
 
-@keyframes badge-fade-out {
-	from {
-		opacity: 1;
-	}
-
-	to {
-		opacity: 0;
-	}
+::view-transition-image-pair(*.badge) {
+	border-radius: 5px;
+	overflow: hidden;
 }
 
-::view-transition-old(detail-badges) {
-	animation: 100ms ease-out both badge-fade-out;
-}
-
-::view-transition-new(detail-badges) {
-	animation: 280ms var(--ease-out) both badge-fly-in;
-	animation-delay: calc(var(--vt-morph-duration) - 80ms);
+::view-transition-old(*.badge),
+::view-transition-new(*.badge) {
+	animation: none;
+	mix-blend-mode: normal;
 }
 
 /*
  * While a Magic Move is in flight the hero shadow stays off; the
  * poster container's own box-shadow transition then settles it in
- * once the morph lands — a deliberate afterbeat, like the badges.
- * Theme cross-fades (.theme-vt, stamped by the theme switcher) are
- * not navigations: they keep the shadow and skip the badge fly-in.
+ * once the morph lands. Theme cross-fades (.theme-vt, stamped by the
+ * theme switcher) are not navigations and keep the shadow.
  */
 html:active-view-transition:not(.theme-vt) .poster-hero {
 	box-shadow: none;
-}
-
-.theme-vt::view-transition-old(detail-badges),
-.theme-vt::view-transition-new(detail-badges) {
-	animation: none;
-	mix-blend-mode: normal;
 }
 
 /* ===== ENTRANCE ANIMATIONS ===== */

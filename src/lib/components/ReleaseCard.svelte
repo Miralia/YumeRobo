@@ -50,7 +50,12 @@
             decoding={posterLoading.decoding}
         />
         {#if card.badges.length > 0}
-            <span class="badge-chip">{card.badges.join(" · ")}</span>
+            <span
+                class="badge-chip"
+                style:view-transition-name={isTransitioning
+                    ? `badge-${card.slug}`
+                    : undefined}
+            >{card.badges.join(" · ")}</span>
         {/if}
     </div>
 
@@ -133,6 +138,7 @@
         background: rgba(255, 255, 255, 0.92);
         color: #1a1a24;
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+        view-transition-class: badge;
     }
 
     .meta {

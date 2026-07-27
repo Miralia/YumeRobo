@@ -277,16 +277,12 @@
                 )})"
             />
             <div class="poster-gradient"></div>
-            <div
-                class="poster-badges"
-                style:view-transition-name="detail-badges"
-            >
-                {#each data.badges as badge}
-                    <span class="badge {badge === 'Fin' ? 'badge-fin' : ''}"
-                        >{badge}</span
-                    >
-                {/each}
-            </div>
+            {#if data.badges.length > 0}
+                <span
+                    class="badge-chip"
+                    style:view-transition-name="badge-{data.release.slug}"
+                >{data.badges.join(" · ")}</span>
+            {/if}
         </div>
 
         <!-- Info -->
@@ -680,48 +676,29 @@
         border-radius: var(--radius-poster);
     }
 
-    /* Badges container (separate from gradient for clean animation) */
-    .poster-badges {
+    .badge-chip {
         position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        display: flex;
-        flex-direction: row;
-        flex-wrap: wrap;
-        align-items: flex-end;
-        justify-content: flex-start;
-        padding: var(--space-2);
-        gap: 4px;
-    }
-
-    .badge {
+        left: 8px;
+        bottom: 8px;
         font-family: var(--font-sans);
-        font-size: 14px;
+        font-size: 10px;
         font-weight: 700;
-        padding: 6px 12px;
-        background: var(--badge-bg);
-        color: var(--badge-fg);
-        border-radius: var(--radius-sm);
+        letter-spacing: 0.04em;
         line-height: 1;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-        transition: transform var(--duration-fast) var(--ease-spring);
-    }
-
-    .badge:hover {
-        transform: scale(1.05);
-    }
-
-    .badge-fin {
-        background: var(--badge-fin-bg);
-        color: var(--badge-fin-fg);
+        padding: 4px 7px;
+        border-radius: 5px;
+        background: rgba(255, 255, 255, 0.92);
+        color: #1a1a24;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+        view-transition-class: badge;
     }
 
     .info {
         flex: 1;
         display: flex;
         flex-direction: column;
-        gap: var(--space-3);
+        gap: var(--space-4);
+        min-width: 0;
     }
 
     .title {
@@ -732,6 +709,7 @@
         color: var(--color-label);
         margin: 0;
         text-wrap: pretty;
+        line-height: 1.25;
         /* Forward morphs take the class list from the NEW element —
            without this the list→detail title morph falls back to UA
            defaults while detail→list stays styled */
@@ -747,7 +725,8 @@
     .meta-row {
         display: flex;
         flex-wrap: wrap;
-        gap: var(--space-3);
+        gap: var(--space-2);
+        max-width: 500px;
     }
 
     .meta-item {
@@ -755,11 +734,12 @@
         font-size: var(--text-sm);
         color: var(--color-label-secondary);
         font-variant-numeric: tabular-nums;
+        line-height: 1.4;
     }
 
     .meta-item:not(:last-child)::after {
         content: "•";
-        margin-left: var(--space-3);
+        margin-left: var(--space-2);
         color: var(--color-label-tertiary);
     }
 
@@ -772,28 +752,38 @@
         padding: 0;
     }
 
+    .actions li {
+        display: flex;
+    }
+
     .action-button {
         display: inline-flex;
         align-items: center;
         gap: var(--space-2);
-        padding: var(--space-2) var(--space-4);
+        min-height: 36px;
+        padding: var(--space-2) var(--space-3);
         font-size: var(--text-sm);
-        font-weight: 500;
+        font-weight: 600;
+        line-height: 1;
         text-decoration: none;
-        border-radius: var(--radius-md);
+        border-radius: 999px;
         transition:
             color var(--duration-fast) var(--ease-out),
             background-color var(--duration-fast) var(--ease-out),
             border-color var(--duration-fast) var(--ease-out),
-            transform var(--duration-fast) var(--ease-spring);
+            transform var(--duration-fast) var(--ease-spring),
+            box-shadow var(--duration-fast) var(--ease-out);
     }
 
     .external-link {
-        color: var(--color-label-secondary);
-        background: var(--color-fill);
-        font-weight: 600;
-        letter-spacing: 0.02em;
-        border: 1px solid transparent;
+        color: var(--color-label);
+        background: var(--color-background-secondary);
+        border: 1px solid var(--color-separator);
+        box-shadow: inset 3px 0 var(--link-color, var(--color-accent));
+    }
+
+    .external-link svg {
+        flex-shrink: 0;
     }
 
     .external-link:hover,
@@ -802,6 +792,7 @@
         background: var(--link-color, var(--color-accent));
         border-color: var(--link-color, var(--color-accent));
         transform: translateY(-1px);
+        box-shadow: 0 5px 14px -7px var(--link-color, var(--color-accent));
     }
 
     .external-link.dark-text:hover,
