@@ -218,31 +218,6 @@
 </svelte:head>
 
 <article class="detail-page container">
-    <!-- Back Button -->
-    <nav
-        class="breadcrumb"
-        aria-label="Breadcrumb"
-        in:fly={entranceFly("breadcrumb", 0, { offset: -15 })}
-    >
-        <a href="/" class="back-link liquid-control">
-            <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-            >
-                <path d="m15 18-6-6 6-6" />
-            </svg>
-            Back to releases
-        </a>
-    </nav>
-
     <!-- Hero Section -->
     <header class="hero" style:--dyn={data.accent ?? "var(--color-accent)"}>
         {#if data.posterBlur}
@@ -545,39 +520,6 @@
         padding-bottom: var(--space-16);
     }
 
-    /* Breadcrumb */
-    .breadcrumb {
-        margin-bottom: var(--space-2);
-    }
-
-    .back-link {
-        display: inline-flex;
-        align-items: center;
-        gap: var(--space-1);
-        min-height: 44px;
-        padding: var(--space-2) var(--space-3);
-        font-size: var(--text-sm);
-        font-weight: 600;
-        color: var(--color-label-secondary);
-        text-decoration: none;
-        border-radius: var(--radius-full);
-    }
-
-    .back-link svg {
-        transition: transform var(--duration-fast) var(--ease-spring);
-    }
-
-    .back-link:hover,
-    .back-link:focus-visible {
-        color: var(--color-accent);
-    }
-
-    /* Reinforce the list ← detail spatial model */
-    .back-link:hover svg,
-    .back-link:focus-visible svg {
-        transform: translateX(-3px);
-    }
-
     /* Hero */
     .hero {
         position: relative;
@@ -803,7 +745,6 @@
     }
 
     @media (min-width: 640px) {
-        .back-link,
         .action-button {
             min-height: 38px;
         }

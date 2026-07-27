@@ -21,6 +21,7 @@
 	let originUrl: string | null = null;
 	let searchQuery = $state("");
 	let isMobileMenuOpen = $state(false);
+	let isDetailPage = $derived(Boolean(page.params.slug));
 
 	let themeButton = $state<HTMLButtonElement | null>(null);
 	let themeMenu = $state<HTMLDivElement | null>(null);
@@ -304,9 +305,33 @@
 >
 	<div class="header-bar liquid-surface">
 		<div class="header-content">
-		<a href="/" class="logo" aria-label="YumeRobo home">
-			<img src="/icon.svg" alt="" class="logo-icon" />
-		</a>
+			{#if isDetailPage}
+				<a
+					href="/"
+					class="context-back liquid-control"
+					aria-label="Back to releases"
+				>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						width="20"
+						height="20"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						aria-hidden="true"
+					>
+						<path d="m15 18-6-6 6-6" />
+					</svg>
+					<span class="context-back-label">Releases</span>
+				</a>
+			{:else}
+				<a href="/" class="logo" aria-label="YumeRobo home">
+					<img src="/icon.svg" alt="" class="logo-icon" />
+				</a>
+			{/if}
 
 		<form
 			class="search-wrapper"
@@ -657,6 +682,37 @@
 		transform: scale(1.06);
 	}
 
+	.context-back {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
+		width: 44px;
+		height: 44px;
+		padding: 0;
+		color: var(--color-label-secondary);
+		text-decoration: none;
+		border-radius: var(--radius-full);
+	}
+
+	.context-back svg {
+		transition: transform var(--duration-fast) var(--ease-spring);
+	}
+
+	.context-back:hover,
+	.context-back:focus-visible {
+		color: var(--color-accent);
+	}
+
+	.context-back:hover svg,
+	.context-back:focus-visible svg {
+		transform: translateX(-2px);
+	}
+
+	.context-back-label {
+		display: none;
+	}
+
 	.search-wrapper {
 		flex: 1;
 		max-width: 520px;
@@ -961,6 +1017,19 @@
 		.mobile-menu-button {
 			display: none;
 		}
+
+		.context-back {
+			width: auto;
+			height: 36px;
+			gap: var(--space-1);
+			padding-inline: var(--space-3);
+			font-size: var(--text-sm);
+			font-weight: 600;
+		}
+
+		.context-back-label {
+			display: inline;
+		}
 	}
 
 	@media (max-width: 480px) {
@@ -988,6 +1057,7 @@
 		.telegram-button,
 		.nav-button,
 		.mobile-menu-button,
+		.context-back,
 		.dropdown-item,
 		.control-buttons,
 		.control-btn {

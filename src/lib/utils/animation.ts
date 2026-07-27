@@ -23,7 +23,6 @@ export function stagger(index: number, base = 50): number {
  * Provides consistent timing across all page sections
  */
 export const sections = {
-    breadcrumb: { base: 0 },
     hero: { base: 120 },
     specs: { base: 200, offset: 60 },
     mediainfo: { base: 300, offset: 60 },
