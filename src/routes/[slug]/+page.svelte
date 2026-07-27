@@ -149,6 +149,28 @@
         }
     }
 
+    function handleComparisonShortcut(event: KeyboardEvent) {
+        if (
+            !data.comparison ||
+            event.code !== "KeyV" ||
+            event.repeat ||
+            event.isComposing ||
+            event.shiftKey ||
+            event.ctrlKey ||
+            event.altKey ||
+            event.metaKey
+        ) return;
+
+        const target = event.target;
+        if (
+            target instanceof HTMLElement &&
+            (target.isContentEditable || target.closest("input, textarea, select"))
+        ) return;
+
+        event.preventDefault();
+        void openComparison({ updateHistory: true });
+    }
+
     $effect(() => {
         if (!data.comparison) return;
 
@@ -324,6 +346,8 @@
         return `${size.toFixed(2)} ${units[unitIndex]}`;
     }
 </script>
+
+<svelte:window onkeydown={handleComparisonShortcut} />
 
 <svelte:head>
     <title>{data.release.title} | 夢みる機械</title>
