@@ -958,6 +958,8 @@ export const release: Release = ${cleanCode};
             await fs.writeFile(targetPath, fileContent, 'utf-8');
             await publishDraftComparison(slug, comparison);
             await generateReleaseSocialCard(releaseData);
+            const homePosterPaths = (await loadReleaseRecords()).map((record) => record.data.poster);
+            await generateHomeSocialCard([...homePosterPaths, releaseData.poster]);
             const validation = await validateReleaseAssets({ release: releaseData });
             if (hasValidationIssues(validation)) {
                 console.log(`\n[!] Release written to: ${targetPath}`);
@@ -1527,7 +1529,7 @@ async function backfillSocialCards() {
         generated += 1;
         console.log(`[+] ${record.slug}: release social card`);
     }
-    await generateHomeSocialCard();
+    await generateHomeSocialCard(records.map((record) => record.data.poster));
     console.log(`[✓] Generated ${generated} release social card(s) and the home card`);
 }
 

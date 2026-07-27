@@ -7,6 +7,7 @@ import sharp from "sharp";
 import {
     generateHomeSocialCard,
     generateReleaseSocialCard,
+    selectRandomHomePosters,
 } from "./social-cards";
 import type { ReleaseData } from "./types";
 
@@ -56,7 +57,10 @@ test("social cards render as 1200 x 630 JPEG images", async () => {
 
     try {
         const releasePath = await generateReleaseSocialCard(release, rootDir);
-        const homePath = await generateHomeSocialCard(rootDir);
+        const homePath = await generateHomeSocialCard(
+            homePosters.map((slug) => `/posters/${slug}.avif`),
+            rootDir,
+        );
         for (const target of [releasePath, homePath]) {
             const metadata = await sharp(target).metadata();
             assert.equal(metadata.format, "jpeg");
@@ -66,4 +70,27 @@ test("social cards render as 1200 x 630 JPEG images", async () => {
     } finally {
         await fs.rm(rootDir, { recursive: true, force: true });
     }
+});
+
+test("home social cards select four unique random posters", () => {
+    const candidates = [
+        "/posters/a.avif",
+        "/posters/b.avif",
+        "/posters/c.avif",
+        "/posters/d.avif",
+        "/posters/e.avif",
+        "/posters/a.avif",
+    ];
+
+    assert.deepEqual(selectRandomHomePosters(candidates, () => 0), [
+        "/posters/b.avif",
+        "/posters/c.avif",
+        "/posters/d.avif",
+        "/posters/e.avif",
+    ]);
+    assert.equal(new Set(selectRandomHomePosters(candidates)).size, 4);
+    assert.throws(
+        () => selectRandomHomePosters(candidates.slice(0, 3)),
+        /At least 4 unique posters/,
+    );
 });

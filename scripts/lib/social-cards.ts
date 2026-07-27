@@ -10,13 +10,7 @@ const DETAIL_POSTER_WIDTH = 300;
 const DETAIL_POSTER_HEIGHT = 450;
 const HOME_POSTER_WIDTH = 142;
 const HOME_POSTER_HEIGHT = 213;
-
-const HOME_POSTERS = [
-    "/posters/0z9re61m.avif",
-    "/posters/4n8cwx1o.avif",
-    "/posters/y3kb1dkq.avif",
-    "/posters/vbq7p246.avif",
-];
+const HOME_POSTER_COUNT = 4;
 
 function escapeXml(value: string): string {
     return value
@@ -124,6 +118,22 @@ function posterAssetId(posterPath: string): string {
     return path.posix.basename(posterPath).replace(/\.avif$/i, "");
 }
 
+export function selectRandomHomePosters(
+    posterPaths: string[],
+    random: () => number = Math.random,
+): string[] {
+    const candidates = [...new Set(posterPaths)];
+    if (candidates.length < HOME_POSTER_COUNT) {
+        throw new Error(`At least ${HOME_POSTER_COUNT} unique posters are required for the home social card`);
+    }
+
+    for (let index = candidates.length - 1; index > 0; index -= 1) {
+        const randomIndex = Math.floor(random() * (index + 1));
+        [candidates[index], candidates[randomIndex]] = [candidates[randomIndex], candidates[index]];
+    }
+    return candidates.slice(0, HOME_POSTER_COUNT);
+}
+
 export async function generateReleaseSocialCard(
     release: ReleaseData,
     rootDir = process.cwd(),
@@ -140,7 +150,11 @@ export async function generateReleaseSocialCard(
     return outputPath;
 }
 
-export async function generateHomeSocialCard(rootDir = process.cwd()): Promise<string> {
+export async function generateHomeSocialCard(
+    posterPaths: string[],
+    rootDir = process.cwd(),
+    random: () => number = Math.random,
+): Promise<string> {
     const background = Buffer.from(`
         <svg width="${CARD_WIDTH}" height="${CARD_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
             <rect width="100%" height="100%" fill="#f2f1f4"/>
@@ -149,7 +163,8 @@ export async function generateHomeSocialCard(rootDir = process.cwd()): Promise<s
             <text x="112" y="356" fill="#55555e" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="30">A record of some releases.</text>
         </svg>
     `);
-    const posters = await Promise.all(HOME_POSTERS.map((posterPath) =>
+    const selectedPosters = selectRandomHomePosters(posterPaths, random);
+    const posters = await Promise.all(selectedPosters.map((posterPath) =>
         posterBuffer(
             path.join(rootDir, "static", posterPath.replace(/^\//, "")),
             HOME_POSTER_WIDTH,
