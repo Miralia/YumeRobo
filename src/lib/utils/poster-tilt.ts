@@ -48,11 +48,13 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
     let bounds: DOMRect | null = null;
     let frame: number | null = null;
     let previousTime = 0;
+    let suspended = false;
 
     function supportsInteraction(event?: PointerEvent): boolean {
         return (
             !reducedMotion.matches &&
             finePointer.matches &&
+            !suspended &&
             event?.pointerType !== "touch"
         );
     }
@@ -168,6 +170,7 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
     }
 
     function settle() {
+        suspended = false;
         bounds = null;
         rotateX.target = 0;
         rotateY.target = 0;
@@ -195,12 +198,19 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
         if (reducedMotion.matches || !finePointer.matches) resetImmediately();
     }
 
+    function handleNavigationReset() {
+        // Keep the clicked poster neutral between the old-state capture and
+        // teardown even if the pointer moves during that short interval.
+        suspended = true;
+        resetImmediately();
+    }
+
     node.addEventListener("pointerenter", handlePointerEnter);
     node.addEventListener("pointermove", handlePointerMove);
     node.addEventListener("pointerleave", settle);
     node.addEventListener("pointercancel", settle);
     window.addEventListener("blur", resetImmediately);
-    window.addEventListener(POSTER_TILT_RESET_EVENT, resetImmediately);
+    window.addEventListener(POSTER_TILT_RESET_EVENT, handleNavigationReset);
     reducedMotion.addEventListener("change", handleCapabilityChange);
     finePointer.addEventListener("change", handleCapabilityChange);
     render();
@@ -219,7 +229,7 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
             window.removeEventListener("blur", resetImmediately);
             window.removeEventListener(
                 POSTER_TILT_RESET_EVENT,
-                resetImmediately,
+                handleNavigationReset,
             );
             reducedMotion.removeEventListener("change", handleCapabilityChange);
             finePointer.removeEventListener("change", handleCapabilityChange);

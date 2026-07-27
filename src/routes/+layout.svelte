@@ -7,6 +7,7 @@
 	import { prefersReducedMotion } from "svelte/motion";
 	import { boundaryIndicator } from "$lib/utils/overscroll";
 	import { cardTransition } from "$lib/utils/card-transition.svelte";
+	import { POSTER_TILT_RESET_EVENT } from "$lib/utils/poster-tilt";
 
 	let { children } = $props();
 
@@ -24,6 +25,7 @@
 			(navigation.from?.params?.slug as string | undefined) ??
 			null;
 		cardTransition.slug = slug;
+		window.dispatchEvent(new Event(POSTER_TILT_RESET_EVENT));
 		await tick();
 
 		return new Promise((resolve) => {
