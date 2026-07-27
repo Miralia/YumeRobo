@@ -10,6 +10,8 @@ export interface PosterTiltOptions {
 }
 
 export const POSTER_TILT_RESET_EVENT = "yumerobo:poster-tilt-reset";
+export const POSTER_TILT_TRANSITION_END_EVENT =
+    "yumerobo:poster-tilt-transition-end";
 
 const DEFAULTS: Required<PosterTiltOptions> = {
     maxTilt: 5,
@@ -41,6 +43,37 @@ interface PreservedPosterInteraction {
 
 const PRESERVED_INTERACTION_TTL = 2000;
 let preservedPosterInteraction: PreservedPosterInteraction | null = null;
+let latestPointerPosition: {
+    clientX: number;
+    clientY: number;
+    pointerType: string;
+} | null = null;
+let pointerTrackingConsumers = 0;
+
+function trackPointerPosition(event: PointerEvent) {
+    latestPointerPosition = {
+        clientX: event.clientX,
+        clientY: event.clientY,
+        pointerType: event.pointerType,
+    };
+}
+
+function startPointerTracking() {
+    if (pointerTrackingConsumers === 0) {
+        window.addEventListener("pointermove", trackPointerPosition, {
+            capture: true,
+            passive: true,
+        });
+    }
+    pointerTrackingConsumers += 1;
+}
+
+function stopPointerTracking() {
+    pointerTrackingConsumers -= 1;
+    if (pointerTrackingConsumers === 0) {
+        window.removeEventListener("pointermove", trackPointerPosition, true);
+    }
+}
 
 /**
  * Pointer-driven poster tilt shared by cards and the detail hero.
@@ -68,13 +101,13 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
 
     let bounds: DOMRect | null = null;
     let frame: number | null = null;
-    let restorationFrame: number | null = null;
     let previousTime = 0;
     let suspended = false;
     let pointerX = 0;
     let pointerY = 0;
     let lastClientX: number | null = null;
     let lastClientY: number | null = null;
+    let awaitingTransitionHandoff = false;
     let glareLevel = 0.32;
     let glareAngle = -18;
 
@@ -235,6 +268,16 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
 
     function handlePointerEnter(event: PointerEvent) {
         if (!supportsInteraction(event)) return;
+        latestPointerPosition = {
+            clientX: event.clientX,
+            clientY: event.clientY,
+            pointerType: event.pointerType,
+        };
+        if (awaitingTransitionHandoff && bounds) {
+            node.setAttribute("data-poster-hover", "");
+            updateTargets(event.clientX, event.clientY);
+            return;
+        }
         bounds = node.getBoundingClientRect();
         node.setAttribute("data-poster-active", "");
         node.setAttribute("data-poster-hover", "");
@@ -248,6 +291,7 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
 
     function settle() {
         suspended = false;
+        awaitingTransitionHandoff = false;
         bounds = null;
         pointerX = 0;
         pointerY = 0;
@@ -255,6 +299,7 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
         lastClientY = null;
         glareLevel = 0.32;
         glareAngle = -18;
+        node.removeAttribute("data-poster-handoff");
         node.removeAttribute("data-poster-hover");
         rotateX.target = 0;
         rotateY.target = 0;
@@ -282,6 +327,8 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
             spring.velocity = 0;
             spring.target = 0;
         }
+        awaitingTransitionHandoff = false;
+        node.removeAttribute("data-poster-handoff");
         node.removeAttribute("data-poster-active");
         node.removeAttribute("data-poster-hover");
         render();
@@ -318,14 +365,16 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
             };
         }
 
-        // Keep the clicked poster neutral between the old-state capture and
-        // teardown even if the pointer moves during that short interval.
+        // Freeze the live pose while the static transition shell is captured.
+        // The shell owns Magic Move geometry, so the inner poster can retain
+        // its tilt and glare without distorting the shared-element bounds.
         suspended = true;
-        resetImmediately();
+        if (frame !== null) cancelAnimationFrame(frame);
+        frame = null;
+        previousTime = 0;
     }
 
     function restorePreservedInteraction() {
-        restorationFrame = null;
         const preserved = preservedPosterInteraction;
         const posterId = node.dataset.posterId;
 
@@ -343,24 +392,32 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
         }
 
         const nextBounds = node.getBoundingClientRect();
+        const currentPointer = latestPointerPosition ?? {
+            clientX: preserved.clientX,
+            clientY: preserved.clientY,
+            pointerType: "mouse",
+        };
         const pointerIsInside =
-            preserved.clientX >= nextBounds.left &&
-            preserved.clientX <= nextBounds.right &&
-            preserved.clientY >= nextBounds.top &&
-            preserved.clientY <= nextBounds.bottom;
+            currentPointer.clientX >= nextBounds.left &&
+            currentPointer.clientX <= nextBounds.right &&
+            currentPointer.clientY >= nextBounds.top &&
+            currentPointer.clientY <= nextBounds.bottom;
 
-        // Geometry alone is not enough: :hover verifies that the physical
-        // pointer still targets this poster after the route has changed.
-        if (!pointerIsInside || !node.matches(":hover")) {
+        // During destination capture the View Transition overlay temporarily
+        // makes :hover false. Global pointer coordinates remain authoritative
+        // until hit testing returns to the live page.
+        if (!pointerIsInside || currentPointer.pointerType === "touch") {
             preservedPosterInteraction = null;
             return;
         }
 
         preservedPosterInteraction = null;
         suspended = false;
+        awaitingTransitionHandoff = true;
         bounds = nextBounds;
         node.setAttribute("data-poster-active", "");
         node.setAttribute("data-poster-hover", "");
+        node.setAttribute("data-poster-handoff", "");
 
         rotateX.value = preserved.rotateX;
         rotateY.value = preserved.rotateY;
@@ -370,24 +427,57 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
         glareY.value = preserved.glareYRatio * nextBounds.height;
         glareLevel = preserved.glareLevel;
         glareAngle = preserved.glareAngle;
-        updateTargets(preserved.clientX, preserved.clientY);
+        updateTargets(currentPointer.clientX, currentPointer.clientY);
         render();
         schedule();
     }
 
+    function handleTransitionEnd() {
+        if (!awaitingTransitionHandoff) return;
+        awaitingTransitionHandoff = false;
+        node.removeAttribute("data-poster-handoff");
+
+        const currentPointer = latestPointerPosition;
+        const pointerIsInside =
+            bounds &&
+            currentPointer &&
+            currentPointer.clientX >= bounds.left &&
+            currentPointer.clientX <= bounds.right &&
+            currentPointer.clientY >= bounds.top &&
+            currentPointer.clientY <= bounds.bottom;
+
+        if (
+            !pointerIsInside ||
+            currentPointer.pointerType === "touch" ||
+            !node.matches(":hover")
+        ) {
+            settle();
+            return;
+        }
+
+        node.setAttribute("data-poster-hover", "");
+        updateTargets(currentPointer.clientX, currentPointer.clientY);
+    }
+
+    startPointerTracking();
     node.addEventListener("pointerenter", handlePointerEnter);
     node.addEventListener("pointermove", handlePointerMove);
     node.addEventListener("pointerleave", settle);
     node.addEventListener("pointercancel", settle);
     window.addEventListener("blur", resetImmediately);
     window.addEventListener(POSTER_TILT_RESET_EVENT, handleNavigationReset);
+    window.addEventListener(
+        POSTER_TILT_TRANSITION_END_EVENT,
+        handleTransitionEnd,
+    );
     reducedMotion.addEventListener("change", handleCapabilityChange);
     finePointer.addEventListener("change", handleCapabilityChange);
     render();
     if (preservedPosterInteraction) {
-        // A frame scheduled from the new action runs after the destination
-        // snapshot, keeping tilt and glare out of the View Transition image.
-        restorationFrame = requestAnimationFrame(restorePreservedInteraction);
+        // Restore before the destination snapshot. The untransformed outer
+        // shell keeps Magic Move geometry stable while both snapshots carry
+        // the same inner visual pose.
+        restorePreservedInteraction();
     }
 
     return {
@@ -397,9 +487,6 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
         },
         destroy() {
             if (frame !== null) cancelAnimationFrame(frame);
-            if (restorationFrame !== null) {
-                cancelAnimationFrame(restorationFrame);
-            }
             node.removeEventListener("pointerenter", handlePointerEnter);
             node.removeEventListener("pointermove", handlePointerMove);
             node.removeEventListener("pointerleave", settle);
@@ -409,8 +496,13 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
                 POSTER_TILT_RESET_EVENT,
                 handleNavigationReset,
             );
+            window.removeEventListener(
+                POSTER_TILT_TRANSITION_END_EVENT,
+                handleTransitionEnd,
+            );
             reducedMotion.removeEventListener("change", handleCapabilityChange);
             finePointer.removeEventListener("change", handleCapabilityChange);
+            stopPointerTracking();
         },
     };
 }

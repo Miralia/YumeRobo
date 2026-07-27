@@ -769,16 +769,6 @@ html:not(.theme-vt)::view-transition-old(*.badge) {
 	opacity: 0;
 }
 
-/*
- * While a Magic Move is in flight the hero shadow stays off; the
- * poster container's own box-shadow transition then settles it in
- * once the morph lands. Theme cross-fades (.theme-vt, stamped by the
- * theme switcher) are not navigations and keep the shadow.
- */
-html:active-view-transition:not(.theme-vt) .poster-hero {
-	box-shadow: none;
-}
-
 /* ===== ENTRANCE ANIMATIONS ===== */
 @keyframes fade-up {
 	from {

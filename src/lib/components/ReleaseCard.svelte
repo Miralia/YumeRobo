@@ -33,33 +33,37 @@
 >
     <!-- Poster -->
     <div
-        class="poster-container poster-motion"
-        use:posterTilt
-        data-poster-id={card.slug}
+        class="poster-transition-shell"
         style:view-transition-name={isTransitioning
             ? `poster-${card.slug}`
             : undefined}
     >
-        <img
-            src={getCardPosterPath(card.poster)}
-            srcset={`${getCardPosterPath(card.poster)} 200w, ${card.poster} 500w`}
-            sizes="(min-width: 640px) 176px, 44vw"
-            alt="{card.title} poster"
-            class="poster"
-            width="200"
-            height="300"
-            loading={posterLoading.loading}
-            fetchpriority={posterLoading.fetchpriority}
-            decoding={posterLoading.decoding}
-        />
-        {#if card.badges.length > 0}
-            <span
-                class="badge-chip"
-                style:view-transition-name={isTransitioning
-                    ? `badge-${card.slug}`
-                    : undefined}
-            >{card.badges.join(" · ")}</span>
-        {/if}
+        <div
+            class="poster-container poster-motion"
+            use:posterTilt
+            data-poster-id={card.slug}
+        >
+            <img
+                src={getCardPosterPath(card.poster)}
+                srcset={`${getCardPosterPath(card.poster)} 200w, ${card.poster} 500w`}
+                sizes="(min-width: 640px) 176px, 44vw"
+                alt="{card.title} poster"
+                class="poster"
+                width="200"
+                height="300"
+                loading={posterLoading.loading}
+                fetchpriority={posterLoading.fetchpriority}
+                decoding={posterLoading.decoding}
+            />
+            {#if card.badges.length > 0}
+                <span
+                    class="badge-chip"
+                    style:view-transition-name={isTransitioning
+                        ? `badge-${card.slug}`
+                        : undefined}
+                >{card.badges.join(" · ")}</span>
+            {/if}
+        </div>
     </div>
 
     <!-- Caption -->
@@ -100,19 +104,26 @@
         border-radius: var(--radius-poster);
     }
 
-    .poster-container {
+    .poster-transition-shell {
         position: relative;
         aspect-ratio: 2 / 3;
         border-radius: var(--radius-poster);
+        view-transition-class: poster;
+    }
+
+    .poster-container {
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
         overflow: hidden;
         /* Dominant color doubles as the loading placeholder */
         background: color-mix(in srgb, var(--pc) 55%, var(--color-background-secondary));
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
         transition: box-shadow var(--duration-normal) var(--ease-out);
-        view-transition-class: poster;
     }
 
     .poster-container:global([data-poster-hover]),
+    .poster-container:global([data-poster-handoff]),
     .release-card:focus-visible .poster-container {
         box-shadow: 0 16px 32px -12px color-mix(in srgb, var(--pc) 60%, rgba(0, 0, 0, 0.45));
     }

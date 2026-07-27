@@ -236,33 +236,37 @@
 
         <!-- Poster -->
         <div
-            class="poster-container poster-hero poster-motion"
-            use:posterTilt
-            data-poster-id={data.release.slug}
+            class="poster-transition-shell"
             style:view-transition-name="poster-{data.release.slug}"
         >
-            <!-- The grid already cached the 200w card variant; painting
-                 it underneath keeps the Magic Move landing sharp while
-                 the full poster decodes -->
-            <img
-                src={data.release.poster}
-                alt="{data.release.title} poster"
-                class="poster"
-                width="500"
-                height="750"
-                fetchpriority="high"
-                decoding="async"
-                style:background-image="url({data.release.poster.replace(
-                    '.avif',
-                    '.card.avif',
-                )})"
-            />
-            {#if data.badges.length > 0}
-                <span
-                    class="badge-chip"
-                    style:view-transition-name="badge-{data.release.slug}"
-                >{data.badges.join(" · ")}</span>
-            {/if}
+            <div
+                class="poster-container poster-hero poster-motion"
+                use:posterTilt
+                data-poster-id={data.release.slug}
+            >
+                <!-- The grid already cached the 200w card variant; painting
+                     it underneath keeps the Magic Move landing sharp while
+                     the full poster decodes -->
+                <img
+                    src={data.release.poster}
+                    alt="{data.release.title} poster"
+                    class="poster"
+                    width="500"
+                    height="750"
+                    fetchpriority="high"
+                    decoding="async"
+                    style:background-image="url({data.release.poster.replace(
+                        '.avif',
+                        '.card.avif',
+                    )})"
+                />
+                {#if data.badges.length > 0}
+                    <span
+                        class="badge-chip"
+                        style:view-transition-name="badge-{data.release.slug}"
+                    >{data.badges.join(" · ")}</span>
+                {/if}
+            </div>
         </div>
 
         <!-- Info -->
@@ -574,21 +578,28 @@
         }
     }
 
-    .poster-container {
+    .poster-transition-shell {
         position: relative;
         width: 100%;
         aspect-ratio: 2/3;
         border-radius: var(--radius-poster);
+        view-transition-class: poster;
+    }
+
+    .poster-container {
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
         /* Dominant color doubles as the loading placeholder */
         background: color-mix(in srgb, var(--dyn) 55%, var(--color-background-secondary));
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
         overflow: hidden;
-        view-transition-class: poster;
         /* Lets the shadow settle in after the Magic Move lands */
         transition: box-shadow var(--duration-normal) var(--ease-out);
     }
 
-    .poster-container:global([data-poster-hover]) {
+    .poster-container:global([data-poster-hover]),
+    .poster-container:global([data-poster-handoff]) {
         box-shadow: 0 24px 52px -14px color-mix(in srgb, var(--dyn) 55%, rgba(0, 0, 0, 0.5));
     }
 

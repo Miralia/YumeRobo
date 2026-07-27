@@ -7,7 +7,10 @@
 	import { prefersReducedMotion } from "svelte/motion";
 	import { boundaryIndicator } from "$lib/utils/overscroll";
 	import { cardTransition } from "$lib/utils/card-transition.svelte";
-	import { POSTER_TILT_RESET_EVENT } from "$lib/utils/poster-tilt";
+	import {
+		POSTER_TILT_RESET_EVENT,
+		POSTER_TILT_TRANSITION_END_EVENT,
+	} from "$lib/utils/poster-tilt";
 
 	let { children } = $props();
 
@@ -29,10 +32,19 @@
 		await tick();
 
 		return new Promise((resolve) => {
-			document.startViewTransition(async () => {
+			const transition = document.startViewTransition(async () => {
 				resolve();
 				await navigation.complete;
 			});
+			const finishPosterHandoff = () => {
+				window.dispatchEvent(
+					new Event(POSTER_TILT_TRANSITION_END_EVENT),
+				);
+			};
+			transition.finished.then(
+				finishPosterHandoff,
+				finishPosterHandoff,
+			);
 		});
 	});
 </script>
