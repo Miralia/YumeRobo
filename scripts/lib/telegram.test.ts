@@ -32,12 +32,12 @@ describe('buildCaption', () => {
             },
         ]);
 
-        const caption = await buildCaption(release, 'https://slow.pics/c/example', 'https://example.com');
+        const caption = await buildCaption(release, 'https://example.com/release1#comparison', 'https://example.com');
 
         expect(caption).toContain(
             '[x265](https://example\\.com/mediainfo/hash265) \\| ' +
             '[AV1](https://example\\.com/mediainfo/hashav1) \\| ' +
-            '[Comparisons](https://slow\\.pics/c/example)',
+            '[Comparisons](https://example\\.com/release1\\#comparison)',
         );
         expect(caption).not.toContain('Mediainfo');
         expect(caption).not.toContain('————————————');

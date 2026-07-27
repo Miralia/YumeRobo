@@ -77,6 +77,7 @@ import { getCliConfig, getReleaseUrl, getTelegramConfig } from './lib/config';
 import {
     createStoredComparison,
     extractSlowPicsCandidates,
+    getComparisonDeepLink,
     getComparisonFilePath,
     readStoredComparison,
     writeStoredComparison,
@@ -660,7 +661,9 @@ async function stepTelegram(release: ReleaseData): Promise<void> {
     }
 
     const comparison = await readStoredComparison(release.slug);
-    const comparisons = comparison?.source.url ?? '';
+    const comparisons = comparison
+        ? getComparisonDeepLink(config.siteUrl, release.slug)
+        : '';
     const caption = await buildCaption(release, comparisons, config.siteUrl);
 
     console.log('\n--- Telegram Preview ---');
