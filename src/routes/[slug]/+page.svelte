@@ -3,9 +3,9 @@
     import { untrack } from "svelte";
     import LocalDateTime from "$lib/components/LocalDateTime.svelte";
     import MediaInfoCard from "$lib/components/MediaInfoCard.svelte";
+    import SocialMeta from "$lib/components/SocialMeta.svelte";
     import type { Release, ExternalLinks } from "$lib/content/schema";
     import { externalIcons } from "$lib/utils/icons";
-    import { env } from "$env/dynamic/public";
     import {
         entranceFade,
         entranceFly,
@@ -14,6 +14,10 @@
     import { posterTilt } from "$lib/utils/poster-tilt";
     import type { ComparisonAssetReference } from "$lib/content/comparison-assets.server";
     import { YACOMP_WEB_ASSET_URL } from "$lib/config/yacomp-web";
+    import {
+        getDetailSocialDescription,
+        getReleaseSocialImagePath,
+    } from "$lib/content/social";
 
     interface ComparisonCollection {
         comparisons: Array<{
@@ -42,8 +46,6 @@
             options?: { onClose?: () => void },
         ): ViewerHandle;
     }
-
-    const SITE_URL = env.PUBLIC_SITE_URL || "https://yumerobo.moe";
 
     interface Props {
         data: {
@@ -349,54 +351,16 @@
 
 <svelte:window onkeydown={handleComparisonShortcut} />
 
-<svelte:head>
-    <title>{data.release.title} | 夢みる機械</title>
-    <meta
-        name="description"
-        content="{data.release.year} · {data.release.media_type === 'movie'
-            ? 'Movie'
-            : 'TV'}"
-    />
-
-    <!-- Open Graph -->
-    <meta
-        property="og:title"
-        content={data.release.title}
-    />
-    <meta
-        property="og:description"
-        content="{data.release.year} · {data.release.media_type === 'movie'
-            ? 'Movie'
-            : 'TV'}"
-    />
-    <meta
-        property="og:image"
-        content="{SITE_URL}{data.release.poster
-            .replace('.avif', '.jpg')
-            .replace('/posters/', '/og/')}"
-    />
-    <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="夢みる機械" />
-
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta
-        name="twitter:title"
-        content={data.release.title}
-    />
-    <meta
-        name="twitter:description"
-        content="{data.release.year} · {data.release.media_type === 'movie'
-            ? 'Movie'
-            : 'TV'}"
-    />
-    <meta
-        name="twitter:image"
-        content="{SITE_URL}{data.release.poster
-            .replace('.avif', '.jpg')
-            .replace('/posters/', '/og/')}"
-    />
-</svelte:head>
+<SocialMeta
+    title="{data.release.title} | 夢みる機械"
+    socialTitle={data.release.title}
+    description={getDetailSocialDescription(data.release, data.badges)}
+    pathname="/{data.release.slug}"
+    image={{
+        path: getReleaseSocialImagePath(data.release.poster),
+        alt: `${data.release.title} release card`,
+    }}
+/>
 
 <article class="detail-page container">
     <!-- Hero Section -->
