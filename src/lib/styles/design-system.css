@@ -89,10 +89,6 @@
 	/* Poster-derived hero glow strength */
 	--hero-ambient-opacity: 0.16;
 
-	/* Glass Effect */
-	--glass-background: rgba(248, 247, 250, 0.72);
-	--glass-blur: 20px;
-
 	/* Liquid Glass — neutral navigation and control material */
 	--liquid-surface: rgba(250, 249, 252, 0.72);
 	--liquid-surface-elevated: rgba(255, 255, 255, 0.82);
@@ -147,9 +143,6 @@
 		/* Glow needs more presence against pure black */
 		--hero-ambient-opacity: 0.24;
 
-		/* Glass Effect */
-		--glass-background: rgba(21, 21, 29, 0.72);
-
 		--liquid-surface: rgba(24, 24, 34, 0.7);
 		--liquid-surface-elevated: rgba(32, 32, 44, 0.82);
 		--liquid-surface-opaque: #1a1a24;
@@ -201,9 +194,6 @@
 
 	/* Glow needs more presence against pure black */
 	--hero-ambient-opacity: 0.24;
-
-	/* Glass Effect */
-	--glass-background: rgba(21, 21, 29, 0.72);
 
 	--liquid-surface: rgba(24, 24, 34, 0.7);
 	--liquid-surface-elevated: rgba(32, 32, 44, 0.82);
@@ -453,12 +443,6 @@ pre {
 .liquid-control:active {
 	background-color: var(--liquid-control-active);
 	transform: scale(0.96);
-}
-
-.glass {
-	background: var(--glass-background);
-	backdrop-filter: blur(var(--glass-blur));
-	-webkit-backdrop-filter: blur(var(--glass-blur));
 }
 
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {

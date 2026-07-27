@@ -284,7 +284,7 @@
 
 	function handleClickOutside(event: MouseEvent) {
 		const target = event.target as HTMLElement;
-		if (!target.closest(".theme-dropdown")) {
+		if (!target.closest(".header")) {
 			closeThemeMenu();
 		}
 	}
@@ -297,8 +297,13 @@
 
 <svelte:window onkeydown={handleWindowKeydown} />
 
-<header class="header glass" style:view-transition-name="app-header">
-	<div class="header-content container">
+<header
+	class="header"
+	style:view-transition-name="app-header"
+	onfocusout={handleThemeFocusOut}
+>
+	<div class="header-bar liquid-surface">
+		<div class="header-content">
 		<a href="/" class="logo" aria-label="YumeRobo home">
 			<img src="/icon.svg" alt="" class="logo-icon" />
 		</a>
@@ -327,7 +332,7 @@
 			</svg>
 			<input
 				type="search"
-				class="search-input"
+				class="search-input liquid-control"
 				placeholder="Search releases..."
 				aria-label="Search releases"
 				value={searchQuery}
@@ -341,7 +346,7 @@
 			{#if searchQuery}
 				<button
 					type="button"
-					class="clear-btn"
+					class="clear-btn liquid-control"
 					onclick={clearSearch}
 					aria-label="Clear search"
 					transition:scale={{
@@ -374,7 +379,7 @@
 				href={TELEGRAM_URL}
 				target="_blank"
 				rel="noopener noreferrer"
-				class="telegram-button"
+				class="telegram-button liquid-control"
 				aria-label="Telegram channel"
 			>
 				<svg
@@ -392,7 +397,7 @@
 			</a>
 			<a
 				href={EMAIL_URL}
-				class="telegram-button"
+				class="telegram-button liquid-control"
 				aria-label="Email YumeRobo@proton.me"
 			>
 				<svg
@@ -411,9 +416,9 @@
 					<path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
 				</svg>
 			</a>
-			<div class="theme-dropdown" onfocusout={handleThemeFocusOut}>
+			<div class="theme-dropdown">
 				<button
-					class="nav-button"
+					class="nav-button liquid-control"
 					bind:this={themeButton}
 					onclick={(event) => {
 						event.stopPropagation();
@@ -435,44 +440,11 @@
 						>{getThemeIcon(themeMode)}</span
 					>
 				</button>
-				{#if isThemeMenuOpen}
-					<div
-						class="dropdown-menu"
-						id="theme-menu"
-						role="menu"
-						aria-label="Theme"
-						bind:this={themeMenu}
-						transition:scale={menuTransition}
-					>
-						{#each THEME_MODES as mode, index}
-							<button
-								class="dropdown-item"
-								class:active={themeMode === mode}
-								role="menuitemradio"
-								aria-checked={themeMode === mode}
-								tabindex="-1"
-								onmousedown={(event) =>
-									// Safari doesn't focus buttons on
-									// mousedown; without this, focusout
-									// closes the menu before click lands
-									event.preventDefault()}
-								onclick={() => setTheme(mode)}
-								onkeydown={(event) =>
-									handleThemeMenuKeydown(event, index)}
-							>
-								<span class="dropdown-icon" aria-hidden="true"
-									>{getThemeIcon(mode)}</span
-								>
-								<span>{themeLabel(mode)}</span>
-							</button>
-						{/each}
-					</div>
-				{/if}
 			</div>
 		</nav>
 
 		<button
-			class="mobile-menu-button"
+			class="mobile-menu-button liquid-control"
 			bind:this={mobileMenuButton}
 			onclick={() => (isMobileMenuOpen = !isMobileMenuOpen)}
 			aria-label="Menu"
@@ -501,11 +473,44 @@
 				{/if}
 			</svg>
 		</button>
+		</div>
 	</div>
+
+	{#if isThemeMenuOpen}
+		<div
+			class="dropdown-menu liquid-surface liquid-surface--elevated"
+			id="theme-menu"
+			role="menu"
+			aria-label="Theme"
+			bind:this={themeMenu}
+			transition:scale={menuTransition}
+		>
+			{#each THEME_MODES as mode, index}
+				<button
+					class="dropdown-item liquid-control"
+					class:active={themeMode === mode}
+					role="menuitemradio"
+					aria-checked={themeMode === mode}
+					tabindex="-1"
+					onmousedown={(event) =>
+						// Safari doesn't focus buttons on mousedown;
+						// keep focus stable until the click lands
+						event.preventDefault()}
+					onclick={() => setTheme(mode)}
+					onkeydown={(event) => handleThemeMenuKeydown(event, index)}
+				>
+					<span class="dropdown-icon" aria-hidden="true"
+						>{getThemeIcon(mode)}</span
+					>
+					<span>{themeLabel(mode)}</span>
+				</button>
+			{/each}
+		</div>
+	{/if}
 
 	{#if isMobileMenuOpen}
 		<nav
-			class="nav-mobile"
+			class="nav-mobile liquid-surface liquid-surface--elevated"
 			id="mobile-menu"
 			aria-label="Mobile menu"
 			transition:slide={slideTransition}
@@ -529,7 +534,7 @@
 				</svg>
 				<input
 					type="search"
-					class="search-input mobile"
+					class="search-input mobile liquid-control"
 					placeholder="Search releases..."
 					aria-label="Search releases"
 					value={searchQuery}
@@ -545,7 +550,7 @@
 					href={TELEGRAM_URL}
 					target="_blank"
 					rel="noopener noreferrer"
-					class="telegram-button mobile"
+					class="telegram-button mobile liquid-control"
 					aria-label="Telegram channel"
 				>
 					<svg
@@ -563,7 +568,7 @@
 				</a>
 				<a
 					href={EMAIL_URL}
-					class="telegram-button mobile"
+					class="telegram-button mobile liquid-control"
 					aria-label="Email YumeRobo@proton.me"
 				>
 					<svg
@@ -594,7 +599,7 @@
 					>
 						{#each THEME_MODES as mode}
 							<button
-								class="control-btn"
+								class="control-btn liquid-control"
 								class:active={themeMode === mode}
 								aria-label={themeLabel(mode)}
 								aria-pressed={themeMode === mode}
@@ -613,9 +618,15 @@
 <style>
 	.header {
 		position: sticky;
-		top: 0;
+		top: var(--space-2);
 		z-index: 100;
-		border-bottom: 1px solid var(--color-separator);
+		width: calc(100% - 2 * var(--space-2));
+		max-width: 960px;
+		margin-inline: auto;
+	}
+
+	.header-bar {
+		border-radius: calc(var(--radius-lg) + 6px);
 	}
 
 	.header-content {
@@ -623,7 +634,8 @@
 		align-items: center;
 		justify-content: space-between;
 		gap: var(--space-4);
-		height: 64px;
+		height: 60px;
+		padding-inline: var(--space-4);
 	}
 
 	.logo {
@@ -674,13 +686,12 @@
 		font-size: var(--text-sm);
 		font-family: var(--font-sans);
 		color: var(--color-label);
-		background: var(--color-fill);
-		border: 1px solid transparent;
 		border-radius: var(--radius-lg);
 		transition:
 			background-color var(--duration-fast) var(--ease-out),
 			border-color var(--duration-fast) var(--ease-out),
-			box-shadow var(--duration-fast) var(--ease-out);
+			box-shadow var(--duration-fast) var(--ease-out),
+			transform var(--duration-fast) var(--ease-spring);
 	}
 
 	.search-input::-webkit-search-cancel-button {
@@ -690,9 +701,13 @@
 
 	.search-input:focus {
 		outline: none;
-		background: var(--color-background);
+		background: var(--liquid-surface-opaque);
 		border-color: var(--color-accent);
 		box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 18%, transparent);
+	}
+
+	.search-input:active {
+		transform: none;
 	}
 
 	.search-input::placeholder {
@@ -708,7 +723,6 @@
 		width: 20px;
 		height: 20px;
 		padding: 0;
-		background: var(--color-fill-secondary);
 		border: none;
 		border-radius: var(--radius-full);
 		color: var(--color-label-secondary);
@@ -743,7 +757,7 @@
 	}
 
 	.telegram-button:hover {
-		background: var(--color-fill);
+		background-color: var(--liquid-control-hover);
 		color: var(--color-accent);
 	}
 
@@ -754,7 +768,6 @@
 		width: 36px;
 		height: 36px;
 		border: none;
-		background: transparent;
 		color: var(--color-label-secondary);
 		border-radius: var(--radius-md);
 		cursor: pointer;
@@ -764,7 +777,7 @@
 	}
 
 	.nav-button:hover {
-		background: var(--color-fill);
+		background-color: var(--liquid-control-hover);
 		color: var(--color-label);
 	}
 
@@ -782,10 +795,7 @@
 		right: 0;
 		min-width: 120px;
 		padding: var(--space-1);
-		background: var(--color-background);
-		border: 1px solid var(--color-separator);
 		border-radius: var(--radius-md);
-		box-shadow: var(--shadow-md);
 		z-index: 50;
 		transform-origin: top right;
 	}
@@ -803,13 +813,16 @@
 		border: none;
 		border-radius: var(--radius-sm);
 		cursor: pointer;
-		transition: background var(--duration-fast) var(--ease-out);
+		transition:
+			background-color var(--duration-fast) var(--ease-out),
+			color var(--duration-fast) var(--ease-out),
+			transform var(--duration-fast) var(--ease-spring);
 		text-align: left;
 	}
 
 	.dropdown-item:hover,
 	.dropdown-item:focus-visible {
-		background: var(--color-fill);
+		background-color: var(--liquid-control-hover);
 	}
 
 	.dropdown-item.active {
@@ -829,18 +842,22 @@
 		width: 44px;
 		height: 44px;
 		border: none;
-		background: transparent;
 		color: var(--color-label);
+		border-radius: var(--radius-md);
 		cursor: pointer;
 		flex-shrink: 0;
 	}
 
 	.nav-mobile {
 		padding: var(--space-4);
-		border-top: 1px solid var(--color-separator);
+		position: absolute;
+		top: calc(100% + var(--space-2));
+		left: 0;
+		right: 0;
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-4);
+		border-radius: calc(var(--radius-lg) + 6px);
 	}
 
 	.mobile-search-wrapper {
@@ -858,7 +875,6 @@
 		width: 100%;
 		padding: var(--space-3);
 		padding-left: calc(var(--space-3) + 18px + var(--space-2));
-		background: var(--color-fill);
 	}
 
 	.mobile-links {
@@ -899,7 +915,8 @@
 	.control-buttons {
 		display: flex;
 		gap: var(--space-1);
-		background: var(--color-fill);
+		background: var(--liquid-control);
+		border: 1px solid var(--liquid-border);
 		padding: var(--space-1);
 		border-radius: var(--radius-md);
 	}
@@ -924,12 +941,17 @@
 	}
 
 	.control-btn.active {
-		background: var(--color-background);
+		background: var(--liquid-surface-opaque);
 		color: var(--color-accent);
 		box-shadow: var(--shadow-sm);
 	}
 
 	@media (min-width: 640px) {
+		.header {
+			top: var(--space-3);
+			width: calc(100% - 2 * var(--space-4));
+		}
+
 		.nav-desktop {
 			display: flex;
 		}
@@ -942,6 +964,34 @@
 	@media (max-width: 480px) {
 		.search-wrapper {
 			display: none;
+		}
+	}
+
+	@media (min-width: 768px) {
+		.header-content {
+			padding-inline: var(--space-6);
+		}
+	}
+
+	@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+		.control-buttons {
+			background: var(--color-background-secondary);
+			border-color: var(--color-separator-opaque);
+		}
+	}
+
+	@media (forced-colors: active) {
+		.search-input,
+		.clear-btn,
+		.telegram-button,
+		.nav-button,
+		.mobile-menu-button,
+		.dropdown-item,
+		.control-buttons,
+		.control-btn {
+			background: ButtonFace;
+			border-color: ButtonBorder;
+			box-shadow: none;
 		}
 	}
 </style>
