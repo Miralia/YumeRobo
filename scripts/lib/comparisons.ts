@@ -174,19 +174,32 @@ export async function readStoredComparison(
   rootDir: string = process.cwd(),
 ): Promise<StoredComparison | null> {
   try {
-    const raw = await fs.readFile(getComparisonFilePath(slug, rootDir), "utf8");
-    const parsed = JSON.parse(raw) as StoredComparison;
-    if (parsed.schemaVersion !== 1 || parsed.source?.provider !== "slowpics") {
-      throw new TypeError("Unsupported comparison sidecar schema");
-    }
-    return createStoredComparison(
-      { key: parsed.source.key, url: parsed.source.url, label: parsed.collection.name ?? parsed.source.key },
-      parsed.collection,
-    );
+    return await readStoredComparisonFile(getComparisonFilePath(slug, rootDir));
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
     throw error;
   }
+}
+
+export async function readStoredComparisonFile(filePath: string): Promise<StoredComparison> {
+  const raw = await fs.readFile(filePath, "utf8");
+  const parsed = JSON.parse(raw) as StoredComparison;
+  if (parsed.schemaVersion !== 1 || parsed.source?.provider !== "slowpics") {
+    throw new TypeError("Unsupported comparison sidecar schema");
+  }
+  return createStoredComparison(
+    { key: parsed.source.key, url: parsed.source.url, label: parsed.collection.name ?? parsed.source.key },
+    parsed.collection,
+  );
+}
+
+export async function writeStoredComparisonFile(
+  filePath: string,
+  comparison: StoredComparison,
+): Promise<string> {
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
+  await fs.writeFile(filePath, JSON.stringify(comparison, null, 2) + "\n", "utf8");
+  return filePath;
 }
 
 export async function writeStoredComparison(
@@ -195,9 +208,7 @@ export async function writeStoredComparison(
   rootDir: string = process.cwd(),
 ): Promise<string> {
   const target = getComparisonFilePath(slug, rootDir);
-  await fs.mkdir(path.dirname(target), { recursive: true });
-  await fs.writeFile(target, JSON.stringify(comparison, null, 2) + "\n", "utf8");
-  return target;
+  return writeStoredComparisonFile(target, comparison);
 }
 
 export function getComparisonDeepLink(siteUrl: string, slug: string): string {

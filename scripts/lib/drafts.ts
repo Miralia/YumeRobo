@@ -19,6 +19,16 @@ interface MetadataDraft {
 	is_complete?: boolean;
 }
 
+export type DraftComparison =
+	| {
+		status: "ready";
+		filePath: string;
+		sourceUrl: string;
+	}
+	| {
+		status: "skipped";
+	};
+
 export interface CreateDraft {
 	slug: string;
 	metadata?: MetadataDraft;
@@ -26,6 +36,7 @@ export interface CreateDraft {
 	torrents?: TorrentEntry[];
 	specs?: SpecEntry[];
 	links?: Record<string, string>;
+	comparison?: DraftComparison;
 	savedAt?: string;
 }
 
@@ -37,6 +48,7 @@ export interface EditDraft {
 	torrents?: TorrentEntry[];
 	specs?: SpecEntry[];
 	links?: Record<string, string>;
+	comparison?: DraftComparison;
 	date: string;
 	savedAt?: string;
 }
@@ -55,6 +67,15 @@ function getCreateDraftPath(rootDir?: string): string {
 
 function getEditDraftPath(slug: string, rootDir?: string): string {
 	return path.join(getDraftsRoot(rootDir), `${EDIT_DRAFT_PREFIX}${slug}.json`);
+}
+
+export function getDraftComparisonFilePath(
+	kind: "create" | "edit",
+	slug: string,
+	rootDir?: string,
+): string {
+	if (!/^[a-z0-9]+$/.test(slug)) throw new TypeError("Invalid release slug");
+	return path.join(getDraftsRoot(rootDir), "files", `${kind}-${slug}-comparison.json`);
 }
 
 async function ensureDraftDir(rootDir?: string) {
@@ -90,6 +111,21 @@ async function deleteIfExists(filePath: string) {
 	}
 }
 
+function isOwnedDraftFile(filePath: string, rootDir?: string): boolean {
+	const root = path.resolve(getDraftsRoot(rootDir));
+	const relative = path.relative(root, path.resolve(filePath));
+	return relative !== "" && !relative.startsWith("..") && !path.isAbsolute(relative);
+}
+
+async function clearDraftComparison(
+	draft: Pick<CreateDraft, "comparison"> | Pick<EditDraft, "comparison"> | null,
+	rootDir?: string,
+): Promise<void> {
+	if (draft?.comparison?.status !== "ready") return;
+	if (!isOwnedDraftFile(draft.comparison.filePath, rootDir)) return;
+	await deleteIfExists(draft.comparison.filePath);
+}
+
 export async function loadCreateDraft(rootDir?: string): Promise<CreateDraft | null> {
 	return readJsonFile<CreateDraft>(getCreateDraftPath(rootDir));
 }
@@ -108,6 +144,7 @@ export async function saveCreateDraft(
 }
 
 export async function clearCreateDraft(rootDir?: string): Promise<void> {
+	await clearDraftComparison(await loadCreateDraft(rootDir), rootDir);
 	await deleteIfExists(getCreateDraftPath(rootDir));
 }
 
@@ -135,5 +172,12 @@ export async function clearEditDraft(
 	slug: string,
 	rootDir?: string,
 ): Promise<void> {
+	await clearDraftComparison(await loadEditDraft(slug, rootDir), rootDir);
 	await deleteIfExists(getEditDraftPath(slug, rootDir));
+}
+
+export async function clearReleaseDrafts(slug: string, rootDir?: string): Promise<void> {
+	const createDraft = await loadCreateDraft(rootDir);
+	if (createDraft?.slug === slug) await clearCreateDraft(rootDir);
+	await clearEditDraft(slug, rootDir);
 }
