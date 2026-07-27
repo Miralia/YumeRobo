@@ -146,7 +146,7 @@
     </p>
 
     <!-- Release Grid -->
-    <section class="release-grid" aria-label="Releases">
+    <section class="release-grid poster-grid-layout" aria-label="Releases">
         {#if displayedCards.length > 0}
             {#each displayedCards as card, index (card.slug)}
                 <!-- flip (WAAPI) and the entrance animation (CSS) both
@@ -187,15 +187,12 @@
 
     /* Poster grid: posters carry the browsing, captions stay compact */
     .release-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-        gap: var(--space-5) var(--space-4);
+        row-gap: var(--space-5);
     }
 
     @media (max-width: 480px) {
         .release-grid {
-            grid-template-columns: repeat(2, 1fr);
-            gap: var(--space-3) var(--space-2);
+            row-gap: var(--space-3);
         }
     }
 

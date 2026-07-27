@@ -220,7 +220,10 @@
 
 <article class="detail-page container">
     <!-- Hero Section -->
-    <header class="hero" style:--dyn={data.accent ?? "var(--color-accent)"}>
+    <header
+        class="hero poster-grid-layout"
+        style:--dyn={data.accent ?? "var(--color-accent)"}
+    >
         {#if data.posterBlur}
             <div
                 class="hero-ambient"
@@ -524,16 +527,8 @@
     /* Hero */
     .hero {
         position: relative;
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-6);
-    }
-
-    @media (min-width: 640px) {
-        .hero {
-            flex-direction: row;
-            align-items: flex-start;
-        }
+        align-items: start;
+        row-gap: var(--space-6);
     }
 
     /* Poster-derived glow behind the hero: a build-time 24px micro
@@ -580,8 +575,7 @@
 
     .poster-container {
         position: relative;
-        flex-shrink: 0;
-        width: 180px;
+        width: 100%;
         aspect-ratio: 2/3;
         border-radius: var(--radius-poster);
         /* Dominant color doubles as the loading placeholder */
@@ -595,12 +589,6 @@
 
     .poster-container:global([data-poster-hover]) {
         box-shadow: 0 24px 52px -14px color-mix(in srgb, var(--dyn) 55%, rgba(0, 0, 0, 0.5));
-    }
-
-    @media (min-width: 640px) {
-        .poster-container {
-            width: 220px;
-        }
     }
 
     .poster {
@@ -630,11 +618,17 @@
     }
 
     .info {
-        flex: 1;
+        grid-column: 1 / -1;
         display: flex;
         flex-direction: column;
         gap: var(--space-4);
         min-width: 0;
+    }
+
+    @media (min-width: 640px) {
+        .info {
+            grid-column: 2 / -1;
+        }
     }
 
     .title {

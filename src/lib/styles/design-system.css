@@ -487,6 +487,21 @@ pre {
 	max-width: 1520px;
 }
 
+/* Home cards and the detail hero share the same responsive tracks so the
+   leading poster keeps identical geometry across route transitions. */
+.poster-grid-layout {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+	column-gap: var(--space-4);
+}
+
+@media (max-width: 480px) {
+	.poster-grid-layout {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		column-gap: var(--space-2);
+	}
+}
+
 @media (min-width: 768px) {
 	.container {
 		padding-inline: var(--space-6);
