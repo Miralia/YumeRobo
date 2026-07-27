@@ -77,12 +77,16 @@ import {
 import { getCliConfig, getReleaseUrl, getTelegramConfig } from './lib/config';
 import {
     createStoredComparison,
+    deleteStoredComparison,
     extractSlowPicsCandidates,
     getComparisonDeepLink,
     getComparisonFilePath,
     readStoredComparison,
+    readStoredComparisonFile,
     writeStoredComparison,
+    writeStoredComparisonFile,
     type SlowPicsCandidate,
+    type StoredComparison,
 } from './lib/comparisons';
 import {
     createSlowPicsBrowserCollector,
@@ -91,11 +95,14 @@ import {
 import {
     clearCreateDraft,
     clearEditDraft,
+    clearReleaseDrafts,
+    getDraftComparisonFilePath,
     loadCreateDraft,
     loadEditDraft,
     saveCreateDraft,
     saveEditDraft,
     type CreateDraft,
+    type DraftComparison,
     type EditDraft,
 } from './lib/drafts';
 import {
@@ -211,6 +218,7 @@ function buildCreateDraftState(input: {
     torrents?: TorrentEntry[];
     specs?: SpecEntry[];
     links?: Record<string, string>;
+    comparison?: DraftComparison;
 }): CreateDraft {
     return {
         slug: input.slug,
@@ -219,6 +227,7 @@ function buildCreateDraftState(input: {
         torrents: input.torrents,
         specs: input.specs,
         links: input.links,
+        comparison: input.comparison,
     };
 }
 
@@ -230,6 +239,7 @@ function buildEditDraftState(input: {
     torrents?: TorrentEntry[];
     specs?: SpecEntry[];
     links?: Record<string, string>;
+    comparison?: DraftComparison;
     date: string;
 }): EditDraft {
     return {
@@ -240,6 +250,7 @@ function buildEditDraftState(input: {
         torrents: input.torrents,
         specs: input.specs,
         links: input.links,
+        comparison: input.comparison,
         date: input.date,
     };
 }
@@ -554,23 +565,108 @@ async function chooseSlowPicsCandidate(
     });
 }
 
-async function syncReleaseComparison(
+async function collectReleaseComparison(
     release: Pick<ReleaseData, 'slug' | 'title' | 'specs'>,
     collector?: SlowPicsBrowserCollector,
-): Promise<string> {
+): Promise<StoredComparison> {
     const candidate = await chooseSlowPicsCandidate(release);
     const ownedCollector = collector ?? await createSlowPicsBrowserCollector();
     try {
         const collection = await ownedCollector.collect(candidate.url, candidate.key);
-        const target = await writeStoredComparison(
-            release.slug,
-            createStoredComparison(candidate, collection),
-        );
-        console.log(`[+] Comparison metadata saved: ${target}`);
-        return target;
+        return createStoredComparison(candidate, collection);
     } finally {
         if (!collector) await ownedCollector.close();
     }
+}
+
+async function syncReleaseComparison(
+    release: Pick<ReleaseData, 'slug' | 'title' | 'specs'>,
+    collector?: SlowPicsBrowserCollector,
+): Promise<string> {
+    const comparison = await collectReleaseComparison(release, collector);
+    const target = await writeStoredComparison(release.slug, comparison);
+    console.log(`[+] Comparison metadata saved: ${target}`);
+    return target;
+}
+
+async function removeStagedComparison(kind: 'create' | 'edit', slug: string): Promise<void> {
+    try {
+        await fs.unlink(getDraftComparisonFilePath(kind, slug));
+    } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    }
+}
+
+async function stageReleaseComparison(
+    kind: 'create' | 'edit',
+    release: Pick<ReleaseData, 'slug' | 'title' | 'specs'>,
+): Promise<DraftComparison> {
+    const comparison = await collectReleaseComparison(release);
+    const target = getDraftComparisonFilePath(kind, release.slug);
+    await writeStoredComparisonFile(target, comparison);
+    console.log(`[+] Comparison metadata staged: ${target}`);
+    return {
+        status: 'ready',
+        filePath: target,
+        sourceUrl: comparison.source.url,
+    };
+}
+
+async function completeTechInfoComparison(
+    kind: 'create' | 'edit',
+    release: Pick<ReleaseData, 'slug' | 'title'>,
+    initialSpecs: SpecEntry[],
+    onSpecsChanged?: (specs: SpecEntry[]) => Promise<void>,
+): Promise<{ specs: SpecEntry[]; comparison: DraftComparison }> {
+    let specs = initialSpecs;
+
+    while (true) {
+        try {
+            const comparison = await stageReleaseComparison(kind, { ...release, specs });
+            return { specs, comparison };
+        } catch (error) {
+            console.log(`[!] Comparison collection failed: ${error}`);
+            const action = await select({
+                message: 'What to do with the slow.pics comparison?',
+                choices: [
+                    { name: 'Retry collection', value: 'retry' },
+                    { name: 'Re-enter Tech Info', value: 'specs' },
+                    { name: 'Skip comparison collection', value: 'skip' },
+                ],
+            });
+
+            if (action === 'specs') {
+                specs = await stepSpecs();
+                await onSpecsChanged?.(specs);
+            } else if (action === 'skip') {
+                await removeStagedComparison(kind, release.slug);
+                console.log('[i] Skipped comparison collection');
+                return { specs, comparison: { status: 'skipped' } };
+            }
+        }
+    }
+}
+
+async function hasUsableDraftComparison(comparison: DraftComparison | undefined): Promise<boolean> {
+    if (!comparison) return false;
+    if (comparison.status === 'skipped') return true;
+    try {
+        await readStoredComparisonFile(comparison.filePath);
+        return true;
+    } catch (error) {
+        console.log(`[!] Staged comparison is unavailable and will be collected again: ${error}`);
+        return false;
+    }
+}
+
+async function publishDraftComparison(
+    slug: string,
+    comparison: DraftComparison | undefined,
+): Promise<void> {
+    if (comparison?.status !== 'ready') return;
+    const stored = await readStoredComparisonFile(comparison.filePath);
+    const target = await writeStoredComparison(slug, stored);
+    console.log(`[+] Comparison metadata saved: ${target}`);
 }
 
 async function readAllStdin(): Promise<string> {
@@ -729,6 +825,7 @@ async function create() {
     let torrents: TorrentEntry[] | undefined;
     let specs: SpecEntry[] | undefined;
     let links: Record<string, string> | undefined;
+    let comparison: DraftComparison | undefined;
 
     if (existingDraft) {
         const draftAction = await select({
@@ -746,6 +843,7 @@ async function create() {
             torrents = existingDraft.torrents;
             specs = existingDraft.specs;
             links = existingDraft.links;
+            comparison = existingDraft.comparison;
             console.log(`[i] Resumed draft: ${slug}\n`);
             console.log(formatCreateDraftSummary(existingDraft));
         } else {
@@ -763,32 +861,50 @@ async function create() {
     if (!metadata) {
         metadata = await stepMetadata() ?? undefined;
         if (!metadata) return;
-        await persistCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }));
+        await persistCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links, comparison }));
     }
 
     if (!posterPath) {
         posterPath = await stepPoster(slug);
-        await persistCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }));
+        await persistCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links, comparison }));
     }
 
     if (!torrents) {
         torrents = await stepTorrents();
-        await persistCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }));
+        await persistCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links, comparison }));
     }
 
     if (!specs) {
         specs = await stepSpecs();
-        await persistCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }));
+        comparison = undefined;
+        await persistCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links, comparison }));
+    }
+
+    if (!await hasUsableDraftComparison(comparison)) {
+        const result = await completeTechInfoComparison(
+            'create',
+            { slug, title: metadata.title },
+            specs,
+            async (nextSpecs) => {
+                specs = nextSpecs;
+                await persistCreateDraft(buildCreateDraftState({
+                    slug, metadata, posterPath, torrents, specs, links, comparison: undefined,
+                }));
+            },
+        );
+        specs = result.specs;
+        comparison = result.comparison;
+        await persistCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links, comparison }));
     }
 
     if (!links) {
         links = await stepLinks(metadata.tmdb_id, metadata.media_type);
-        await persistCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }));
+        await persistCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links, comparison }));
     }
 
     while (true) {
         console.log(formatCreateDraftSummary(
-            buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }),
+            buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links, comparison }),
         ));
         const releaseData: ReleaseData = {
             slug,
@@ -838,14 +954,9 @@ export const release: Release = ${cleanCode};
         });
 
         if (action === 'confirm') {
-            try {
-                await syncReleaseComparison(releaseData);
-            } catch (error) {
-                console.log(`[!] Comparison sync failed: ${error}`);
-                continue;
-            }
             const targetPath = path.join(RELEASES_DIR, `${slug}.ts`);
             await fs.writeFile(targetPath, fileContent, 'utf-8');
+            await publishDraftComparison(slug, comparison);
             await generateReleaseSocialCard(releaseData);
             const validation = await validateReleaseAssets({ release: releaseData });
             if (hasValidationIssues(validation)) {
@@ -870,20 +981,36 @@ export const release: Release = ${cleanCode};
             if (newMeta) {
                 metadata = newMeta;
                 links = syncTmdbLink(links, metadata.tmdb_id, metadata.media_type);
-                await persistCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }));
+                await persistCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links, comparison }));
             }
         } else if (action === 'poster') {
             posterPath = await stepPoster(slug);
-            await persistCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }));
+            await persistCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links, comparison }));
         } else if (action === 'torrents') {
             torrents = await stepTorrents();
-            await persistCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }));
+            await persistCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links, comparison }));
         } else if (action === 'specs') {
+            await removeStagedComparison('create', slug);
             specs = await stepSpecs();
-            await persistCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }));
+            comparison = undefined;
+            await persistCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links, comparison }));
+            const result = await completeTechInfoComparison(
+                'create',
+                { slug, title: metadata.title },
+                specs,
+                async (nextSpecs) => {
+                    specs = nextSpecs;
+                    await persistCreateDraft(buildCreateDraftState({
+                        slug, metadata, posterPath, torrents, specs, links, comparison: undefined,
+                    }));
+                },
+            );
+            specs = result.specs;
+            comparison = result.comparison;
+            await persistCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links, comparison }));
         } else if (action === 'links') {
             links = await stepLinks(metadata.tmdb_id, metadata.media_type);
-            await persistCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links }));
+            await persistCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links, comparison }));
         }
     }
 }
@@ -924,6 +1051,7 @@ async function edit() {
     let torrents: TorrentEntry[];
     let specs: SpecEntry[];
     let links: Record<string, string>;
+    let comparison: DraftComparison | undefined;
     let date: string;
 
     if (existingDraft) {
@@ -942,6 +1070,7 @@ async function edit() {
             torrents = existingDraft.torrents ?? currentData.torrents;
             specs = existingDraft.specs ?? currentData.specs;
             links = existingDraft.links ?? currentData.links;
+            comparison = existingDraft.comparison;
             date = existingDraft.date;
             console.log(`[i] Resumed edit draft for ${slug}`);
             console.log(formatEditDraftSummary(existingDraft));
@@ -952,6 +1081,7 @@ async function edit() {
             torrents = currentData.torrents;
             specs = currentData.specs;
             links = currentData.links;
+            comparison = undefined;
             date = currentData.date;
             await persistEditDraft(buildEditDraftState({
                 slug,
@@ -961,6 +1091,7 @@ async function edit() {
                 torrents,
                 specs,
                 links,
+                comparison,
                 date,
             }));
         }
@@ -970,6 +1101,7 @@ async function edit() {
         torrents = currentData.torrents;
         specs = currentData.specs;
         links = currentData.links;
+        comparison = undefined;
         date = currentData.date;
         await persistEditDraft(buildEditDraftState({
             slug,
@@ -979,6 +1111,46 @@ async function edit() {
             torrents,
             specs,
             links,
+            comparison,
+            date,
+        }));
+    }
+
+    if (comparison?.status === 'ready' && !await hasUsableDraftComparison(comparison)) {
+        comparison = undefined;
+        await persistEditDraft(buildEditDraftState({
+            slug,
+            originalRelease,
+            metadata,
+            posterPath,
+            torrents,
+            specs,
+            links,
+            comparison,
+            date,
+        }));
+        const result = await completeTechInfoComparison(
+            'edit',
+            { slug, title: metadata.title },
+            specs,
+            async (nextSpecs) => {
+                specs = nextSpecs;
+                await persistEditDraft(buildEditDraftState({
+                    slug, originalRelease, metadata, posterPath, torrents, specs, links, comparison: undefined, date,
+                }));
+            },
+        );
+        specs = result.specs;
+        comparison = result.comparison;
+        await persistEditDraft(buildEditDraftState({
+            slug,
+            originalRelease,
+            metadata,
+            posterPath,
+            torrents,
+            specs,
+            links,
+            comparison,
             date,
         }));
     }
@@ -994,6 +1166,7 @@ async function edit() {
                 torrents,
                 specs,
                 links,
+                comparison,
                 date,
             }),
         ));
@@ -1004,7 +1177,6 @@ async function edit() {
                 { name: 'Poster (Select new)', value: 'poster' },
                 { name: 'Torrents (Enter new list)', value: 'torrents' },
                 { name: 'Tech Specs (Enter new)', value: 'specs' },
-                { name: 'Comparison (Select and refresh)', value: 'comparison' },
                 { name: 'Links (Re-enter)', value: 'links' },
                 { name: 'Save & Exit', value: 'save' },
                 { name: 'Cancel', value: 'cancel' }
@@ -1039,6 +1211,7 @@ async function edit() {
 export const release: Release = ${cleanCode};
 `;
             await fs.writeFile(filePath, fileContent);
+            await publishDraftComparison(slug, comparison);
             await generateReleaseSocialCard(updatedData);
             const otherReleases = records
                 .filter((record) => record.slug !== slug)
@@ -1083,6 +1256,7 @@ export const release: Release = ${cleanCode};
                     torrents,
                     specs,
                     links,
+                    comparison,
                     date,
                 }));
             }
@@ -1096,6 +1270,7 @@ export const release: Release = ${cleanCode};
                 torrents,
                 specs,
                 links,
+                comparison,
                 date,
             }));
         } else if (action === 'torrents') {
@@ -1108,10 +1283,13 @@ export const release: Release = ${cleanCode};
                 torrents,
                 specs,
                 links,
+                comparison,
                 date,
             }));
         } else if (action === 'specs') {
+            await removeStagedComparison('edit', slug);
             specs = await stepSpecs();
+            comparison = undefined;
             await persistEditDraft(buildEditDraftState({
                 slug,
                 originalRelease,
@@ -1120,6 +1298,31 @@ export const release: Release = ${cleanCode};
                 torrents,
                 specs,
                 links,
+                comparison,
+                date,
+            }));
+            const result = await completeTechInfoComparison(
+                'edit',
+                { slug, title: metadata.title },
+                specs,
+                async (nextSpecs) => {
+                    specs = nextSpecs;
+                    await persistEditDraft(buildEditDraftState({
+                        slug, originalRelease, metadata, posterPath, torrents, specs, links, comparison: undefined, date,
+                    }));
+                },
+            );
+            specs = result.specs;
+            comparison = result.comparison;
+            await persistEditDraft(buildEditDraftState({
+                slug,
+                originalRelease,
+                metadata,
+                posterPath,
+                torrents,
+                specs,
+                links,
+                comparison,
                 date,
             }));
         } else if (action === 'links') {
@@ -1132,10 +1335,9 @@ export const release: Release = ${cleanCode};
                 torrents,
                 specs,
                 links,
+                comparison,
                 date,
             }));
-        } else if (action === 'comparison') {
-            await syncReleaseComparison({ slug, title: metadata.title, specs });
         }
     }
 }
@@ -1347,13 +1549,12 @@ async function deleteRelease(slug: string) {
 
         await fs.unlink(targetPath);
         console.log(`[+] Deleted ${targetPath}`);
-        try {
-            const comparisonPath = getComparisonFilePath(slug);
-            await fs.unlink(comparisonPath);
+        const comparisonPath = getComparisonFilePath(slug);
+        if (await deleteStoredComparison(slug)) {
             console.log(`[+] Deleted ${comparisonPath}`);
-        } catch (error) {
-            if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
         }
+        await clearReleaseDrafts(slug);
+        console.log(`[+] Cleared CLI drafts for ${slug}`);
 
         if (!record) {
             console.log('[!] Could not parse release file, deleted the .ts file only');

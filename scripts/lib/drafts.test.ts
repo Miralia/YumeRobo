@@ -51,6 +51,25 @@ describe("CLI drafts", () => {
 		}
 	});
 
+	test("clearing a skipped draft removes an unrecorded staging file", async () => {
+		const root = await fs.mkdtemp(path.join(os.tmpdir(), "yumerobo-drafts-"));
+		const comparisonPath = getDraftComparisonFilePath("create", "release1", root);
+		try {
+			await fs.mkdir(path.dirname(comparisonPath), { recursive: true });
+			await fs.writeFile(comparisonPath, "partial", "utf8");
+			await saveCreateDraft({
+				slug: "release1",
+				comparison: { status: "skipped" },
+			}, root);
+
+			await clearCreateDraft(root);
+
+			await expect(fs.access(comparisonPath)).rejects.toMatchObject({ code: "ENOENT" });
+		} finally {
+			await fs.rm(root, { recursive: true, force: true });
+		}
+	});
+
 	test("clearing release drafts removes matching create and edit files", async () => {
 		const root = await fs.mkdtemp(path.join(os.tmpdir(), "yumerobo-drafts-"));
 		const createComparison = getDraftComparisonFilePath("create", "release1", root);

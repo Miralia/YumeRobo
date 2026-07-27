@@ -211,6 +211,19 @@ export async function writeStoredComparison(
   return writeStoredComparisonFile(target, comparison);
 }
 
+export async function deleteStoredComparison(
+  slug: string,
+  rootDir: string = process.cwd(),
+): Promise<boolean> {
+  try {
+    await fs.unlink(getComparisonFilePath(slug, rootDir));
+    return true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+    throw error;
+  }
+}
+
 export function getComparisonDeepLink(siteUrl: string, slug: string): string {
   return `${siteUrl.replace(/\/+$/, "")}/${slug}/comparisons`;
 }

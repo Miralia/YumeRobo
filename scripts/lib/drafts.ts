@@ -144,7 +144,9 @@ export async function saveCreateDraft(
 }
 
 export async function clearCreateDraft(rootDir?: string): Promise<void> {
-	await clearDraftComparison(await loadCreateDraft(rootDir), rootDir);
+	const draft = await loadCreateDraft(rootDir);
+	await clearDraftComparison(draft, rootDir);
+	if (draft) await deleteIfExists(getDraftComparisonFilePath("create", draft.slug, rootDir));
 	await deleteIfExists(getCreateDraftPath(rootDir));
 }
 
@@ -173,6 +175,7 @@ export async function clearEditDraft(
 	rootDir?: string,
 ): Promise<void> {
 	await clearDraftComparison(await loadEditDraft(slug, rootDir), rootDir);
+	await deleteIfExists(getDraftComparisonFilePath("edit", slug, rootDir));
 	await deleteIfExists(getEditDraftPath(slug, rootDir));
 }
 
