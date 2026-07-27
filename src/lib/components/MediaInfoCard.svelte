@@ -30,7 +30,8 @@
         onexpand,
     }: Props = $props();
 
-    let expanded = $state(false);
+    // Default view is the structured summary; expanding reveals raw text.
+    let showRaw = $state(false);
 
     // Parse MediaInfo when content is available
     let parsed = $derived<MediaInfoParsed | null>(
@@ -106,27 +107,29 @@
         return parts.join(" / ");
     }
 
-    function toggleExpanded() {
-        expanded = !expanded;
-        if (expanded && !rawContent && !hasFailed) {
+    function toggleView() {
+        showRaw = !showRaw;
+        if (showRaw && !rawContent && !hasFailed) {
             onexpand?.();
         }
     }
 </script>
 
-<div class="mediainfo-card info-surface" data-expanded={expanded}>
-    <div class="card-header info-surface__header">
+<div class="mediainfo-card info-surface" data-expanded="true">
+    <div
+        class="card-header info-surface__header info-surface__header--divided"
+    >
         <h3 class="card-heading">
             <button
                 class="card-toggle info-surface__trigger"
-                onclick={toggleExpanded}
-                aria-expanded={expanded}
+                onclick={toggleView}
+                aria-expanded={showRaw}
                 aria-controls="mediainfo-panel-{rawHash}"
             >
                 <span class="filename">{filename}</span>
                 <svg
                     class="chevron"
-                    class:expanded
+                    class:expanded={showRaw}
                     xmlns="http://www.w3.org/2000/svg"
                     width="20"
                     height="20"
@@ -150,7 +153,6 @@
             rel="noopener"
             aria-label="Open raw MediaInfo in new tab"
         >
-            <span>Raw</span>
             <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="14"
@@ -172,14 +174,13 @@
         </a>
     </div>
 
-    {#if expanded}
-        <div
-            class="card-panel"
-            id="mediainfo-panel-{rawHash}"
-            transition:slide={slideParams()}
-        >
-            {#if structured}
-                <div class="card-body">
+    <div class="card-panel" id="mediainfo-panel-{rawHash}">
+        {#if showRaw && rawContent}
+            <div class="raw-view" transition:slide={slideParams()}>
+                <pre class="raw-content info-recessed">{rawContent}</pre>
+            </div>
+        {:else if structured}
+            <div class="card-body">
                 <div class="columns">
                     <!-- General -->
                     <div class="column">
@@ -304,28 +305,27 @@
                         <pre class="encode-settings info-recessed">{encodingSettings}</pre>
                     </div>
                 {/if}
+            </div>
+        {:else if hasFailed}
+            <div class="loading">No MediaInfo available</div>
+        {:else}
+            <!-- The skeleton mirrors the structured layout to avoid a
+                 second jump when prefetched content becomes available. -->
+            <div class="card-body skeleton-body" aria-hidden="true">
+                <div class="columns">
+                    {#each [0, 1, 2] as column (column)}
+                        <div class="column">
+                            <div class="skeleton skeleton-title"></div>
+                            <div class="skeleton skeleton-row"></div>
+                            <div class="skeleton skeleton-row"></div>
+                            <div class="skeleton skeleton-row short"></div>
+                        </div>
+                    {/each}
                 </div>
-            {:else if hasFailed}
-                <div class="loading">No MediaInfo available</div>
-            {:else}
-                <!-- The skeleton mirrors the structured layout to avoid a
-                     second jump when prefetched content becomes available. -->
-                <div class="card-body skeleton-body" aria-hidden="true">
-                    <div class="columns">
-                        {#each [0, 1, 2] as column (column)}
-                            <div class="column">
-                                <div class="skeleton skeleton-title"></div>
-                                <div class="skeleton skeleton-row"></div>
-                                <div class="skeleton skeleton-row"></div>
-                                <div class="skeleton skeleton-row short"></div>
-                            </div>
-                        {/each}
-                    </div>
-                </div>
-                <p class="visually-hidden">Loading MediaInfo</p>
-            {/if}
-        </div>
-    {/if}
+            </div>
+            <p class="visually-hidden">Loading MediaInfo</p>
+        {/if}
+    </div>
 </div>
 
 <style>
@@ -357,7 +357,7 @@
         color: var(--color-label);
         flex: 1;
         min-width: 0;
-        padding-right: 76px;
+        padding-right: 52px;
         overflow-wrap: anywhere;
     }
 
@@ -380,13 +380,10 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 5px;
-        min-width: 58px;
+        width: 32px;
+        min-width: 32px;
         height: 32px;
-        padding: 0 var(--space-2);
-        font-family: var(--font-sans);
-        font-size: var(--text-xs);
-        font-weight: 600;
+        padding: 0;
         color: var(--color-label-secondary);
         border-radius: var(--radius-full);
         transition:
@@ -409,6 +406,22 @@
 
     .card-panel {
         min-width: 0;
+    }
+
+    .raw-view {
+        padding: var(--space-4);
+    }
+
+    .raw-content {
+        max-height: 500px;
+        margin: 0;
+        padding: var(--space-4);
+        overflow: auto;
+        color: var(--color-label-secondary);
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        line-height: var(--leading-relaxed);
+        white-space: pre;
     }
 
     .card-body {
@@ -575,16 +588,18 @@
         }
 
         .filename {
-            padding-right: 84px;
+            padding-right: 60px;
         }
 
         .raw-link {
             right: 48px;
-            min-width: 64px;
+            width: 40px;
+            min-width: 40px;
             height: 40px;
         }
 
-        .card-body {
+        .card-body,
+        .raw-view {
             padding: var(--space-3);
         }
     }

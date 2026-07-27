@@ -490,12 +490,23 @@ pre {
 	color: var(--color-label);
 	background: transparent;
 	border: 0;
+	border-radius: calc(var(--radius-lg) - 1px);
 	cursor: pointer;
 	text-align: left;
 	transition:
 		background-color var(--duration-fast) var(--ease-out),
-		color var(--duration-fast) var(--ease-out),
-		transform var(--duration-fast) var(--ease-out);
+		color var(--duration-fast) var(--ease-out);
+}
+
+/* Once content is visible the trigger is the top segment of the surface, not
+   a standalone rounded pill. Removing its lower radii lets the pointer fill
+   cover the complete header while the panel height animates underneath it. */
+.info-surface[data-expanded="true"] > .info-surface__header .info-surface__trigger {
+	border-radius:
+		calc(var(--radius-lg) - 1px)
+		calc(var(--radius-lg) - 1px)
+		0
+		0;
 }
 
 .info-surface__trigger:hover,
@@ -506,11 +517,10 @@ pre {
 .info-surface__trigger:focus-visible {
 	outline: 2px solid var(--color-accent);
 	outline-offset: -2px;
-	border-radius: calc(var(--radius-lg) - 1px);
 }
 
 .info-surface__trigger:active {
-	transform: scale(0.995);
+	background-color: color-mix(in srgb, var(--color-accent) 15%, var(--liquid-control-active));
 }
 
 .info-recessed {
