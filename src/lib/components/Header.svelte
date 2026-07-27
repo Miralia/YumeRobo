@@ -6,6 +6,7 @@
 	import { cubicOut } from "svelte/easing";
 	import { prefersReducedMotion } from "svelte/motion";
 	import { debounce } from "$lib/utils/debounce";
+	import ThemeIcon from "$lib/components/ThemeIcon.svelte";
 
 	type ThemeMode = "auto" | "light" | "dark";
 
@@ -300,17 +301,6 @@
 		}
 	}
 
-	function getThemeIcon(mode: ThemeMode): string {
-		switch (mode) {
-			case "auto":
-				return "◐";
-			case "light":
-				return "☀";
-			case "dark":
-				return "☾";
-		}
-	}
-
 	function handleClickOutside(event: MouseEvent) {
 		const target = event.target as HTMLElement;
 		if (!target.closest(".header")) {
@@ -512,9 +502,9 @@
 					aria-expanded={isThemeMenuOpen}
 					aria-controls="theme-menu"
 				>
-					<span class="theme-icon" aria-hidden="true"
-						>{getThemeIcon(themeMode)}</span
-					>
+					<span class="theme-icon" aria-hidden="true">
+						<ThemeIcon mode={themeMode} />
+					</span>
 				</button>
 			</div>
 		</nav>
@@ -575,9 +565,9 @@
 					onclick={() => setTheme(mode)}
 					onkeydown={(event) => handleThemeMenuKeydown(event, index)}
 				>
-					<span class="dropdown-icon" aria-hidden="true"
-						>{getThemeIcon(mode)}</span
-					>
+					<span class="dropdown-icon" aria-hidden="true">
+						<ThemeIcon {mode} size={18} />
+					</span>
 					<span>{themeLabel(mode)}</span>
 				</button>
 			{/each}
@@ -681,7 +671,9 @@
 								aria-pressed={themeMode === mode}
 								onclick={() => setTheme(mode)}
 							>
-								<span aria-hidden="true">{getThemeIcon(mode)}</span>
+								<span class="control-theme-icon" aria-hidden="true">
+									<ThemeIcon {mode} size={18} />
+								</span>
 							</button>
 						{/each}
 					</div>
@@ -901,7 +893,11 @@
 	}
 
 	.theme-icon {
-		font-size: var(--header-control-icon-size);
+		display: inline-grid;
+		place-items: center;
+		width: var(--header-control-icon-size);
+		height: var(--header-control-icon-size);
+		line-height: 0;
 	}
 
 	.theme-dropdown {
@@ -950,8 +946,11 @@
 	}
 
 	.dropdown-icon {
+		display: inline-grid;
+		place-items: center;
 		width: 20px;
-		text-align: center;
+		height: 20px;
+		flex: 0 0 20px;
 	}
 
 	.mobile-menu-button {
@@ -1050,6 +1049,8 @@
 	}
 
 	.control-btn {
+		display: grid;
+		place-items: center;
 		min-width: 44px;
 		min-height: 44px;
 		padding: var(--space-1) var(--space-2);
@@ -1064,6 +1065,13 @@
 			background-color var(--duration-fast) var(--ease-out),
 			color var(--duration-fast) var(--ease-out),
 			box-shadow var(--duration-fast) var(--ease-out);
+	}
+
+	.control-theme-icon {
+		display: inline-grid;
+		place-items: center;
+		width: 20px;
+		height: 20px;
 	}
 
 	.control-btn:hover {
