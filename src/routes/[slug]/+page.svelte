@@ -253,7 +253,6 @@
                     '.card.avif',
                 )})"
             />
-            <div class="poster-gradient"></div>
             {#if data.badges.length > 0}
                 <span
                     class="badge-chip"
@@ -587,12 +586,11 @@
         border-radius: var(--radius-poster);
         /* Dominant color doubles as the loading placeholder */
         background: color-mix(in srgb, var(--dyn) 55%, var(--color-background-secondary));
-        /* Shadow carries the poster's own color */
-        box-shadow: 0 18px 40px -12px color-mix(in srgb, var(--dyn) 45%, rgba(0, 0, 0, 0.45));
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
         overflow: hidden;
         view-transition-class: poster;
         /* Lets the shadow settle in after the Magic Move lands */
-        transition: box-shadow 280ms var(--ease-out);
+        transition: box-shadow var(--duration-normal) var(--ease-out);
     }
 
     .poster-container:global([data-poster-hover]) {
@@ -612,19 +610,6 @@
         border-radius: var(--radius-poster);
         background-size: cover;
         background-position: center;
-    }
-
-    /* Gradient layer (always visible, no transition) */
-    .poster-gradient {
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(
-            to top,
-            rgba(0, 0, 0, 0.6) 0%,
-            transparent 50%
-        );
-        pointer-events: none;
-        border-radius: var(--radius-poster);
     }
 
     .badge-chip {
