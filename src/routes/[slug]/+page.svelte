@@ -583,18 +583,27 @@
 
     /* Soft poster-derived glow behind the hero. Horizontal inset stays
        at 0 — a wider box overflows the page and creates horizontal
-       scroll; the 64px blur provides the sideways bleed instead. */
+       scroll. The radial mask fades every edge so the glow dissolves
+       into the page background with no visible boundary. */
     .hero-ambient {
         position: absolute;
-        inset: -15% 0;
+        inset: -20% 0;
         background-size: cover;
         background-position: center;
         filter: blur(64px) saturate(1.4);
         opacity: 0.16;
         pointer-events: none;
         z-index: -1;
-        mask-image: linear-gradient(to bottom, black 40%, transparent);
-        -webkit-mask-image: linear-gradient(to bottom, black 40%, transparent);
+        mask-image: radial-gradient(
+            ellipse 70% 62% at 50% 42%,
+            black 30%,
+            transparent 74%
+        );
+        -webkit-mask-image: radial-gradient(
+            ellipse 70% 62% at 50% 42%,
+            black 30%,
+            transparent 74%
+        );
     }
 
     @media (prefers-reduced-transparency: reduce), (forced-colors: active) {

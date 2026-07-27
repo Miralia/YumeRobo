@@ -1,5 +1,6 @@
 <script lang="ts">
     import type { ReleaseCardData } from "$lib/content/cards";
+    import { cardTransition } from "$lib/utils/card-transition.svelte";
     import { formatDateTime } from "$lib/utils/date";
     import { getPosterLoadingAttributes } from "$lib/utils/poster-loading";
 
@@ -17,13 +18,20 @@
     }
 
     let posterLoading = $derived(getPosterLoadingAttributes(index));
+
+    // Only the navigating card carries view-transition-names; naming
+    // every card leaves old-only snapshots of the other cards floating
+    // over the destination page for the length of the transition.
+    let isTransitioning = $derived(cardTransition.slug === card.slug);
 </script>
 
 <a href="/{card.slug}" class="release-card">
     <!-- Poster -->
     <div
         class="poster-container"
-        style:view-transition-name="poster-{card.slug}"
+        style:view-transition-name={isTransitioning
+            ? `poster-${card.slug}`
+            : undefined}
     >
         <img
             src={getCardPosterPath(card.poster)}
@@ -40,7 +48,12 @@
 
     <!-- Info -->
     <div class="info">
-        <h2 class="title" style:view-transition-name="title-{card.slug}">
+        <h2
+            class="title"
+            style:view-transition-name={isTransitioning
+                ? `title-${card.slug}`
+                : undefined}
+        >
             {card.title}
         </h2>
 

@@ -3,17 +3,28 @@
 	import Header from "$lib/components/Header.svelte";
 	import Footer from "$lib/components/Footer.svelte";
 	import { onNavigate } from "$app/navigation";
+	import { tick } from "svelte";
 	import { prefersReducedMotion } from "svelte/motion";
 	import { boundaryIndicator } from "$lib/utils/overscroll";
+	import { cardTransition } from "$lib/utils/card-transition.svelte";
 
 	let { children } = $props();
 
-	onNavigate((navigation) => {
+	onNavigate(async (navigation) => {
 		if (!document.startViewTransition) return;
 		if (prefersReducedMotion.current) return;
 		// Query-only navigations (debounced search keystrokes) must not
 		// trigger a full-page transition — Magic Move is for route changes.
 		if (navigation.from?.url.pathname === navigation.to?.url.pathname) return;
+
+		// Name only the card involved in this navigation, then let the
+		// DOM update before the old state is captured.
+		const slug =
+			(navigation.to?.params?.slug as string | undefined) ??
+			(navigation.from?.params?.slug as string | undefined) ??
+			null;
+		cardTransition.slug = slug;
+		await tick();
 
 		return new Promise((resolve) => {
 			document.startViewTransition(async () => {
