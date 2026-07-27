@@ -688,6 +688,11 @@
 		--header-control-size: 44px;
 		--header-control-radius: calc(var(--header-control-size) / 2);
 		--header-control-icon-size: 20px;
+		--header-control-accent-shadow:
+			inset 0 1px 0 var(--liquid-highlight),
+			inset 0 0 0 1px
+				color-mix(in srgb, var(--color-accent) 24%, transparent),
+			var(--liquid-shadow);
 
 		position: sticky;
 		top: var(--space-2);
@@ -728,13 +733,25 @@
 		text-decoration: none;
 		border-color: var(--liquid-border);
 		border-radius: var(--header-control-radius);
+		transition:
+			background-color var(--duration-fast) var(--ease-out),
+			border-color var(--duration-fast) var(--ease-out),
+			box-shadow var(--duration-fast) var(--ease-out),
+			color var(--duration-fast) var(--ease-out);
 	}
 
 	.home-button:hover,
 	.home-button:focus-visible,
 	.context-back:hover,
 	.context-back:focus-visible {
-		color: var(--color-label);
+		color: var(--color-accent);
+		background-color: var(--liquid-control-hover);
+		border-color: color-mix(
+			in srgb,
+			var(--color-accent) 36%,
+			var(--liquid-border)
+		);
+		box-shadow: var(--header-control-accent-shadow);
 	}
 
 	.home-button:active,
@@ -884,12 +901,22 @@
 		cursor: pointer;
 		transition:
 			background-color var(--duration-fast) var(--ease-out),
+			border-color var(--duration-fast) var(--ease-out),
+			box-shadow var(--duration-fast) var(--ease-out),
 			color var(--duration-fast) var(--ease-out);
 	}
 
-	.nav-button:hover {
+	.nav-button:hover,
+	.nav-button:focus-visible,
+	.nav-button[aria-expanded="true"] {
 		background-color: var(--liquid-control-hover);
-		color: var(--color-label);
+		border-color: color-mix(
+			in srgb,
+			var(--color-accent) 36%,
+			var(--liquid-border)
+		);
+		box-shadow: var(--header-control-accent-shadow);
+		color: var(--color-accent);
 	}
 
 	.theme-icon {
@@ -1074,8 +1101,9 @@
 		height: 20px;
 	}
 
-	.control-btn:hover {
-		color: var(--color-label);
+	.control-btn:hover,
+	.control-btn:focus-visible {
+		color: var(--color-accent);
 	}
 
 	.control-btn.active {
