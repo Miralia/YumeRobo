@@ -37,6 +37,10 @@
     let panelElement: HTMLDivElement;
     let summaryPanelHeight = 0;
 
+    // Matches the unexpanded x265 MediaInfo panel on /y3kb1dkq at the
+    // standard desktop content width (625px panel / 677px complete card).
+    const STANDARD_RAW_PANEL_HEIGHT = 625;
+
     // Parse MediaInfo when content is available
     let parsed = $derived<MediaInfoParsed | null>(
         rawContent ? parseMediaInfo(rawContent) : null,
@@ -112,13 +116,9 @@
     }
 
     function getRawPanelHeight(summaryHeight: number): number {
-        const fixedHeight = Math.min(
-            640,
-            Math.max(480, window.innerHeight * 0.65),
-        );
         // Opening must never make the document shorter. A tall summary keeps
         // its footprint; compact summaries expand to a useful raw viewport.
-        return Math.max(summaryHeight, fixedHeight);
+        return Math.max(summaryHeight, STANDARD_RAW_PANEL_HEIGHT);
     }
 
     async function animatePanelHeight(
