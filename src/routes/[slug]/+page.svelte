@@ -12,6 +12,36 @@
         slideParams,
     } from "$lib/utils/animation";
     import { posterTilt } from "$lib/utils/poster-tilt";
+    import type { ComparisonAssetReference } from "$lib/content/comparison-assets.server";
+    import { YACOMP_WEB_ASSET_URL } from "$lib/config/yacomp-web";
+
+    interface ComparisonCollection {
+        comparisons: Array<{
+            images: Array<{
+                name: string;
+                publicFileName: string;
+                width?: number | null;
+                height?: number | null;
+            }>;
+        }>;
+        [key: string]: unknown;
+    }
+
+    interface ComparisonSidecar {
+        schemaVersion: number;
+        collection: ComparisonCollection;
+    }
+
+    interface ViewerHandle {
+        close(): void;
+    }
+
+    interface YacompWebModule {
+        openSlowPicsCollection(
+            collection: ComparisonCollection,
+            options?: { onClose?: () => void },
+        ): ViewerHandle;
+    }
 
     const SITE_URL = env.PUBLIC_SITE_URL || "https://yumerobo.moe";
 
@@ -21,10 +51,132 @@
             badges: string[];
             accent: string | null;
             posterBlur: string | null;
+            comparison: ComparisonAssetReference | null;
         };
     }
 
     let { data }: Props = $props();
+
+    let comparisonLoading = $state(false);
+    let comparisonError = $state("");
+    let viewerHandle: ViewerHandle | null = null;
+    let viewerModulePromise: Promise<YacompWebModule> | null = null;
+    let comparisonPromise: Promise<ComparisonCollection> | null = null;
+    let hashEntryCreated = false;
+    let closingFromHistory = false;
+
+    function loadViewerModule(): Promise<YacompWebModule> {
+        viewerModulePromise ??= import(/* @vite-ignore */ YACOMP_WEB_ASSET_URL) as Promise<YacompWebModule>;
+        return viewerModulePromise;
+    }
+
+    async function loadComparison(): Promise<ComparisonCollection> {
+        if (!data.comparison) throw new Error("Comparison metadata is unavailable");
+        const response = await fetch(data.comparison.assetUrl);
+        if (!response.ok) throw new Error(`Comparison metadata returned ${response.status}`);
+        const sidecar = await response.json() as ComparisonSidecar;
+        if (sidecar.schemaVersion !== 1 || !Array.isArray(sidecar.collection?.comparisons)) {
+            throw new Error("Comparison metadata is invalid");
+        }
+        return sidecar.collection;
+    }
+
+    function preloadComparison() {
+        if (!data.comparison) return;
+        void loadViewerModule().catch(() => {
+            viewerModulePromise = null;
+        });
+        comparisonPromise ??= loadComparison().catch((error) => {
+            comparisonPromise = null;
+            throw error;
+        });
+    }
+
+    function comparisonUrl(): URL {
+        return new URL(window.location.href);
+    }
+
+    function removeComparisonHash() {
+        const url = comparisonUrl();
+        url.hash = "";
+        history.replaceState(history.state, "", url);
+    }
+
+    async function openComparison(options: { updateHistory?: boolean } = {}) {
+        if (!data.comparison || viewerHandle || comparisonLoading) return;
+        comparisonLoading = true;
+        comparisonError = "";
+
+        try {
+            const [viewer, collection] = await Promise.all([
+                loadViewerModule(),
+                comparisonPromise ??= loadComparison(),
+            ]);
+
+            if (!options.updateHistory && window.location.hash !== "#comparison") return;
+
+            if (options.updateHistory && window.location.hash !== "#comparison") {
+                const url = comparisonUrl();
+                url.hash = "comparison";
+                history.pushState(history.state, "", url);
+                hashEntryCreated = true;
+            }
+
+            viewerHandle = viewer.openSlowPicsCollection(collection, {
+                onClose: () => {
+                    viewerHandle = null;
+                    if (closingFromHistory) {
+                        closingFromHistory = false;
+                        return;
+                    }
+                    if (window.location.hash !== "#comparison") return;
+                    if (hashEntryCreated) {
+                        hashEntryCreated = false;
+                        history.back();
+                    } else {
+                        removeComparisonHash();
+                    }
+                },
+            });
+        } catch (error) {
+            comparisonError = "Comparison viewer could not be opened.";
+            console.error("Failed to open comparison viewer:", error);
+            if (options.updateHistory && window.location.hash === "#comparison") {
+                removeComparisonHash();
+            }
+        } finally {
+            comparisonLoading = false;
+        }
+    }
+
+    $effect(() => {
+        if (!data.comparison) return;
+
+        const syncViewerToHash = () => {
+            if (window.location.hash === "#comparison") {
+                void openComparison();
+            } else if (viewerHandle) {
+                closingFromHistory = true;
+                hashEntryCreated = false;
+                viewerHandle.close();
+            }
+        };
+
+        window.addEventListener("popstate", syncViewerToHash);
+        window.addEventListener("hashchange", syncViewerToHash);
+        // Opening the viewer mutates local state; keep that mutation from
+        // becoming a dependency that would immediately tear this effect down.
+        untrack(syncViewerToHash);
+
+        return () => {
+            window.removeEventListener("popstate", syncViewerToHash);
+            window.removeEventListener("hashchange", syncViewerToHash);
+            if (viewerHandle) {
+                closingFromHistory = true;
+                viewerHandle.close();
+            }
+        };
+    });
 
     /**
      * External link metadata. `darkText` flips the hover ink for bright
@@ -298,7 +450,6 @@
                 {/if}
             </div>
 
-            <!-- External Links -->
             {#if availableLinks.length > 0}
                 <ul
                     class="actions"
@@ -340,6 +491,41 @@
                         </li>
                     {/each}
                 </ul>
+            {/if}
+            {#if data.comparison}
+                <div class="comparison-action" in:fade={entranceFade("hero")}>
+                    <button
+                        type="button"
+                        class="action-button comparison-button liquid-control"
+                        disabled={comparisonLoading}
+                        aria-busy={comparisonLoading}
+                        onpointerenter={preloadComparison}
+                        onfocus={preloadComparison}
+                        onclick={() => openComparison({ updateHistory: true })}
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            aria-hidden="true"
+                        >
+                            <rect x="3" y="5" width="18" height="14" rx="3" />
+                            <path d="M12 5v14" />
+                            <path d="m8 9-2 3 2 3" />
+                            <path d="m16 9 2 3-2 3" />
+                        </svg>
+                        {comparisonLoading ? "Opening…" : "View Comparisons"}
+                    </button>
+                </div>
+            {/if}
+            {#if comparisonError}
+                <p class="comparison-error" role="status">{comparisonError}</p>
             {/if}
         </div>
     </header>
@@ -657,6 +843,7 @@
         flex-direction: column;
         gap: var(--space-4);
         min-width: 0;
+        height: 100%;
     }
 
     @media (min-width: 640px) {
@@ -733,6 +920,12 @@
         display: flex;
     }
 
+    .comparison-action {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: auto;
+    }
+
     .action-button {
         display: inline-flex;
         align-items: center;
@@ -776,9 +969,46 @@
         transform: scale(0.96);
     }
 
+    .comparison-button {
+        border: 1px solid color-mix(in srgb, var(--color-accent) 48%, var(--liquid-border));
+        color: var(--color-accent-on-tertiary);
+        cursor: pointer;
+    }
+
+    .comparison-button:hover,
+    .comparison-button:focus-visible {
+        color: white;
+        background: var(--color-accent);
+        border-color: var(--color-accent);
+        box-shadow: 0 8px 22px color-mix(in srgb, var(--color-accent) 28%, transparent);
+        transform: translateY(-1px);
+    }
+
+    .comparison-button:active {
+        transform: scale(0.96);
+    }
+
+    .comparison-button:disabled {
+        cursor: wait;
+        opacity: 0.72;
+    }
+
+    .comparison-error {
+        margin: calc(-1 * var(--space-2)) 0 0;
+        color: var(--color-label-secondary);
+        font-size: var(--text-xs);
+    }
+
     @media (min-width: 640px) {
         .action-button {
             min-height: 38px;
+        }
+    }
+
+    @media (max-width: 639px) {
+        .comparison-action {
+            justify-content: flex-start;
+            margin-top: var(--space-2);
         }
     }
 
