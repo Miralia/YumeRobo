@@ -331,12 +331,12 @@
 	style:view-transition-name="app-header"
 	onfocusout={handleThemeFocusOut}
 >
-	<div class="header-bar liquid-surface">
+	<div class="header-bar">
 		<div class="header-content">
 			{#if isDetailPage}
 				<a
 					href="/"
-					class="header-leading context-back liquid-control"
+					class="header-leading leading-control context-back liquid-surface"
 					aria-label="Back to releases"
 					style:view-transition-name="header-leading"
 					onclick={handleBackToHome}
@@ -359,16 +359,31 @@
 			{:else}
 				<a
 					href="/"
-					class="header-leading logo"
-					aria-label="YumeRobo home"
+					class="header-leading leading-control home-button liquid-surface"
+					aria-label="Home"
 					style:view-transition-name="header-leading"
 				>
-					<img src="/icon.svg" alt="" class="logo-icon" />
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						width="22"
+						height="22"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						aria-hidden="true"
+					>
+						<path d="m3 11 9-8 9 8" />
+						<path d="M5 10v10h14V10" />
+						<path d="M9 20v-6h6v6" />
+					</svg>
 				</a>
 			{/if}
 
 		<form
-			class="search-wrapper"
+			class="search-wrapper liquid-surface"
 			class:focused={isSearchFocused}
 			role="search"
 			onsubmit={handleSearchSubmit}
@@ -391,7 +406,7 @@
 			</svg>
 			<input
 				type="search"
-				class="search-input liquid-control"
+				class="search-input"
 				placeholder="Search releases..."
 				aria-label="Search releases"
 				value={searchQuery}
@@ -405,7 +420,7 @@
 			{#if searchQuery}
 				<button
 					type="button"
-					class="clear-btn liquid-control"
+					class="clear-btn"
 					onclick={clearSearch}
 					aria-label="Clear search"
 					transition:scale={{
@@ -434,13 +449,14 @@
 		</form>
 
 		<nav class="nav-desktop" aria-label="Primary">
-			<a
-				href={TELEGRAM_URL}
-				target="_blank"
-				rel="noopener noreferrer"
-				class="telegram-button liquid-control"
-				aria-label="Telegram channel"
-			>
+			<div class="contact-group liquid-surface">
+				<a
+					href={TELEGRAM_URL}
+					target="_blank"
+					rel="noopener noreferrer"
+					class="telegram-button"
+					aria-label="Telegram channel"
+				>
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
 					width="18"
@@ -453,12 +469,12 @@
 						d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"
 					/>
 				</svg>
-			</a>
-			<a
-				href={EMAIL_URL}
-				class="telegram-button liquid-control"
-				aria-label="Email YumeRobo@proton.me"
-			>
+				</a>
+				<a
+					href={EMAIL_URL}
+					class="telegram-button"
+					aria-label="Email YumeRobo@proton.me"
+				>
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
 					width="18"
@@ -474,10 +490,11 @@
 					<rect width="20" height="16" x="2" y="4" rx="2" />
 					<path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
 				</svg>
-			</a>
+				</a>
+			</div>
 			<div class="theme-dropdown">
 				<button
-					class="nav-button liquid-control"
+					class="nav-button liquid-surface"
 					bind:this={themeButton}
 					onclick={(event) => {
 						event.stopPropagation();
@@ -503,7 +520,7 @@
 		</nav>
 
 		<button
-			class="mobile-menu-button liquid-control"
+			class="mobile-menu-button liquid-surface"
 			bind:this={mobileMenuButton}
 			onclick={() => (isMobileMenuOpen = !isMobileMenuOpen)}
 			aria-label="Menu"
@@ -684,10 +701,6 @@
 		margin-inline: auto;
 	}
 
-	.header-bar {
-		border-radius: calc(var(--radius-lg) + 6px);
-	}
-
 	.header-content {
 		display: grid;
 		grid-template-columns: 44px minmax(0, 1fr) 44px;
@@ -716,34 +729,21 @@
 		inset: -4px;
 	}
 
-	.logo {
-		color: var(--color-label);
-		text-decoration: none;
-	}
-
-	.logo-icon {
-		height: 28px;
-		width: auto;
-		transition: transform var(--duration-normal) var(--ease-spring);
-	}
-
-	.logo:hover .logo-icon,
-	.logo:focus-visible .logo-icon {
-		transform: scale(1.06);
-	}
-
-	.context-back {
-		color: var(--color-accent);
+	.leading-control {
+		color: var(--color-label-secondary);
 		text-decoration: none;
 		border-color: var(--liquid-border);
 		border-radius: var(--radius-full);
 	}
 
+	.home-button:hover,
+	.home-button:focus-visible,
 	.context-back:hover,
 	.context-back:focus-visible {
-		color: var(--color-accent);
+		color: var(--color-label);
 	}
 
+	.home-button:active,
 	.context-back:active {
 		transform: none;
 	}
@@ -757,6 +757,18 @@
 		position: relative;
 		display: flex;
 		align-items: center;
+		border-radius: var(--radius-full);
+		transition:
+			border-color var(--duration-fast) var(--ease-out),
+			box-shadow var(--duration-fast) var(--ease-out);
+	}
+
+	.search-wrapper.focused {
+		border-color: var(--color-accent);
+		box-shadow:
+			inset 0 1px 0 var(--liquid-highlight),
+			var(--liquid-shadow),
+			0 0 0 3px color-mix(in srgb, var(--color-accent) 18%, transparent);
 	}
 
 	.search-icon {
@@ -779,12 +791,9 @@
 		font-size: var(--text-sm);
 		font-family: var(--font-sans);
 		color: var(--color-label);
-		border-radius: var(--radius-lg);
-		transition:
-			background-color var(--duration-fast) var(--ease-out),
-			border-color var(--duration-fast) var(--ease-out),
-			box-shadow var(--duration-fast) var(--ease-out),
-			transform var(--duration-fast) var(--ease-spring);
+		background: transparent;
+		border: none;
+		border-radius: inherit;
 	}
 
 	.search-input::-webkit-search-cancel-button {
@@ -794,13 +803,6 @@
 
 	.search-input:focus {
 		outline: none;
-		background: var(--liquid-surface-opaque);
-		border-color: var(--color-accent);
-		box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 18%, transparent);
-	}
-
-	.search-input:active {
-		transform: none;
 	}
 
 	.search-input::placeholder {
@@ -816,15 +818,20 @@
 		width: 20px;
 		height: 20px;
 		padding: 0;
+		background: transparent;
 		border: none;
 		border-radius: var(--radius-full);
 		color: var(--color-label-secondary);
 		cursor: pointer;
 		opacity: 0.7;
-		transition: opacity var(--duration-fast) var(--ease-out);
+		transition:
+			background-color var(--duration-fast) var(--ease-out),
+			opacity var(--duration-fast) var(--ease-out);
 	}
 
-	.clear-btn:hover {
+	.clear-btn:hover,
+	.clear-btn:focus-visible {
+		background-color: var(--liquid-control-hover);
 		opacity: 1;
 	}
 
@@ -834,6 +841,13 @@
 		display: none;
 		align-items: center;
 		gap: var(--space-2);
+	}
+
+	.contact-group {
+		display: flex;
+		align-items: center;
+		border-radius: var(--radius-full);
+		overflow: hidden;
 	}
 
 	.telegram-button {
@@ -862,7 +876,6 @@
 		justify-content: center;
 		width: 36px;
 		height: 36px;
-		border: none;
 		color: var(--color-label-secondary);
 		border-radius: var(--radius-full);
 		cursor: pointer;
@@ -938,7 +951,6 @@
 		justify-content: center;
 		width: 44px;
 		height: 44px;
-		border: none;
 		color: var(--color-label);
 		border-radius: var(--radius-full);
 		cursor: pointer;
@@ -1088,6 +1100,8 @@
 	}
 
 	@media (forced-colors: active) {
+		.search-wrapper,
+		.contact-group,
 		.search-input,
 		.clear-btn,
 		.telegram-button,
