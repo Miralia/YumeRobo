@@ -308,7 +308,7 @@
 			{#if isDetailPage}
 				<a
 					href="/"
-					class="header-leading context-back"
+					class="header-leading context-back liquid-control"
 					aria-label="Back to releases"
 					style:view-transition-name="header-leading"
 				>
@@ -706,6 +706,8 @@
 	.context-back {
 		color: var(--color-accent);
 		text-decoration: none;
+		border-color: var(--liquid-border);
+		border-radius: var(--radius-md);
 	}
 
 	.context-back svg {
