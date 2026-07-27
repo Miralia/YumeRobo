@@ -891,8 +891,8 @@
 	}
 
 	.telegram-button.mobile {
-		width: 36px;
-		height: 36px;
+		width: 44px;
+		height: 44px;
 	}
 
 	.mobile-controls {
@@ -922,6 +922,8 @@
 	}
 
 	.control-btn {
+		min-width: 44px;
+		min-height: 44px;
 		padding: var(--space-1) var(--space-2);
 		font-size: var(--text-sm);
 		font-family: var(--font-sans);
