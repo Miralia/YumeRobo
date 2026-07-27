@@ -394,10 +394,12 @@ pre {
 .liquid-surface {
 	position: relative;
 	isolation: isolate;
+	overflow: hidden;
 	background: var(--liquid-surface-opaque);
 	border: 1px solid var(--liquid-border);
 	box-shadow:
-		inset 0 1px 0 var(--liquid-highlight),
+		inset 0 1px 0 color-mix(in srgb, var(--liquid-highlight) 72%, transparent),
+		inset 0 -1px 0 color-mix(in srgb, var(--color-label) 8%, transparent),
 		var(--liquid-shadow);
 }
 
@@ -410,17 +412,46 @@ pre {
 
 @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
 	.liquid-surface {
-		background:
-			linear-gradient(145deg, var(--liquid-highlight), transparent 38%),
-			var(--liquid-surface);
+		background: var(--liquid-surface);
 		backdrop-filter: blur(var(--liquid-blur)) saturate(var(--liquid-saturate));
 		-webkit-backdrop-filter: blur(var(--liquid-blur)) saturate(var(--liquid-saturate));
 	}
 
 	.liquid-surface--elevated {
-		background:
-			linear-gradient(145deg, var(--liquid-highlight), transparent 42%),
-			var(--liquid-surface-elevated);
+		background: var(--liquid-surface-elevated);
+	}
+}
+
+.liquid-surface::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+	pointer-events: none;
+	opacity: 0;
+	background: radial-gradient(
+		circle 52px at var(--liquid-pointer-x, 50%) var(--liquid-pointer-y, 50%),
+		color-mix(in srgb, var(--liquid-highlight) 82%, transparent),
+		transparent 72%
+	);
+	mix-blend-mode: soft-light;
+	transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.liquid-surface[data-liquid-active]::before {
+	opacity: 0.72;
+}
+
+@supports (backdrop-filter: url("#liquid-glass-probe")) {
+	.liquid-surface[data-liquid-refraction] {
+		backdrop-filter:
+			var(--liquid-refraction-filter)
+			blur(var(--liquid-blur))
+			saturate(var(--liquid-saturate));
+		-webkit-backdrop-filter:
+			var(--liquid-refraction-filter)
+			blur(var(--liquid-blur))
+			saturate(var(--liquid-saturate));
 	}
 }
 
@@ -458,9 +489,7 @@ pre {
 	isolation: isolate;
 	overflow: hidden;
 	overflow-anchor: none;
-	background:
-		linear-gradient(145deg, color-mix(in srgb, var(--liquid-highlight) 62%, transparent), transparent 34%),
-		var(--liquid-surface);
+	background: var(--liquid-surface);
 	border: 1px solid var(--liquid-border);
 	border-radius: var(--radius-lg);
 	box-shadow:

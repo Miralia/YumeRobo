@@ -994,8 +994,7 @@
     }
 
     .comparison-button {
-        border: 1px solid color-mix(in srgb, var(--color-accent) 48%, var(--liquid-border));
-        color: var(--color-accent-on-tertiary);
+        color: var(--color-label);
         cursor: pointer;
     }
 

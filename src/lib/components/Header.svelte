@@ -6,6 +6,7 @@
 	import { cubicOut } from "svelte/easing";
 	import { prefersReducedMotion } from "svelte/motion";
 	import { debounce } from "$lib/utils/debounce";
+	import { liquidGlass } from "$lib/utils/liquid-glass";
 	import ThemeIcon from "$lib/components/ThemeIcon.svelte";
 
 	type ThemeMode = "auto" | "light" | "dark";
@@ -327,6 +328,7 @@
 				<a
 					href="/"
 					class="header-leading leading-control context-back liquid-surface"
+					use:liquidGlass={{ interactive: false, refraction: 8 }}
 					aria-label="Back to releases"
 					onclick={handleBackToHome}
 				>
@@ -350,6 +352,7 @@
 				<a
 					href="/"
 					class="header-leading leading-control home-button liquid-surface"
+					use:liquidGlass={{ interactive: false, refraction: 8 }}
 					aria-label="Home"
 				>
 					<svg
@@ -374,6 +377,7 @@
 
 		<form
 			class="search-wrapper liquid-surface"
+			use:liquidGlass={{ interactive: true, refraction: 10 }}
 			class:focused={isSearchFocused}
 			role="search"
 			onsubmit={handleSearchSubmit}
@@ -439,7 +443,10 @@
 		</form>
 
 		<nav class="nav-desktop" aria-label="Primary">
-			<div class="contact-group liquid-surface">
+			<div
+				class="contact-group liquid-surface"
+				use:liquidGlass={{ interactive: true, refraction: 9 }}
+			>
 				<a
 					href={TELEGRAM_URL}
 					target="_blank"
@@ -485,6 +492,7 @@
 			<div class="theme-dropdown">
 				<button
 					class="nav-button liquid-surface"
+					use:liquidGlass={{ interactive: true, refraction: 8 }}
 					bind:this={themeButton}
 					onclick={(event) => {
 						event.stopPropagation();
@@ -511,6 +519,7 @@
 
 		<button
 			class="mobile-menu-button liquid-surface"
+			use:liquidGlass={{ interactive: true, refraction: 8 }}
 			bind:this={mobileMenuButton}
 			onclick={() => (isMobileMenuOpen = !isMobileMenuOpen)}
 			aria-label="Menu"
@@ -545,6 +554,7 @@
 	{#if isThemeMenuOpen}
 		<div
 			class="dropdown-menu liquid-surface liquid-surface--elevated"
+			use:liquidGlass={{ interactive: true, refraction: 7 }}
 			id="theme-menu"
 			role="menu"
 			aria-label="Theme"
@@ -577,6 +587,7 @@
 	{#if isMobileMenuOpen}
 		<nav
 			class="nav-mobile liquid-surface liquid-surface--elevated"
+			use:liquidGlass={{ interactive: true, refraction: 7 }}
 			id="mobile-menu"
 			aria-label="Mobile menu"
 			transition:slide={slideTransition}
