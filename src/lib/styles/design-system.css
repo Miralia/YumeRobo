@@ -338,6 +338,14 @@ html {
 	scrollbar-gutter: stable;
 }
 
+/* Disclosure panels animate their block size. Temporarily opting the root out
+   of scroll anchoring prevents the browser from chasing a moving anchor near
+   the viewport edge and snapping back when the transition's inline height is
+   removed. The attribute is scoped to the transition window in animation.ts. */
+html[data-disclosure-transition] {
+	overflow-anchor: none;
+}
+
 body {
 	font-family: var(--font-sans);
 	font-size: var(--text-base);
@@ -449,6 +457,76 @@ pre {
 	transform: scale(0.96);
 }
 
+/* Content-plane glass. Unlike floating navigation, these potentially numerous
+   surfaces do not sample the backdrop: one translucent material layer, a
+   hairline and an inset highlight provide the depth without multiplying GPU
+   blur passes. Nested content uses a recessed fill instead of another glass. */
+.info-surface {
+	position: relative;
+	isolation: isolate;
+	overflow: hidden;
+	overflow-anchor: none;
+	background:
+		linear-gradient(145deg, color-mix(in srgb, var(--liquid-highlight) 62%, transparent), transparent 34%),
+		var(--liquid-surface);
+	border: 1px solid var(--liquid-border);
+	border-radius: var(--radius-lg);
+	box-shadow:
+		inset 0 1px 0 color-mix(in srgb, var(--liquid-highlight) 72%, transparent),
+		var(--shadow-sm);
+}
+
+.info-surface__header {
+	display: flex;
+	align-items: stretch;
+	min-height: 50px;
+}
+
+.info-surface__header--divided,
+.info-surface[data-expanded="true"] > .info-surface__header {
+	border-bottom: 1px solid var(--liquid-border);
+}
+
+.info-surface__trigger {
+	width: 100%;
+	min-width: 0;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-3);
+	padding: var(--space-3) var(--space-4);
+	color: var(--color-label);
+	background: transparent;
+	border: 0;
+	cursor: pointer;
+	text-align: left;
+	transition:
+		background-color var(--duration-fast) var(--ease-out),
+		color var(--duration-fast) var(--ease-out),
+		transform var(--duration-fast) var(--ease-out);
+}
+
+.info-surface__trigger:hover,
+.info-surface__trigger:focus-visible {
+	background-color: color-mix(in srgb, var(--color-accent) 10%, var(--liquid-control));
+}
+
+.info-surface__trigger:focus-visible {
+	outline: 2px solid var(--color-accent);
+	outline-offset: -2px;
+	border-radius: calc(var(--radius-lg) - 1px);
+}
+
+.info-surface__trigger:active {
+	transform: scale(0.995);
+}
+
+.info-recessed {
+	background: color-mix(in srgb, var(--color-background-tertiary) 72%, transparent);
+	border: 1px solid color-mix(in srgb, var(--color-separator) 72%, transparent);
+	border-radius: var(--radius-md);
+}
+
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
 	.liquid-surface,
 	.liquid-surface--elevated {
@@ -461,12 +539,24 @@ pre {
 		background-color: var(--color-background-secondary);
 		border-color: var(--color-separator-opaque);
 	}
+
+	.info-surface {
+		background: var(--color-background-secondary);
+		border-color: var(--color-separator-opaque);
+	}
+
+	.info-recessed {
+		background: var(--color-background-tertiary);
+		border-color: var(--color-separator-opaque);
+	}
 }
 
 @media (forced-colors: active) {
 	.liquid-surface,
 	.liquid-surface--elevated,
-	.liquid-control {
+	.liquid-control,
+	.info-surface,
+	.info-recessed {
 		background: Canvas;
 		border-color: ButtonBorder;
 		box-shadow: none;

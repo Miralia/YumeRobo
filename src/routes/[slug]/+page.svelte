@@ -6,7 +6,11 @@
     import type { Release, ExternalLinks } from "$lib/content/schema";
     import { externalIcons } from "$lib/utils/icons";
     import { env } from "$env/dynamic/public";
-    import { entranceFly, slideParams } from "$lib/utils/animation";
+    import {
+        entranceFly,
+        slideParams,
+        updateDisclosure,
+    } from "$lib/utils/animation";
     import { posterTilt } from "$lib/utils/poster-tilt";
 
     const SITE_URL = env.PUBLIC_SITE_URL || "https://yumerobo.moe";
@@ -74,7 +78,10 @@
     }
 
     function toggleSpec(index: number) {
-        specOverrides[`${data.release.slug}:${index}`] = !isSpecExpanded(index);
+        updateDisclosure(() => {
+            specOverrides[`${data.release.slug}:${index}`] =
+                !isSpecExpanded(index);
+        });
     }
 
     function isTorrentExpanded(index: number): boolean {
@@ -82,8 +89,10 @@
     }
 
     function toggleTorrent(index: number) {
-        torrentOverrides[`${data.release.slug}:${index}`] =
-            !isTorrentExpanded(index);
+        updateDisclosure(() => {
+            torrentOverrides[`${data.release.slug}:${index}`] =
+                !isTorrentExpanded(index);
+        });
     }
 
     // MediaInfo state - stores raw text
@@ -338,68 +347,81 @@
     <!-- Tech Info Section -->
     {#if data.release.specs && data.release.specs.length > 0}
         <section class="specs-section" aria-label="Technical information">
-            {#each data.release.specs as spec, i}
-                <div
-                    class="spec-block"
-                    in:fly={entranceFly("specs", i)}
-                >
-                    <h2 class="spec-heading">
-                        <button
-                            class="spec-header"
-                            onclick={() => toggleSpec(i)}
-                            aria-expanded={isSpecExpanded(i)}
-                            aria-controls="spec-panel-{i}"
-                        >
-                            <span class="spec-title">{spec.title}</span>
-                            <svg
-                                class="chevron"
-                                class:expanded={isSpecExpanded(i)}
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="20"
-                                height="20"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="2"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                aria-hidden="true"
-                            >
-                                <path d="m6 9 6 6 6-6" />
-                            </svg>
-                        </button>
-                    </h2>
-
-                    {#if isSpecExpanded(i)}
-                        <div
-                            class="spec-body"
-                            id="spec-panel-{i}"
-                            transition:slide={slideParams()}
-                        >
-                            {#if spec.content}
-                                <div class="spec-content">
-                                    {@html spec.content}
-                                </div>
-                            {/if}
-
-                            {#if spec.subitems && spec.subitems.length > 0}
-                                <div class="spec-subitems">
-                                    {#each spec.subitems as subitem}
-                                        <div class="subitem">
-                                            <h3 class="subitem-title">
-                                                {subitem.title}
-                                            </h3>
-                                            <div class="spec-content">
-                                                {@html subitem.content}
-                                            </div>
-                                        </div>
-                                    {/each}
-                                </div>
-                            {/if}
+            <h2
+                class="section-title"
+                in:fly={entranceFly("specs", 0, { lead: 60 })}
+            >
+                Technical Info
+            </h2>
+            <div class="info-card-list">
+                {#each data.release.specs as spec, i}
+                    <div
+                        class="spec-block info-surface"
+                        data-expanded={isSpecExpanded(i)}
+                        in:fly={entranceFly("specs", i)}
+                    >
+                        <div class="info-surface__header">
+                            <h3 class="spec-heading">
+                                <button
+                                    class="spec-header info-surface__trigger"
+                                    onclick={() => toggleSpec(i)}
+                                    aria-expanded={isSpecExpanded(i)}
+                                    aria-controls="spec-panel-{i}"
+                                >
+                                    <span class="spec-title">{spec.title}</span>
+                                    <svg
+                                        class="chevron"
+                                        class:expanded={isSpecExpanded(i)}
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="20"
+                                        height="20"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        aria-hidden="true"
+                                    >
+                                        <path d="m6 9 6 6 6-6" />
+                                    </svg>
+                                </button>
+                            </h3>
                         </div>
-                    {/if}
-                </div>
-            {/each}
+
+                        {#if isSpecExpanded(i)}
+                            <div
+                                class="spec-body"
+                                id="spec-panel-{i}"
+                                transition:slide={slideParams()}
+                            >
+                                {#if spec.content}
+                                    <div class="spec-content info-recessed">
+                                        {@html spec.content}
+                                    </div>
+                                {/if}
+
+                                {#if spec.subitems && spec.subitems.length > 0}
+                                    <div class="spec-subitems">
+                                        {#each spec.subitems as subitem}
+                                            <div class="subitem">
+                                                <h4 class="subitem-title">
+                                                    {subitem.title}
+                                                </h4>
+                                                <div
+                                                    class="spec-content info-recessed"
+                                                >
+                                                    {@html subitem.content}
+                                                </div>
+                                            </div>
+                                        {/each}
+                                    </div>
+                                {/if}
+                            </div>
+                        {/if}
+                    </div>
+                {/each}
+            </div>
         </section>
     {/if}
 
@@ -440,43 +462,46 @@
         <div class="torrent-list">
             {#each data.release.torrents as torrent, index}
                 <div
-                    class="torrent-item"
+                    class="torrent-item info-surface"
+                    data-expanded={isTorrentExpanded(index)}
                     in:fly={entranceFly("torrents", index)}
                 >
-                    <button
-                        class="torrent-header"
-                        onclick={() => toggleTorrent(index)}
-                        aria-expanded={isTorrentExpanded(index)}
-                        aria-controls="torrent-panel-{index}"
-                    >
-                        <span class="torrent-name">{torrent.name}</span>
-                        <span class="file-count"
-                            >{torrent.files.length} file{torrent.files
-                                .length !== 1
-                                ? "s"
-                                : ""}</span
+                    <div class="info-surface__header">
+                        <button
+                            class="torrent-header info-surface__trigger"
+                            onclick={() => toggleTorrent(index)}
+                            aria-expanded={isTorrentExpanded(index)}
+                            aria-controls="torrent-panel-{index}"
                         >
-                        <svg
-                            class="chevron"
-                            class:expanded={isTorrentExpanded(index)}
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="18"
-                            height="18"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            aria-hidden="true"
-                        >
-                            <path d="m6 9 6 6 6-6" />
-                        </svg>
-                    </button>
+                            <span class="torrent-name">{torrent.name}</span>
+                            <span class="file-count"
+                                >{torrent.files.length} file{torrent.files
+                                    .length !== 1
+                                    ? "s"
+                                    : ""}</span
+                            >
+                            <svg
+                                class="chevron"
+                                class:expanded={isTorrentExpanded(index)}
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                aria-hidden="true"
+                            >
+                                <path d="m6 9 6 6 6-6" />
+                            </svg>
+                        </button>
+                    </div>
 
                     {#if isTorrentExpanded(index)}
                         <div
-                            class="torrent-files"
+                            class="torrent-files info-recessed"
                             id="torrent-panel-{index}"
                             transition:slide={slideParams()}
                         >
@@ -760,52 +785,34 @@
     }
 
     /* Tech Specs (NFO) */
-    .specs-section {
+    .specs-section,
+    .mediainfo-section,
+    .torrents-section {
         display: flex;
         flex-direction: column;
-        gap: var(--space-6);
+    }
+
+    .info-card-list,
+    .mediainfo-list,
+    .torrent-list {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-3);
     }
 
     .spec-block {
         display: flex;
         flex-direction: column;
-        background: var(--color-background-secondary);
-        border-radius: var(--radius-md);
-        overflow: hidden;
     }
 
     .spec-heading {
+        width: 100%;
         margin: 0;
         font-size: inherit;
     }
 
     .spec-header {
-        width: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: var(--space-3) var(--space-4);
-        background: transparent;
-        border: none;
-        cursor: pointer;
-        text-align: left;
-        transition:
-            background var(--duration-fast) var(--ease-out),
-            transform var(--duration-fast) var(--ease-out);
-    }
-
-    .spec-header:hover {
-        background: var(--color-fill);
-    }
-
-    .spec-header:active {
-        transform: scale(0.995);
-    }
-
-    .spec-header:focus-visible {
-        outline: 2px solid var(--color-accent);
-        outline-offset: -2px;
-        border-radius: var(--radius-md);
+        min-height: 49px;
     }
 
     .spec-title {
@@ -813,11 +820,11 @@
         font-size: var(--text-sm);
         font-weight: 600;
         color: var(--color-label);
-        letter-spacing: 0.05em;
+        letter-spacing: 0.02em;
     }
 
     .spec-body {
-        padding: 0 var(--space-4) var(--space-4);
+        padding: var(--space-4);
         display: flex;
         flex-direction: column;
         gap: var(--space-4);
@@ -849,12 +856,10 @@
         font-size: var(--text-xs);
         line-height: var(--leading-relaxed);
         color: var(--color-label-secondary);
-        background: var(--color-background-tertiary);
         padding: var(--space-4);
-        border-radius: var(--radius-md);
         overflow-x: auto;
         white-space: pre-wrap;
-        word-break: break-all;
+        overflow-wrap: anywhere;
         margin: 0;
     }
 
@@ -873,45 +878,8 @@
     }
 
     /* Torrents */
-    .torrent-list {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-2);
-    }
-
-    .torrent-item {
-        background: var(--color-background-secondary);
-        border-radius: var(--radius-md);
-        overflow: hidden;
-    }
-
     .torrent-header {
-        width: 100%;
-        display: flex;
-        align-items: center;
         gap: var(--space-2);
-        padding: var(--space-3) var(--space-4);
-        background: transparent;
-        border: none;
-        cursor: pointer;
-        text-align: left;
-        transition:
-            background var(--duration-fast) var(--ease-out),
-            transform var(--duration-fast) var(--ease-out);
-    }
-
-    .torrent-header:hover {
-        background: var(--color-fill);
-    }
-
-    .torrent-header:active {
-        transform: scale(0.995);
-    }
-
-    .torrent-header:focus-visible {
-        outline: 2px solid var(--color-accent);
-        outline-offset: -2px;
-        border-radius: var(--radius-md);
     }
 
     .torrent-name {
@@ -942,23 +910,26 @@
     }
 
     .torrent-files {
-        padding: 0 var(--space-4) var(--space-3);
+        margin: var(--space-4);
+        padding: 0 var(--space-3);
         display: flex;
         flex-direction: column;
-        gap: var(--space-1);
     }
 
     .file-item {
         display: flex;
         align-items: center;
         gap: var(--space-2);
-        padding: var(--space-1) var(--space-2);
-        margin-left: var(--space-4);
+        min-width: 0;
+        padding: var(--space-2) 0;
         font-family: var(--font-mono);
         font-size: var(--text-xs);
         color: var(--color-label-secondary);
-        background: var(--color-fill);
-        border-radius: var(--radius-sm);
+        border-bottom: 1px solid color-mix(in srgb, var(--color-separator) 60%, transparent);
+    }
+
+    .file-item:last-child {
+        border-bottom: 0;
     }
 
     .file-icon {
@@ -967,7 +938,8 @@
 
     .file-name {
         flex: 1;
-        word-break: break-all;
+        min-width: 0;
+        overflow-wrap: anywhere;
     }
 
     .file-size {
@@ -980,8 +952,8 @@
     /* Inner Quote (BBCode) */
     :global(.inner-quote) {
         margin: var(--space-2) 0;
-        background: var(--color-background-secondary);
-        border-left: 2px solid var(--color-separator);
+        background: color-mix(in srgb, var(--color-fill-secondary) 65%, transparent);
+        border-left: 2px solid color-mix(in srgb, var(--color-accent) 55%, var(--color-separator));
         border-radius: var(--radius-sm);
         overflow: hidden;
     }
@@ -992,8 +964,8 @@
         font-weight: 600;
         color: var(--color-label-secondary);
         padding: var(--space-1) var(--space-2);
-        background: rgba(0, 0, 0, 0.1);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        background: var(--color-fill-secondary);
+        border-bottom: 1px solid color-mix(in srgb, var(--color-separator) 60%, transparent);
     }
 
     :global(.inner-quote-content) {
@@ -1004,10 +976,17 @@
         white-space: pre-wrap;
     }
 
-    /* MediaInfo */
-    .mediainfo-list {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-3);
+    @media (max-width: 639px) {
+        .torrent-files {
+            margin: var(--space-3);
+        }
+
+        .file-item {
+            align-items: flex-start;
+        }
+
+        .file-size {
+            padding-top: 1px;
+        }
     }
 </style>
