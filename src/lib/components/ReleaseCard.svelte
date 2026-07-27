@@ -121,7 +121,7 @@
         background: color-mix(in srgb, var(--pc) 55%, var(--color-background-secondary));
     }
 
-    .release-card:focus-visible .poster-transition-shell {
+    .release-card:focus-visible .poster-container {
         box-shadow: var(--poster-shadow-hover);
     }
 

@@ -545,9 +545,9 @@ pre {
 }
 
 /* ===== SHARED POSTER MOTION ===== */
-/* The static shell owns elevation as well as Magic Move geometry. Keeping
-   shadow off the clipped, tilting child gives both routes one visual frame
-   and lets the transition snapshot retain its full ink overflow. */
+/* The static shell owns only Magic Move geometry. Its tilting child owns the
+   shared elevation, so the shadow remains attached to the projected poster
+   edge instead of exposing a strip of page background beneath it. */
 .poster-transition-shell {
 	--poster-shadow-color: var(--color-accent);
 	--poster-shadow-rest: 0 1px 3px rgba(0, 0, 0, 0.18);
@@ -557,20 +557,22 @@ pre {
 			var(--poster-shadow-color) 60%,
 			rgba(0, 0, 0, 0.45)
 		);
+}
+
+.poster-transition-shell > .poster-motion {
 	box-shadow: var(--poster-shadow-rest);
 	transition: box-shadow var(--duration-normal) var(--ease-out);
 }
 
-.poster-transition-shell:has(
-		> .poster-motion:is([data-poster-hover], [data-poster-handoff])
-	) {
+.poster-transition-shell
+	> .poster-motion:is([data-poster-hover], [data-poster-handoff]) {
 	box-shadow: var(--poster-shadow-hover);
 }
 
 /* Destination geometry is measured before the action restores hover state.
    Skip the normal resting-to-hover interpolation during that one handoff so
    the new snapshot captures the exact same shadow as the old snapshot. */
-.poster-transition-shell:has(> .poster-motion[data-poster-handoff]) {
+.poster-transition-shell > .poster-motion[data-poster-handoff] {
 	transition: none;
 }
 
