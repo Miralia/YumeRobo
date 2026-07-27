@@ -3,15 +3,22 @@ import assert from "node:assert/strict";
 
 import { getPosterLoadingAttributes } from "./poster-loading.ts";
 
-test("promotes the first card poster for LCP", () => {
+test("promotes the first grid poster for LCP", () => {
 	assert.deepEqual(getPosterLoadingAttributes(0), {
 		loading: "eager",
 		fetchpriority: "high",
 	});
 });
 
-test("keeps non-LCP card posters lazy", () => {
-	assert.deepEqual(getPosterLoadingAttributes(1), {
+test("loads the rest of the first row eagerly without priority", () => {
+	assert.deepEqual(getPosterLoadingAttributes(5), {
+		loading: "eager",
+		fetchpriority: "auto",
+	});
+});
+
+test("keeps below-the-fold posters lazy", () => {
+	assert.deepEqual(getPosterLoadingAttributes(8), {
 		loading: "lazy",
 		fetchpriority: "auto",
 	});

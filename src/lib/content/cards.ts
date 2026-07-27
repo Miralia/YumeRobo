@@ -1,5 +1,5 @@
 /**
- * Card projection consumed by the home page list.
+ * Card projection consumed by the home page grid.
  *
  * This module is imported by client code, so it must stay free of
  * runtime imports from the zod schema module — top-level schema
@@ -12,8 +12,10 @@ export interface ReleaseCardData {
 	title: string;
 	poster: string;
 	date: string;
+	year?: number;
 	badges: string[];
-	torrentNames: string[];
+	/** Build-time dominant poster color; drives hover glow + placeholder */
+	accent?: string;
 }
 
 /**

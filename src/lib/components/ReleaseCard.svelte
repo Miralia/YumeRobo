@@ -1,7 +1,7 @@
 <script lang="ts">
     import type { ReleaseCardData } from "$lib/content/cards";
     import { cardTransition } from "$lib/utils/card-transition.svelte";
-    import { formatDateTime } from "$lib/utils/date";
+    import { formatDate } from "$lib/utils/date";
     import { getPosterLoadingAttributes } from "$lib/utils/poster-loading";
 
     interface Props {
@@ -25,7 +25,11 @@
     let isTransitioning = $derived(cardTransition.slug === card.slug);
 </script>
 
-<a href="/{card.slug}" class="release-card">
+<a
+    href="/{card.slug}"
+    class="release-card"
+    style:--pc={card.accent ?? "var(--color-accent)"}
+>
     <!-- Poster -->
     <div
         class="poster-container"
@@ -35,6 +39,8 @@
     >
         <img
             src={getCardPosterPath(card.poster)}
+            srcset={`${getCardPosterPath(card.poster)} 200w, ${card.poster} 500w`}
+            sizes="(min-width: 640px) 176px, 44vw"
             alt="{card.title} poster"
             class="poster"
             width="200"
@@ -43,10 +49,13 @@
             fetchpriority={posterLoading.fetchpriority}
             decoding="async"
         />
+        {#if card.badges.length > 0}
+            <span class="badge-chip">{card.badges.join(" · ")}</span>
+        {/if}
     </div>
 
-    <!-- Info -->
-    <div class="info">
+    <!-- Caption -->
+    <div class="meta">
         <h2
             class="title"
             style:view-transition-name={isTransitioning
@@ -55,186 +64,113 @@
         >
             {card.title}
         </h2>
-
-        <!-- Torrent release names -->
-        <div class="release-names">
-            {#each card.torrentNames as name}
-                <p class="release-name">{name}</p>
-            {/each}
-        </div>
-
-        <!-- Footer: Badges (left) and Date (right) -->
-        <div class="card-footer">
-            <div class="badges">
-                {#each card.badges as badge}
-                    <span class="badge {badge === 'Fin' ? 'badge-fin' : ''}"
-                        >{badge}</span
-                    >
-                {/each}
-            </div>
-            <time class="date" datetime={card.date}>
-                {formatDateTime(card.date, "medium")}
-            </time>
-        </div>
+        <p class="sub">
+            {#if card.year}{card.year}<span class="sep" aria-hidden="true"
+                    >·</span
+                >{/if}<time datetime={card.date}
+                >{formatDate(card.date, "medium")}</time
+            >
+        </p>
     </div>
 </a>
 
 <style>
     .release-card {
         display: flex;
-        gap: var(--space-4);
-        padding: var(--space-3);
-        background: var(--color-background-secondary);
-        border: 1px solid color-mix(
-            in srgb,
-            var(--color-label) 8%,
-            transparent
-        );
-        border-radius: var(--radius-lg);
+        flex-direction: column;
         text-decoration: none;
         color: inherit;
-        transition:
-            transform var(--duration-normal) var(--ease-spring),
-            border-color var(--duration-fast) var(--ease-out),
-            box-shadow var(--duration-normal) var(--ease-out),
-            background var(--duration-fast) var(--ease-out);
-    }
-
-    .release-card:hover {
-        background: var(--color-background-tertiary);
-        border-color: color-mix(
-            in srgb,
-            var(--color-label) 12%,
-            transparent
-        );
-        box-shadow: var(--shadow-md);
-        transform: translateY(-2px);
+        content-visibility: auto;
+        contain-intrinsic-size: auto 176px auto 320px;
     }
 
     .release-card:focus-visible {
         outline: 2px solid var(--color-accent);
-        outline-offset: 2px;
-        border-radius: var(--radius-lg);
+        outline-offset: 3px;
+        border-radius: var(--radius-poster);
     }
 
     .poster-container {
         position: relative;
-        flex-shrink: 0;
-        width: 80px;
-        aspect-ratio: 2/3;
+        aspect-ratio: 2 / 3;
         border-radius: var(--radius-poster);
         overflow: hidden;
-        background: var(--color-fill);
+        /* Dominant color doubles as the loading placeholder */
+        background: color-mix(in srgb, var(--pc) 55%, var(--color-background-secondary));
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+        transition:
+            transform var(--duration-normal) var(--ease-spring),
+            box-shadow var(--duration-normal) var(--ease-out);
         view-transition-class: poster;
     }
 
-    @media (min-width: 640px) {
-        .poster-container {
-            width: 100px;
-        }
+    .release-card:hover .poster-container,
+    .release-card:focus-visible .poster-container {
+        transform: translateY(-4px) scale(1.02);
+        box-shadow: 0 16px 32px -12px color-mix(in srgb, var(--pc) 60%, rgba(0, 0, 0, 0.45));
     }
 
     .poster {
+        display: block;
         width: 100%;
         height: 100%;
         object-fit: cover;
-        transition: transform var(--duration-slow) var(--ease-out);
     }
 
-    .release-card:hover .poster {
-        transform: scale(1.05);
+    .badge-chip {
+        position: absolute;
+        left: 8px;
+        bottom: 8px;
+        font-family: var(--font-sans);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        line-height: 1;
+        padding: 4px 7px;
+        border-radius: 5px;
+        background: rgba(255, 255, 255, 0.92);
+        color: #1a1a24;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
     }
 
-    .info {
-        flex: 1;
+    .meta {
+        padding: 8px 2px 0;
         min-width: 0;
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-1);
     }
 
     .title {
-        font-family: var(--font-display);
-        font-size: var(--text-base);
-        font-weight: 700;
-        line-height: var(--leading-tight);
-        letter-spacing: var(--tracking-tight);
+        font-family: var(--font-sans);
+        font-size: var(--text-sm);
+        font-weight: 600;
+        line-height: 1.35;
+        letter-spacing: 0;
         color: var(--color-label);
         margin: 0;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        transition: color var(--duration-fast) var(--ease-out);
         view-transition-class: title;
     }
 
-    @media (min-width: 640px) {
-        .title {
-            font-size: var(--text-lg);
-        }
+    .release-card:hover .title {
+        color: var(--color-accent);
     }
 
-    .release-names {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        margin-bottom: var(--space-2);
-    }
-
-    .release-name {
-        font-family: var(--font-mono);
+    .sub {
         font-size: var(--text-xs);
-        color: color-mix(
-            in srgb,
-            var(--color-label) 64%,
-            var(--color-background-secondary)
-        );
-        line-height: var(--leading-normal);
-        word-break: break-all;
-        margin: 0;
+        color: var(--color-label-secondary);
+        margin: 2px 0 0;
+        font-variant-numeric: tabular-nums;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
     }
 
-    .card-footer {
-        display: flex;
-        align-items: flex-end;
-        justify-content: space-between;
-        gap: var(--space-2);
-        margin-top: auto;
-    }
-
-    .badges {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 4px;
-    }
-
-    .badge {
-        font-family: var(--font-sans);
-        font-size: 11px;
-        font-weight: 700;
-        padding: 3px 8px;
-        background: var(--badge-bg);
-        color: var(--badge-fg);
-        border-radius: var(--radius-sm);
-        line-height: 1;
-        letter-spacing: 0.02em;
-    }
-
-    .badge-fin {
-        background: var(--badge-fin-bg);
-        color: var(--badge-fin-fg);
-    }
-
-    .date {
-        font-family: var(--font-sans);
-        font-size: var(--text-sm);
-        color: color-mix(
-            in srgb,
-            var(--color-label) 68%,
-            var(--color-background-secondary)
-        );
-        line-height: 1.35;
-        white-space: nowrap;
-        font-variant-numeric: tabular-nums;
+    .sep {
+        margin-inline: 5px;
+        color: var(--color-label-tertiary);
     }
 </style>

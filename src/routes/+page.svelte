@@ -93,10 +93,11 @@
     /**
      * Entrance delay relative to the batch a card arrived in, so cards
      * appended by infinite scroll animate immediately instead of waiting
-     * out an absolute-index stagger.
+     * out an absolute-index stagger. Capped so late cells in a 24-item
+     * grid batch don't queue for over a second.
      */
     function entranceDelay(index: number): string {
-        return `${stagger(index % HOME_RELEASE_BATCH_SIZE)}ms`;
+        return `${stagger(Math.min(index % HOME_RELEASE_BATCH_SIZE, 11), 35)}ms`;
     }
 
     let flipParams = $derived({
@@ -132,7 +133,7 @@
     <meta name="twitter:description" content="Latest release" />
 </svelte:head>
 
-<div class="home-page container">
+<div class="home-page container container-wide">
     <!-- Search result announcement for assistive tech. Permanently
          mounted: newly inserted live regions aren't reliably announced,
          so only the text content changes. -->
@@ -144,8 +145,8 @@
         {/if}
     </p>
 
-    <!-- Release List -->
-    <section class="release-list" aria-label="Releases">
+    <!-- Release Grid -->
+    <section class="release-grid" aria-label="Releases">
         {#if displayedCards.length > 0}
             {#each displayedCards as card, index (card.slug)}
                 <!-- flip (WAAPI) and the entrance animation (CSS) both
@@ -184,11 +185,23 @@
         gap: var(--space-4);
     }
 
-    /* Release List */
-    .release-list {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-3);
+    /* Poster grid: posters carry the browsing, captions stay compact */
+    .release-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: var(--space-5) var(--space-4);
+    }
+
+    @media (max-width: 480px) {
+        .release-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--space-4) var(--space-3);
+        }
+    }
+
+    /* The empty state spans the whole grid */
+    .release-grid > .empty-state {
+        grid-column: 1 / -1;
     }
 
     /* Empty State */

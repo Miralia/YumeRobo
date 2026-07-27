@@ -22,14 +22,19 @@ const release: Release = {
 };
 
 test("projects a release down to card data with precomputed badges", () => {
-	assert.deepEqual(toCardData(release), {
+	assert.deepEqual(toCardData(release, "#c96a4a"), {
 		slug: "abc12345",
 		title: "Akira",
 		poster: "/posters/abc12345.avif",
 		date: "2026-01-19T10:58:38.626Z",
+		year: 1988,
 		badges: ["Movie"],
-		torrentNames: ["Akira.1988.1080p.BluRay.x265-Kawatare.mkv"],
+		accent: "#c96a4a",
 	});
+});
+
+test("tolerates a missing accent", () => {
+	assert.equal(toCardData(release).accent, undefined);
 });
 
 test("includes Fin badge for completed series", () => {

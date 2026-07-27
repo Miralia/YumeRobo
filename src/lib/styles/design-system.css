@@ -373,6 +373,11 @@ pre {
 	padding-inline: var(--space-4);
 }
 
+/* Poster-grid pages use the full stage */
+.container-wide {
+	max-width: 1520px;
+}
+
 @media (min-width: 768px) {
 	.container {
 		padding-inline: var(--space-6);
