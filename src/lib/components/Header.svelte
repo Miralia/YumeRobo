@@ -338,10 +338,10 @@
 					href="/"
 					class="header-leading leading-control context-back liquid-surface"
 					aria-label="Back to releases"
-					style:view-transition-name="header-leading"
 					onclick={handleBackToHome}
 				>
 					<svg
+						style:view-transition-name="header-leading"
 						xmlns="http://www.w3.org/2000/svg"
 						width="22"
 						height="22"
@@ -361,9 +361,9 @@
 					href="/"
 					class="header-leading leading-control home-button liquid-surface"
 					aria-label="Home"
-					style:view-transition-name="header-leading"
 				>
 					<svg
+						style:view-transition-name="header-leading"
 						xmlns="http://www.w3.org/2000/svg"
 						width="22"
 						height="22"
@@ -723,12 +723,12 @@
 		width: var(--header-control-size);
 		height: var(--header-control-size);
 		padding: 0;
-		view-transition-class: header-leading;
 	}
 
 	.leading-control svg {
 		width: var(--header-control-icon-size);
 		height: var(--header-control-icon-size);
+		view-transition-class: header-leading;
 	}
 
 	.leading-control {
