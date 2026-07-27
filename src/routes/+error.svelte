@@ -19,7 +19,7 @@
 	<p class="error-code" aria-hidden="true">{page.status}</p>
 	<h1 class="error-title">{heading}</h1>
 	<p class="error-desc">{description}</p>
-	<a href="/" class="home-link">
+	<a href="/" class="home-link liquid-control">
 		<svg
 			xmlns="http://www.w3.org/2000/svg"
 			width="18"
@@ -81,30 +81,29 @@
 		margin: 0;
 	}
 
-	/* Badge token pair keeps the ink ≥4.5:1 in both themes; hover
-	   feedback comes from motion + a slight brightness shift so the
-	   contrast pairing never changes */
 	.home-link {
 		display: inline-flex;
 		align-items: center;
 		gap: var(--space-1);
 		margin-top: var(--space-4);
 		padding: var(--space-2) var(--space-5);
+		min-height: 44px;
 		font-size: var(--text-sm);
 		font-weight: 600;
-		color: var(--badge-fg);
-		background: var(--badge-bg);
+		color: var(--color-label);
 		border-radius: var(--radius-full);
-		transition:
-			filter var(--duration-fast) var(--ease-out),
-			transform var(--duration-fast) var(--ease-spring);
 	}
 
 	.home-link:hover,
 	.home-link:focus-visible {
 		color: var(--badge-fg);
-		filter: brightness(1.06);
+		background: var(--badge-bg);
+		border-color: var(--badge-bg);
 		transform: translateY(-1px);
+	}
+
+	.home-link:active {
+		transform: scale(0.96);
 	}
 
 	.home-link svg {
@@ -114,5 +113,14 @@
 	.home-link:hover svg,
 	.home-link:focus-visible svg {
 		transform: translateX(-3px);
+	}
+
+	@media (forced-colors: active) {
+		.home-link:hover,
+		.home-link:focus-visible {
+			color: HighlightText;
+			background: Highlight;
+			border-color: Highlight;
+		}
 	}
 </style>

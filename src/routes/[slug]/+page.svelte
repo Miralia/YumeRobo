@@ -224,7 +224,7 @@
         aria-label="Breadcrumb"
         in:fly={entranceFly("breadcrumb", 0, { offset: -15 })}
     >
-        <a href="/" class="back-link">
+        <a href="/" class="back-link liquid-control">
             <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="20"
@@ -318,7 +318,7 @@
                         <li>
                             <a
                                 href={url}
-                                class="action-button external-link"
+                                class="action-button external-link liquid-control"
                                 class:dark-text={def.darkText}
                                 style:--link-color={def.color}
                                 target="_blank"
@@ -554,10 +554,13 @@
         display: inline-flex;
         align-items: center;
         gap: var(--space-1);
+        min-height: 44px;
+        padding: var(--space-2) var(--space-3);
         font-size: var(--text-sm);
+        font-weight: 600;
         color: var(--color-label-secondary);
         text-decoration: none;
-        transition: color var(--duration-fast) var(--ease-out);
+        border-radius: var(--radius-full);
     }
 
     .back-link svg {
@@ -760,7 +763,7 @@
         display: inline-flex;
         align-items: center;
         gap: var(--space-2);
-        min-height: 36px;
+        min-height: 44px;
         padding: var(--space-2) var(--space-3);
         font-size: var(--text-sm);
         font-weight: 600;
@@ -771,15 +774,11 @@
             color var(--duration-fast) var(--ease-out),
             background-color var(--duration-fast) var(--ease-out),
             border-color var(--duration-fast) var(--ease-out),
-            transform var(--duration-fast) var(--ease-spring),
-            box-shadow var(--duration-fast) var(--ease-out);
+            transform var(--duration-fast) var(--ease-spring);
     }
 
     .external-link {
         color: var(--color-label);
-        background: var(--color-background-secondary);
-        border: 1px solid var(--color-separator);
-        box-shadow: inset 3px 0 var(--link-color, var(--color-accent));
     }
 
     .external-link svg {
@@ -792,12 +791,31 @@
         background: var(--link-color, var(--color-accent));
         border-color: var(--link-color, var(--color-accent));
         transform: translateY(-1px);
-        box-shadow: 0 5px 14px -7px var(--link-color, var(--color-accent));
     }
 
     .external-link.dark-text:hover,
     .external-link.dark-text:focus-visible {
         color: rgba(0, 0, 0, 0.88);
+    }
+
+    .external-link:active {
+        transform: scale(0.96);
+    }
+
+    @media (min-width: 640px) {
+        .back-link,
+        .action-button {
+            min-height: 38px;
+        }
+    }
+
+    @media (forced-colors: active) {
+        .external-link:hover,
+        .external-link:focus-visible {
+            color: HighlightText;
+            background: Highlight;
+            border-color: Highlight;
+        }
     }
 
     /* Sections */
