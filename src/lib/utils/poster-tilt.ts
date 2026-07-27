@@ -52,6 +52,10 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
     let frame: number | null = null;
     let previousTime = 0;
     let suspended = false;
+    let pointerX = 0;
+    let pointerY = 0;
+    let glareLevel = 0.32;
+    let glareAngle = -18;
 
     function supportsInteraction(event?: PointerEvent): boolean {
         return (
@@ -91,7 +95,11 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
         );
         node.style.setProperty(
             "--poster-glare-opacity",
-            `${(opts.glareOpacity * glare).toFixed(3)}`,
+            `${(opts.glareOpacity * glare * glareLevel).toFixed(3)}`,
+        );
+        node.style.setProperty(
+            "--poster-glare-angle",
+            `${glareAngle.toFixed(2)}deg`,
         );
     }
 
@@ -114,13 +122,31 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
     }
 
     function integrateGlarePosition(delta: number) {
-        // The light should stay close to the pointer while remaining on the
-        // shared animation frame, instead of inheriting tilt's slower spring.
+        // Keep the reflection responsive without making it jump between
+        // pointer samples or inherit the rotational spring's long tail.
         const response = 1 - Math.exp(-36 * delta);
         for (const spring of glarePosition) {
             spring.value += (spring.target - spring.value) * response;
             spring.velocity = 0;
         }
+    }
+
+    function updateGlarePose() {
+        if (!bounds) return;
+
+        // Most of the reflection follows the rendered surface normal. A small
+        // pointer lead keeps it responsive while the poster catches up.
+        const tiltRange = Math.max(Math.abs(opts.maxTilt), 0.001);
+        const poseX = Math.max(-1, Math.min(1, rotateY.value / tiltRange));
+        const poseY = Math.max(-1, Math.min(1, -rotateX.value / tiltRange));
+        const lightX = poseX * 0.7 + pointerX * 0.3;
+        const lightY = poseY * 0.7 + pointerY * 0.3;
+        const magnitude = Math.min(1, Math.hypot(lightX, lightY));
+
+        glareX.target = lightX * bounds.width * 0.32;
+        glareY.target = lightY * bounds.height * 0.24;
+        glareLevel = 0.32 + magnitude * 0.68;
+        glareAngle = -18 + lightX * 10 - lightY * 6;
     }
 
     function isSettled(): boolean {
@@ -138,6 +164,7 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
         previousTime = time;
 
         for (const spring of motionSprings) integrate(spring, delta);
+        updateGlarePose();
         integrateGlarePosition(delta);
         integrateGlare(delta);
         render();
@@ -176,8 +203,8 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
 
         rotateX.target = -y * opts.maxTilt;
         rotateY.target = x * opts.maxTilt;
-        glareX.target = x * bounds.width * 0.28;
-        glareY.target = y * bounds.height * 0.22;
+        pointerX = x;
+        pointerY = y;
         engagement.target = 1;
         glareStrength.target = 1;
         schedule();
@@ -199,6 +226,10 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
     function settle() {
         suspended = false;
         bounds = null;
+        pointerX = 0;
+        pointerY = 0;
+        glareLevel = 0.32;
+        glareAngle = -18;
         node.removeAttribute("data-poster-hover");
         rotateX.target = 0;
         rotateY.target = 0;
@@ -215,6 +246,10 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
         frame = null;
         previousTime = 0;
         bounds = null;
+        pointerX = 0;
+        pointerY = 0;
+        glareLevel = 0.32;
+        glareAngle = -18;
         for (const spring of springs) {
             spring.value = 0;
             spring.velocity = 0;

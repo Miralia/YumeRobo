@@ -552,15 +552,17 @@ pre {
 	position: absolute;
 	left: 50%;
 	top: 50%;
-	width: 82%;
-	aspect-ratio: 1;
+	width: 132%;
+	height: 38%;
 	border-radius: 50%;
 	background: radial-gradient(
-		circle,
-		rgba(255, 255, 255, 0.34) 0%,
-		rgba(255, 255, 255, 0.12) 34%,
-		transparent 72%
+		ellipse at center,
+		rgba(255, 255, 255, 0.78) 0%,
+		rgba(255, 255, 255, 0.32) 38%,
+		rgba(255, 255, 255, 0.1) 58%,
+		transparent 76%
 	);
+	mix-blend-mode: soft-light;
 	opacity: 0;
 	pointer-events: none;
 	z-index: 1;
@@ -572,7 +574,7 @@ pre {
 		calc(-50% + var(--poster-glare-x, 0px)),
 		calc(-50% + var(--poster-glare-y, 0px)),
 		1px
-	);
+	) rotate(var(--poster-glare-angle, -18deg));
 	will-change: transform, opacity;
 }
 
