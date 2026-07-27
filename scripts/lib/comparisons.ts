@@ -108,11 +108,15 @@ export function validateSlowPicsCollection(
 ): SlowPicsCollection {
   if (!value || typeof value !== "object") throw new TypeError("slow.pics collection is missing");
   const collection = value as SlowPicsCollection;
-  if (expectedKey && collection.key !== expectedKey) {
-    throw new TypeError(`slow.pics collection key mismatch: expected ${expectedKey}, received ${collection.key ?? "missing"}`);
-  }
   if (!Array.isArray(collection.comparisons) || collection.comparisons.length === 0) {
     throw new TypeError("slow.pics collection has no comparison rows");
+  }
+  if (
+    expectedKey &&
+    collection.key !== expectedKey &&
+    !collection.comparisons.some((comparison) => comparison?.key === expectedKey)
+  ) {
+    throw new TypeError(`slow.pics collection key mismatch: expected ${expectedKey}, received ${collection.key ?? "missing"}`);
   }
 
   const numCols = collection.comparisons[0]?.images?.length ?? 0;

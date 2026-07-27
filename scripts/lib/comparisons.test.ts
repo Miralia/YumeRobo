@@ -46,11 +46,26 @@ describe("slow.pics comparison metadata", () => {
 
   test("validates collection identity and grid shape", () => {
     expect(validateSlowPicsCollection(collection(), "abc123").comparisons).toHaveLength(1);
+    expect(validateSlowPicsCollection(collection(), "row1").key).toBe("abc123");
     expect(() => validateSlowPicsCollection(collection("other"), "abc123")).toThrow("key mismatch");
 
     const uneven = collection();
     uneven.comparisons.push({ key: "row2", images: [uneven.comparisons[0].images[0]] });
     expect(() => validateSlowPicsCollection(uneven, "abc123")).toThrow("inconsistent column counts");
+  });
+
+  test("preserves a comparison entry URL when its key differs from the parent collection", () => {
+    const stored = createStoredComparison(
+      { key: "row1", url: "https://slow.pics/c/row1", label: "Source | Encode" },
+      collection("parent1"),
+    );
+
+    expect(stored.source).toEqual({
+      provider: "slowpics",
+      key: "row1",
+      url: "https://slow.pics/c/row1",
+    });
+    expect(stored.collection.key).toBe("parent1");
   });
 
   test("writes and reads a versioned sidecar without image binaries", async () => {
