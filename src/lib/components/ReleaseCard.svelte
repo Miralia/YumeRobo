@@ -1,7 +1,7 @@
 <script lang="ts">
     import type { ReleaseCardData } from "$lib/content/cards";
+    import LocalDateTime from "$lib/components/LocalDateTime.svelte";
     import { cardTransition } from "$lib/utils/card-transition.svelte";
-    import { formatDate } from "$lib/utils/date";
     import { getPosterLoadingAttributes } from "$lib/utils/poster-loading";
     import { posterTilt } from "$lib/utils/poster-tilt";
 
@@ -77,11 +77,11 @@
             {card.title}
         </h2>
         <p class="sub">
-            {#if card.year}{card.year}<span class="sep" aria-hidden="true"
-                    >·</span
-                >{/if}<time datetime={card.date}
-                >{formatDate(card.date, "medium")}</time
-            >
+            {#if card.year}<span class="release-year"
+                    >{card.year}<span class="sep" aria-hidden="true"
+                        >·</span
+                    ></span
+                >{/if}<LocalDateTime value={card.date} />
         </p>
     </div>
 </a>
@@ -180,13 +180,14 @@
         color: var(--color-label-secondary);
         margin: 2px 0 0;
         font-variant-numeric: tabular-nums;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        column-gap: 5px;
     }
 
     .sep {
-        margin-inline: 5px;
+        margin-inline-start: 5px;
         color: var(--color-label-tertiary);
     }
 </style>

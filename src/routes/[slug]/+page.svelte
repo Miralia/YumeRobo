@@ -1,7 +1,7 @@
 <script lang="ts">
     import { fly, slide } from "svelte/transition";
     import { untrack } from "svelte";
-    import { formatDateTime } from "$lib/utils/date";
+    import LocalDateTime from "$lib/components/LocalDateTime.svelte";
     import MediaInfoCard from "$lib/components/MediaInfoCard.svelte";
     import type { Release, ExternalLinks } from "$lib/content/schema";
     import { externalIcons } from "$lib/utils/icons";
@@ -288,9 +288,10 @@
                 {#if (data.release.media_type === "tv" || data.release.media_type === "tva") && data.release.season}
                     <span class="meta-item">Season {data.release.season}</span>
                 {/if}
-                <span class="meta-item"
-                    >{formatDateTime(data.release.date, "medium")}</span
-                >
+                <LocalDateTime
+                    value={data.release.date}
+                    class="meta-item"
+                />
             </div>
 
             <!-- External Links -->

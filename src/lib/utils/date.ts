@@ -1,100 +1,54 @@
-/**
- * Smart date/time formatting utilities
- * Uses Intl.DateTimeFormat for locale-aware formatting
- */
+const DEFAULT_TIME_ZONE = "UTC";
+const ISO_PARTS_LOCALE = "en-CA-u-ca-iso8601-nu-latn";
 
-export type DateFormatStyle = 'short' | 'medium' | 'long' | 'full';
-const DEFAULT_LOCALE = 'en-US';
-
-/**
- * Get user's preferred locale (from browser or default to 'en-US')
- */
-export function getUserLocale(): string {
-    if (typeof navigator !== 'undefined') {
-        return navigator.language || DEFAULT_LOCALE;
-    }
-    return DEFAULT_LOCALE;
-}
-
-/**
- * Get user's timezone (from browser or default to 'UTC')
- */
+/** Resolve the browser's current IANA time zone, with an SSR-safe fallback. */
 export function getUserTimezone(): string {
-    if (typeof Intl !== 'undefined') {
-        return Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (typeof Intl === "undefined") return DEFAULT_TIME_ZONE;
+    return (
+        Intl.DateTimeFormat().resolvedOptions().timeZone || DEFAULT_TIME_ZONE
+    );
+}
+
+function normalizeOffset(timeZoneName: string): string {
+    if (/^(?:GMT|UTC)$/u.test(timeZoneName)) return "+00:00";
+
+    const match = /^(?:GMT|UTC)([+-])(\d{1,2})(?::?(\d{2}))?$/u.exec(
+        timeZoneName,
+    );
+    if (!match) {
+        throw new RangeError(`Unsupported time-zone offset: ${timeZoneName}`);
     }
-    return 'UTC';
+
+    const [, sign, hours, minutes = "00"] = match;
+    return `${sign}${hours.padStart(2, "0")}:${minutes}`;
 }
 
 /**
- * Format a date string or Date object to a localized string
- */
-export function formatDate(
-    date: string | Date,
-    style: DateFormatStyle = 'medium',
-    locale?: string
-): string {
-    const dateObj = typeof date === 'string' ? new Date(date) : date;
-    const userLocale = locale || DEFAULT_LOCALE;
-
-    const options: Intl.DateTimeFormatOptions = {
-        timeZone: getUserTimezone(),
-        ...(style === 'short' && { year: '2-digit', month: 'numeric', day: 'numeric' }),
-        ...(style === 'medium' && { year: 'numeric', month: 'short', day: 'numeric' }),
-        ...(style === 'long' && { year: 'numeric', month: 'long', day: 'numeric' }),
-        ...(style === 'full' && { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })
-    };
-
-    return new Intl.DateTimeFormat(userLocale, options).format(dateObj);
-}
-
-/**
- * Format a date to relative time (e.g., "2 days ago", "in 3 hours")
- */
-export function formatRelativeTime(date: string | Date, locale?: string): string {
-    const dateObj = typeof date === 'string' ? new Date(date) : date;
-    const userLocale = locale || DEFAULT_LOCALE;
-    const now = new Date();
-    const diffMs = dateObj.getTime() - now.getTime();
-    const diffSeconds = Math.round(diffMs / 1000);
-    const diffMinutes = Math.round(diffSeconds / 60);
-    const diffHours = Math.round(diffMinutes / 60);
-    const diffDays = Math.round(diffHours / 24);
-
-    const rtf = new Intl.RelativeTimeFormat(userLocale, { numeric: 'auto' });
-
-    if (Math.abs(diffDays) >= 1) {
-        return rtf.format(diffDays, 'day');
-    } else if (Math.abs(diffHours) >= 1) {
-        return rtf.format(diffHours, 'hour');
-    } else if (Math.abs(diffMinutes) >= 1) {
-        return rtf.format(diffMinutes, 'minute');
-    } else {
-        return rtf.format(diffSeconds, 'second');
-    }
-}
-
-/**
- * Format date and time together
+ * Format an instant as ISO 8601 in the requested IANA time zone.
+ *
+ * Output is always minute precision, uses a 24-hour clock, and includes the
+ * numeric UTC offset, for example `2026-07-27T17:03+08:00`.
  */
 export function formatDateTime(
     date: string | Date,
-    style: DateFormatStyle = 'medium',
-    locale?: string
+    timeZone: string = getUserTimezone(),
 ): string {
-    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    const dateObject = typeof date === "string" ? new Date(date) : date;
+    const parts = new Intl.DateTimeFormat(ISO_PARTS_LOCALE, {
+        timeZone,
+        calendar: "iso8601",
+        numberingSystem: "latn",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23",
+        timeZoneName: "longOffset",
+    }).formatToParts(dateObject);
+    const values = Object.fromEntries(
+        parts.map(({ type, value }) => [type, value]),
+    );
 
-    const userLocale = locale || DEFAULT_LOCALE;
-
-    const options: Intl.DateTimeFormatOptions = {
-        timeZone: getUserTimezone(),
-        year: 'numeric',
-        month: style === 'short' ? 'numeric' : 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        timeZoneName: 'short' // Added timezone display (e.g., GMT+8, PST)
-    };
-
-    return new Intl.DateTimeFormat(userLocale, options).format(dateObj);
+    return `${values.year}-${values.month}-${values.day}T${values.hour}:${values.minute}${normalizeOffset(values.timeZoneName)}`;
 }
