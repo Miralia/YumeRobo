@@ -288,10 +288,9 @@
                 {#if (data.release.media_type === "tv" || data.release.media_type === "tva") && data.release.season}
                     <span class="meta-item">Season {data.release.season}</span>
                 {/if}
-                <LocalDateTime
-                    value={data.release.date}
-                    class="meta-item"
-                />
+                <span class="meta-item">
+                    <LocalDateTime value={data.release.date} />
+                </span>
             </div>
 
             <!-- External Links -->

@@ -23,16 +23,18 @@ function normalizeOffset(timeZoneName: string): string {
     return `${sign}${hours.padStart(2, "0")}:${minutes}`;
 }
 
-/**
- * Format an instant as ISO 8601 in the requested IANA time zone.
- *
- * Output is always minute precision, uses a 24-hour clock, and includes the
- * numeric UTC offset, for example `2026-07-27T17:03+08:00`.
- */
+export interface FormattedDateTime {
+    /** Strict ISO 8601 value for the semantic `datetime` attribute. */
+    dateTime: string;
+    /** Human-readable, minute-precision label with an explicit UTC offset. */
+    label: string;
+}
+
+/** Format an instant for display and semantic markup in an IANA time zone. */
 export function formatDateTime(
     date: string | Date,
     timeZone: string = getUserTimezone(),
-): string {
+): FormattedDateTime {
     const dateObject = typeof date === "string" ? new Date(date) : date;
     const parts = new Intl.DateTimeFormat(ISO_PARTS_LOCALE, {
         timeZone,
@@ -50,5 +52,12 @@ export function formatDateTime(
         parts.map(({ type, value }) => [type, value]),
     );
 
-    return `${values.year}-${values.month}-${values.day}T${values.hour}:${values.minute}${normalizeOffset(values.timeZoneName)}`;
+    const datePart = `${values.year}-${values.month}-${values.day}`;
+    const timePart = `${values.hour}:${values.minute}`;
+    const offset = normalizeOffset(values.timeZoneName);
+
+    return {
+        dateTime: `${datePart}T${timePart}${offset}`,
+        label: `${datePart} ${timePart} UTC${offset}`,
+    };
 }

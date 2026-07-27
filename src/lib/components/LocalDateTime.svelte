@@ -4,10 +4,9 @@
 
     interface Props {
         value: string;
-        class?: string;
     }
 
-    let { value, class: className }: Props = $props();
+    let { value }: Props = $props();
 
     // Keep SSR and the first hydration pass deterministic, then correct the
     // display with the browser's IANA time zone as soon as the component mounts.
@@ -19,4 +18,4 @@
     });
 </script>
 
-<time datetime={formatted} class={className}>{formatted}</time>
+<time datetime={formatted.dateTime}>{formatted.label}</time>
