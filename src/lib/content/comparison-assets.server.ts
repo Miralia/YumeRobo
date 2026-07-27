@@ -5,12 +5,22 @@ interface StoredComparisonAsset {
     key?: string;
     url?: string;
   };
+  collection?: {
+    comparisons?: Array<{
+      images?: Array<{
+        name?: string;
+        width?: number | null;
+        height?: number | null;
+      }>;
+    }>;
+  };
 }
 
 export interface ComparisonAssetReference {
   assetUrl: string;
   sourceUrl: string;
   sourceKey: string;
+  collection: NonNullable<StoredComparisonAsset["collection"]>;
 }
 
 const metadataModules = import.meta.glob<StoredComparisonAsset>(
@@ -33,6 +43,7 @@ export function getComparisonAsset(slug: string): ComparisonAssetReference | nul
     metadata.source?.provider !== "slowpics" ||
     !metadata.source.key ||
     !metadata.source.url
+    || !metadata.collection
   ) {
     return null;
   }
@@ -41,5 +52,6 @@ export function getComparisonAsset(slug: string): ComparisonAssetReference | nul
     assetUrl,
     sourceUrl: metadata.source.url,
     sourceKey: metadata.source.key,
+    collection: metadata.collection,
   };
 }

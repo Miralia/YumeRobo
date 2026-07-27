@@ -1,5 +1,37 @@
+<script module lang="ts">
+    const mediaInfoContentCache = new Map<string, string>();
+    const mediaInfoFailureCache = new Set<string>();
+    const mediaInfoRequestCache = new Map<string, Promise<string>>();
+
+    async function fetchMediaInfoContent(hash: string): Promise<string> {
+        const cached = mediaInfoContentCache.get(hash);
+        if (cached !== undefined) return cached;
+
+        const existingRequest = mediaInfoRequestCache.get(hash);
+        if (existingRequest) return existingRequest;
+
+        const request = fetch(`/mediainfo/${hash}`).then(async (response) => {
+            if (!response.ok) {
+                throw new Error(`MediaInfo ${hash} returned ${response.status}`);
+            }
+
+            const rawText = await response.text();
+            mediaInfoContentCache.set(hash, rawText);
+            mediaInfoFailureCache.delete(hash);
+            return rawText;
+        }).finally(() => {
+            mediaInfoRequestCache.delete(hash);
+        });
+
+        mediaInfoRequestCache.set(hash, request);
+        return request;
+    }
+</script>
+
 <script lang="ts">
     import { fade, fly, slide } from "svelte/transition";
+    import { afterNavigate, goto, replaceState } from "$app/navigation";
+    import { page } from "$app/state";
     import { untrack } from "svelte";
     import LocalDateTime from "$lib/components/LocalDateTime.svelte";
     import MediaInfoCard from "$lib/components/MediaInfoCard.svelte";
@@ -13,39 +45,10 @@
     } from "$lib/utils/animation";
     import { posterTilt } from "$lib/utils/poster-tilt";
     import type { ComparisonAssetReference } from "$lib/content/comparison-assets.server";
-    import { YACOMP_WEB_ASSET_URL } from "$lib/config/yacomp-web";
     import {
         getDetailSocialDescription,
         getReleaseSocialImagePath,
     } from "$lib/content/social";
-
-    interface ComparisonCollection {
-        comparisons: Array<{
-            images: Array<{
-                name: string;
-                publicFileName: string;
-                width?: number | null;
-                height?: number | null;
-            }>;
-        }>;
-        [key: string]: unknown;
-    }
-
-    interface ComparisonSidecar {
-        schemaVersion: number;
-        collection: ComparisonCollection;
-    }
-
-    interface ViewerHandle {
-        close(): void;
-    }
-
-    interface YacompWebModule {
-        openSlowPicsCollection(
-            collection: ComparisonCollection,
-            options?: { onClose?: () => void },
-        ): ViewerHandle;
-    }
 
     interface Props {
         data: {
@@ -59,96 +62,46 @@
 
     let { data }: Props = $props();
 
-    let comparisonLoading = $state(false);
-    let comparisonError = $state("");
-    let viewerHandle: ViewerHandle | null = null;
-    let viewerModulePromise: Promise<YacompWebModule> | null = null;
-    let comparisonPromise: Promise<ComparisonCollection> | null = null;
-    let hashEntryCreated = false;
-    let closingFromHistory = false;
+    const comparisonsPath = $derived(`/${data.release.slug}/comparisons`);
 
-    function loadViewerModule(): Promise<YacompWebModule> {
-        viewerModulePromise ??= import(/* @vite-ignore */ YACOMP_WEB_ASSET_URL) as Promise<YacompWebModule>;
-        return viewerModulePromise;
-    }
-
-    async function loadComparison(): Promise<ComparisonCollection> {
-        if (!data.comparison) throw new Error("Comparison metadata is unavailable");
-        const response = await fetch(data.comparison.assetUrl);
-        if (!response.ok) throw new Error(`Comparison metadata returned ${response.status}`);
-        const sidecar = await response.json() as ComparisonSidecar;
-        if (sidecar.schemaVersion !== 1 || !Array.isArray(sidecar.collection?.comparisons)) {
-            throw new Error("Comparison metadata is invalid");
-        }
-        return sidecar.collection;
-    }
-
-    function preloadComparison() {
-        if (!data.comparison) return;
-        void loadViewerModule().catch(() => {
-            viewerModulePromise = null;
+    function openComparisons() {
+        const returnScrollY = window.scrollY;
+        replaceState("", {
+            ...page.state,
+            comparisonsReturnScrollY: returnScrollY,
         });
-        comparisonPromise ??= loadComparison().catch((error) => {
-            comparisonPromise = null;
-            throw error;
+        return goto(comparisonsPath, {
+            noScroll: true,
+            state: {
+                openedComparisonsFromDetail: true,
+                comparisonsReturnScrollY: returnScrollY,
+            },
         });
     }
 
-    function comparisonUrl(): URL {
-        return new URL(window.location.href);
-    }
+    afterNavigate(() => {
+        if (page.url.pathname !== `/${data.release.slug}`) return;
+        const returnScrollY = page.state.comparisonsReturnScrollY;
+        if (!Number.isFinite(returnScrollY)) return;
 
-    function removeComparisonHash() {
-        const url = comparisonUrl();
-        url.hash = "";
-        history.replaceState(history.state, "", url);
-    }
+        requestAnimationFrame(() => {
+            window.scrollTo(0, returnScrollY ?? 0);
+            const nextState = { ...page.state };
+            delete nextState.comparisonsReturnScrollY;
+            replaceState("", nextState);
+        });
+    });
 
-    async function openComparison(options: { updateHistory?: boolean } = {}) {
-        if (!data.comparison || viewerHandle || comparisonLoading) return;
-        comparisonLoading = true;
-        comparisonError = "";
-
-        try {
-            const [viewer, collection] = await Promise.all([
-                loadViewerModule(),
-                comparisonPromise ??= loadComparison(),
-            ]);
-
-            if (!options.updateHistory && window.location.hash !== "#comparison") return;
-
-            if (options.updateHistory && window.location.hash !== "#comparison") {
-                const url = comparisonUrl();
-                url.hash = "comparison";
-                history.pushState(history.state, "", url);
-                hashEntryCreated = true;
-            }
-
-            viewerHandle = viewer.openSlowPicsCollection(collection, {
-                onClose: () => {
-                    viewerHandle = null;
-                    if (closingFromHistory) {
-                        closingFromHistory = false;
-                        return;
-                    }
-                    if (window.location.hash !== "#comparison") return;
-                    if (hashEntryCreated) {
-                        hashEntryCreated = false;
-                        history.back();
-                    } else {
-                        removeComparisonHash();
-                    }
-                },
-            });
-        } catch (error) {
-            comparisonError = "Comparison viewer could not be opened.";
-            console.error("Failed to open comparison viewer:", error);
-            if (options.updateHistory && window.location.hash === "#comparison") {
-                removeComparisonHash();
-            }
-        } finally {
-            comparisonLoading = false;
-        }
+    function handleComparisonClick(event: MouseEvent) {
+        if (
+            event.button !== 0 ||
+            event.metaKey ||
+            event.ctrlKey ||
+            event.shiftKey ||
+            event.altKey
+        ) return;
+        event.preventDefault();
+        void openComparisons();
     }
 
     function handleComparisonShortcut(event: KeyboardEvent) {
@@ -170,37 +123,8 @@
         ) return;
 
         event.preventDefault();
-        void openComparison({ updateHistory: true });
+        void openComparisons();
     }
-
-    $effect(() => {
-        if (!data.comparison) return;
-
-        const syncViewerToHash = () => {
-            if (window.location.hash === "#comparison") {
-                void openComparison();
-            } else if (viewerHandle) {
-                closingFromHistory = true;
-                hashEntryCreated = false;
-                viewerHandle.close();
-            }
-        };
-
-        window.addEventListener("popstate", syncViewerToHash);
-        window.addEventListener("hashchange", syncViewerToHash);
-        // Opening the viewer mutates local state; keep that mutation from
-        // becoming a dependency that would immediately tear this effect down.
-        untrack(syncViewerToHash);
-
-        return () => {
-            window.removeEventListener("popstate", syncViewerToHash);
-            window.removeEventListener("hashchange", syncViewerToHash);
-            if (viewerHandle) {
-                closingFromHistory = true;
-                viewerHandle.close();
-            }
-        };
-    });
 
     /**
      * External link metadata. `darkText` flips the hover ink for bright
@@ -266,10 +190,15 @@
             !isTorrentExpanded(index);
     }
 
-    // MediaInfo state - stores raw text
-    let loadedMediaInfo = $state<Map<string, string>>(new Map());
-    let loadingMediaInfo = $state<Set<string>>(new Set());
-    let failedMediaInfo = $state<Set<string>>(new Set());
+    // MediaInfo state mirrors module caches so returning from the viewer
+    // does not replay skeleton-to-content layout shifts.
+    let loadedMediaInfo = $state<Map<string, string>>(
+        new Map(mediaInfoContentCache),
+    );
+    let loadingMediaInfo = $state<Set<string>>(
+        new Set(mediaInfoRequestCache.keys()),
+    );
+    let failedMediaInfo = $state<Set<string>>(new Set(mediaInfoFailureCache));
 
     // Flattened so entrance stagger runs on a true running index
     let mediaInfoEntries = $derived(
@@ -287,20 +216,17 @@
         loadingMediaInfo = new Set(untrack(() => loadingMediaInfo)).add(hash);
 
         try {
-            const response = await fetch(`/mediainfo/${hash}`);
-            if (response.ok) {
-                const rawText = await response.text();
-                loadedMediaInfo = new Map(untrack(() => loadedMediaInfo)).set(
-                    hash,
-                    rawText,
-                );
-            } else {
-                failedMediaInfo = new Set(untrack(() => failedMediaInfo)).add(
-                    hash,
-                );
-            }
+            const rawText = await fetchMediaInfoContent(hash);
+            loadedMediaInfo = new Map(untrack(() => loadedMediaInfo)).set(
+                hash,
+                rawText,
+            );
+            const nextFailed = new Set(untrack(() => failedMediaInfo));
+            nextFailed.delete(hash);
+            failedMediaInfo = nextFailed;
         } catch (e) {
             console.error("Failed to load MediaInfo:", e);
+            mediaInfoFailureCache.add(hash);
             failedMediaInfo = new Set(untrack(() => failedMediaInfo)).add(hash);
         } finally {
             const newLoading = new Set(untrack(() => loadingMediaInfo));
@@ -482,14 +408,11 @@
             {/if}
             {#if data.comparison}
                 <div class="comparison-action" in:fade={entranceFade("hero")}>
-                    <button
-                        type="button"
+                    <a
+                        href={comparisonsPath}
                         class="action-button comparison-button liquid-control"
-                        disabled={comparisonLoading}
-                        aria-busy={comparisonLoading}
-                        onpointerenter={preloadComparison}
-                        onfocus={preloadComparison}
-                        onclick={() => openComparison({ updateHistory: true })}
+                        data-sveltekit-preload-data="hover"
+                        onclick={handleComparisonClick}
                     >
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -508,12 +431,9 @@
                             <path d="m8 9-2 3 2 3" />
                             <path d="m16 9 2 3-2 3" />
                         </svg>
-                        {comparisonLoading ? "Opening…" : "View Comparisons"}
-                    </button>
+                        View Comparisons
+                    </a>
                 </div>
-            {/if}
-            {#if comparisonError}
-                <p class="comparison-error" role="status">{comparisonError}</p>
             {/if}
         </div>
     </header>
@@ -973,17 +893,6 @@
 
     .comparison-button:active {
         transform: scale(0.96);
-    }
-
-    .comparison-button:disabled {
-        cursor: wait;
-        opacity: 0.72;
-    }
-
-    .comparison-error {
-        margin: calc(-1 * var(--space-2)) 0 0;
-        color: var(--color-label-secondary);
-        font-size: var(--text-xs);
     }
 
     @media (min-width: 640px) {

@@ -201,5 +201,5 @@ export async function writeStoredComparison(
 }
 
 export function getComparisonDeepLink(siteUrl: string, slug: string): string {
-  return `${siteUrl.replace(/\/+$/, "")}/${slug}#comparison`;
+  return `${siteUrl.replace(/\/+$/, "")}/${slug}/comparisons`;
 }
