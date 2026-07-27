@@ -1,6 +1,7 @@
 <script lang="ts">
     import { tick } from "svelte";
     import { duration, motionSafe } from "$lib/utils/animation";
+    import { accessibleTooltip } from "$lib/utils/accessible-tooltip";
     import {
         parseMediaInfo,
         toStructured,
@@ -233,6 +234,7 @@
         <a
             href="/mediainfo/{rawHash}"
             class="raw-link liquid-control"
+            use:accessibleTooltip={{ text: "Open raw MediaInfo in new tab" }}
             target="_blank"
             rel="noopener"
             aria-label="Open raw MediaInfo in new tab"

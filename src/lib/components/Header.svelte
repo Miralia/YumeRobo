@@ -6,6 +6,7 @@
 	import { cubicOut } from "svelte/easing";
 	import { prefersReducedMotion } from "svelte/motion";
 	import { debounce } from "$lib/utils/debounce";
+	import { accessibleTooltip } from "$lib/utils/accessible-tooltip";
 	import { liquidGlass } from "$lib/utils/liquid-glass";
 	import ContactConfirmDialog from "$lib/components/ContactConfirmDialog.svelte";
 	import TelegramIcon from "$lib/components/TelegramIcon.svelte";
@@ -371,6 +372,10 @@
 					href="/"
 					class="header-leading leading-control context-back liquid-surface"
 					use:liquidGlass={{ interactive: false, refraction: 8 }}
+					use:accessibleTooltip={{
+						text: "Back to releases",
+						placement: "bottom",
+					}}
 					aria-label="Back to releases"
 					onclick={handleBackToHome}
 				>
@@ -395,7 +400,11 @@
 					href="/"
 					class="header-leading leading-control home-button liquid-surface"
 					use:liquidGlass={{ interactive: false, refraction: 8 }}
-					aria-label="Home"
+					use:accessibleTooltip={{
+						text: "Go to home",
+						placement: "bottom",
+					}}
+					aria-label="Go to home"
 				>
 					<svg
 						style:view-transition-name="header-leading"
@@ -457,6 +466,10 @@
 				<button
 					type="button"
 					class="clear-btn"
+					use:accessibleTooltip={{
+						text: "Clear search",
+						placement: "bottom",
+					}}
 					onclick={clearSearch}
 					aria-label="Clear search"
 					transition:scale={{
@@ -492,7 +505,11 @@
 				<button
 					type="button"
 					class="contact-button"
-					aria-label="Telegram channel"
+					use:accessibleTooltip={{
+						text: "Open Telegram channel",
+						placement: "bottom",
+					}}
+					aria-label="Open Telegram channel"
 					onclick={(event) => requestContact(event, "telegram", TELEGRAM_URL)}
 				>
 					<TelegramIcon size={20} />
@@ -500,7 +517,11 @@
 				<button
 					type="button"
 					class="contact-button"
-					aria-label="Email YumeRobo@proton.me"
+					use:accessibleTooltip={{
+						text: "Email YumeRobo",
+						placement: "bottom",
+					}}
+					aria-label="Email YumeRobo"
 					onclick={(event) => requestContact(event, "email", EMAIL_URL)}
 				>
 				<svg
@@ -524,6 +545,10 @@
 				<button
 					class="nav-button liquid-surface"
 					use:liquidGlass={{ interactive: true, refraction: 8 }}
+					use:accessibleTooltip={{
+						text: `Change theme (${themeLabel(themeMode)})`,
+						placement: "bottom",
+					}}
 					bind:this={themeButton}
 					onclick={(event) => {
 						event.stopPropagation();
@@ -551,9 +576,13 @@
 		<button
 			class="mobile-menu-button liquid-surface"
 			use:liquidGlass={{ interactive: true, refraction: 8 }}
+			use:accessibleTooltip={{
+				text: isMobileMenuOpen ? "Close menu" : "Open menu",
+				placement: "bottom",
+			}}
 			bind:this={mobileMenuButton}
 			onclick={() => (isMobileMenuOpen = !isMobileMenuOpen)}
-			aria-label="Menu"
+			aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
 			aria-expanded={isMobileMenuOpen}
 			aria-controls="mobile-menu"
 		>
