@@ -1,5 +1,6 @@
 <script lang="ts">
     import { tick } from "svelte";
+    import { duration, motionSafe } from "$lib/utils/animation";
     import {
         parseMediaInfo,
         toStructured,
@@ -32,7 +33,9 @@
     // Default view is the structured summary; expanding reveals raw text.
     let showRaw = $state(false);
     let isSwitchingView = $state(false);
+    let isResizingPanel = $state(false);
     let panelElement: HTMLDivElement;
+    let summaryPanelHeight = 0;
 
     // Parse MediaInfo when content is available
     let parsed = $derived<MediaInfoParsed | null>(
@@ -108,6 +111,63 @@
         return parts.join(" / ");
     }
 
+    function getRawPanelHeight(summaryHeight: number): number {
+        const fixedHeight = Math.min(
+            640,
+            Math.max(480, window.innerHeight * 0.65),
+        );
+        // Opening must never make the document shorter. A tall summary keeps
+        // its footprint; compact summaries expand to a useful raw viewport.
+        return Math.max(summaryHeight, fixedHeight);
+    }
+
+    async function animatePanelHeight(
+        targetHeight: number,
+        retainHeight: boolean,
+    ) {
+        const fromHeight = panelElement.getBoundingClientRect().height;
+        const resizeDuration = motionSafe(duration.normal);
+
+        panelElement.style.height = `${fromHeight}px`;
+        if (Math.abs(targetHeight - fromHeight) < 0.5 || resizeDuration === 0) {
+            panelElement.style.height = retainHeight
+                ? `${targetHeight}px`
+                : "";
+            return;
+        }
+
+        isResizingPanel = true;
+        void panelElement.offsetHeight;
+
+        await new Promise<void>((resolve) => {
+            let settled = false;
+            const finish = () => {
+                if (settled) return;
+                settled = true;
+                panelElement.removeEventListener("transitionend", onEnd);
+                window.clearTimeout(fallback);
+                resolve();
+            };
+            const onEnd = (event: TransitionEvent) => {
+                if (
+                    event.target === panelElement &&
+                    event.propertyName === "height"
+                ) {
+                    finish();
+                }
+            };
+            const fallback = window.setTimeout(finish, resizeDuration + 80);
+
+            panelElement.addEventListener("transitionend", onEnd);
+            requestAnimationFrame(() => {
+                panelElement.style.height = `${targetHeight}px`;
+            });
+        });
+
+        isResizingPanel = false;
+        panelElement.style.height = retainHeight ? `${targetHeight}px` : "";
+    }
+
     async function toggleView() {
         if (isSwitchingView) return;
         isSwitchingView = true;
@@ -119,17 +179,18 @@
             }
 
             if (nextRaw) {
-                // Raw is a different representation of the same information,
-                // not more page content. Keep the summary's exact footprint
-                // and let the raw pre scroll inside it.
-                const summaryHeight = panelElement.getBoundingClientRect().height;
-                panelElement.style.height = `${summaryHeight}px`;
+                summaryPanelHeight = panelElement.getBoundingClientRect().height;
+                panelElement.style.height = `${summaryPanelHeight}px`;
                 showRaw = true;
                 await tick();
+                await animatePanelHeight(
+                    getRawPanelHeight(summaryPanelHeight),
+                    true,
+                );
             } else {
                 showRaw = false;
                 await tick();
-                panelElement.style.height = "";
+                await animatePanelHeight(summaryPanelHeight, false);
             }
         } finally {
             isSwitchingView = false;
@@ -200,6 +261,7 @@
     <div
         class="card-panel"
         class:raw-active={showRaw && !!rawContent}
+        class:is-resizing={isResizingPanel}
         id="mediainfo-panel-{rawHash}"
         bind:this={panelElement}
     >
@@ -441,6 +503,11 @@
         min-width: 0;
     }
 
+    .card-panel.is-resizing {
+        overflow: hidden;
+        transition: height var(--duration-normal) var(--ease-out);
+    }
+
     .card-panel.raw-active,
     .view-content.raw-active,
     .raw-view {
@@ -467,12 +534,14 @@
         max-height: none;
         margin: 0;
         padding: var(--space-4);
-        overflow: auto;
+        overflow-x: hidden;
+        overflow-y: auto;
         color: var(--color-label-secondary);
         font-family: var(--font-mono);
         font-size: var(--text-xs);
         line-height: var(--leading-relaxed);
-        white-space: pre;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
     }
 
     .card-body {
