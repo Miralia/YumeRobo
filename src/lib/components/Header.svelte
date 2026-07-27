@@ -308,8 +308,9 @@
 			{#if isDetailPage}
 				<a
 					href="/"
-					class="context-back liquid-control"
+					class="header-leading context-back"
 					aria-label="Back to releases"
+					style:view-transition-name="header-leading"
 				>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
@@ -325,10 +326,14 @@
 					>
 						<path d="m15 18-6-6 6-6" />
 					</svg>
-					<span class="context-back-label">Releases</span>
 				</a>
 			{:else}
-				<a href="/" class="logo" aria-label="YumeRobo home">
+				<a
+					href="/"
+					class="header-leading logo"
+					aria-label="YumeRobo home"
+					style:view-transition-name="header-leading"
+				>
 					<img src="/icon.svg" alt="" class="logo-icon" />
 				</a>
 			{/if}
@@ -655,18 +660,34 @@
 	}
 
 	.header-content {
-		display: flex;
+		display: grid;
+		grid-template-columns: 44px minmax(0, 1fr) 44px;
 		align-items: center;
-		justify-content: space-between;
-		gap: var(--space-4);
 		height: 60px;
 		padding-inline: var(--space-4);
 	}
 
-	.logo {
-		display: flex;
+	.header-leading {
+		position: relative;
+		display: inline-flex;
 		align-items: center;
-		flex-shrink: 0;
+		justify-content: center;
+		justify-self: start;
+		width: 28px;
+		height: 28px;
+		padding: 0;
+		view-transition-class: header-leading;
+	}
+
+	/* Keep the visual slot aligned to the 28px logo while preserving a
+	   44px pointer target around both leading controls. */
+	.header-leading::after {
+		content: "";
+		position: absolute;
+		inset: -8px;
+	}
+
+	.logo {
 		color: var(--color-label);
 		text-decoration: none;
 	}
@@ -683,16 +704,8 @@
 	}
 
 	.context-back {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		flex-shrink: 0;
-		width: 44px;
-		height: 44px;
-		padding: 0;
-		color: var(--color-label-secondary);
+		color: var(--color-accent);
 		text-decoration: none;
-		border-radius: var(--radius-full);
 	}
 
 	.context-back svg {
@@ -709,14 +722,12 @@
 		transform: translateX(-2px);
 	}
 
-	.context-back-label {
-		display: none;
-	}
-
 	.search-wrapper {
-		flex: 1;
+		grid-column: 2;
+		justify-self: center;
+		width: 100%;
 		max-width: 520px;
-		margin: 0 auto;
+		margin: 0;
 		position: relative;
 		display: flex;
 		align-items: center;
@@ -792,6 +803,8 @@
 	}
 
 	.nav-desktop {
+		grid-column: 3;
+		justify-self: end;
 		display: none;
 		align-items: center;
 		gap: var(--space-2);
@@ -892,6 +905,8 @@
 	}
 
 	.mobile-menu-button {
+		grid-column: 3;
+		justify-self: end;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -1010,6 +1025,13 @@
 			width: calc(100% - 2 * var(--space-4));
 		}
 
+		.header-content {
+			grid-template-columns:
+				minmax(124px, 1fr)
+				minmax(0, 520px)
+				minmax(124px, 1fr);
+		}
+
 		.nav-desktop {
 			display: flex;
 		}
@@ -1018,18 +1040,6 @@
 			display: none;
 		}
 
-		.context-back {
-			width: auto;
-			height: 36px;
-			gap: var(--space-1);
-			padding-inline: var(--space-3);
-			font-size: var(--text-sm);
-			font-weight: 600;
-		}
-
-		.context-back-label {
-			display: inline;
-		}
 	}
 
 	@media (max-width: 480px) {

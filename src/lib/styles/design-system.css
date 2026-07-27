@@ -558,6 +558,51 @@ pre {
 	mix-blend-mode: normal;
 }
 
+/* The leading slot swaps between the home mark and detail back arrow.
+   Keep it out of the persistent header snapshot so the two glyphs never
+   linger on top of each other during route transitions. */
+@keyframes header-leading-out {
+	to {
+		opacity: 0;
+		transform: scale(0.72);
+	}
+}
+
+@keyframes header-leading-in {
+	from {
+		opacity: 0;
+		transform: scale(0.72);
+	}
+}
+
+::view-transition-group(header-leading) {
+	animation: none;
+}
+
+::view-transition-image-pair(header-leading) {
+	isolation: isolate;
+}
+
+::view-transition-old(header-leading) {
+	animation: 90ms var(--ease-out) both header-leading-out;
+	mix-blend-mode: normal;
+}
+
+::view-transition-new(header-leading) {
+	animation: 150ms var(--ease-out) 90ms both header-leading-in;
+	mix-blend-mode: normal;
+}
+
+.theme-vt::view-transition-old(header-leading) {
+	animation: none;
+	opacity: 0;
+}
+
+.theme-vt::view-transition-new(header-leading) {
+	animation: none;
+	mix-blend-mode: normal;
+}
+
 /* ===== MAGIC MOVE TRANSITIONS ===== */
 /*
  * Shared-element morphs are matched by view-transition-class (the
