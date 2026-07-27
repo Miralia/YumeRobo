@@ -1,0 +1,1718 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "provider": "slowpics",
+    "key": "3NXqmQMW",
+    "url": "https://slow.pics/c/3NXqmQMW"
+  },
+  "collection": {
+    "key": "3NXqmQMW",
+    "name": "Mobile Suit Gundam Unicorn (2010) - S01E01 - JPN BDBOX VS Kawatare VS Tasokare",
+    "comparisons": [
+      {
+        "key": "weCtZk4I",
+        "name": "01:05.816 / 1578",
+        "images": [
+          {
+            "name": "JPN BDBOX (P)",
+            "sizeValue": "1.6 MiB",
+            "publicFileName": "hF7nPXkT.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (B)",
+            "sizeValue": "1.9 MiB",
+            "publicFileName": "bBlrdIaR.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "1.9 MiB",
+            "publicFileName": "EJTfycrl.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "zLvqODrh",
+        "name": "01:46.607 / 2556",
+        "images": [
+          {
+            "name": "JPN BDBOX (P)",
+            "sizeValue": "2.5 MiB",
+            "publicFileName": "0nJPC1dj.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (B)",
+            "sizeValue": "2.3 MiB",
+            "publicFileName": "XV0hqt9j.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "2.4 MiB",
+            "publicFileName": "JxLSYtNd.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "s6unXQ7s",
+        "name": "02:24.102 / 3455",
+        "images": [
+          {
+            "name": "JPN BDBOX (B)",
+            "sizeValue": "1.1 MiB",
+            "publicFileName": "XHoDP93k.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (B)",
+            "sizeValue": "1.0 MiB",
+            "publicFileName": "WU9tvEBi.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "1.2 MiB",
+            "publicFileName": "jTP8ih1f.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "aMiXap5x",
+        "name": "03:55.402 / 5644",
+        "images": [
+          {
+            "name": "JPN BDBOX (P)",
+            "sizeValue": "1.9 MiB",
+            "publicFileName": "OIK93dqT.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (B)",
+            "sizeValue": "1.6 MiB",
+            "publicFileName": "TznhKI5r.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "1.8 MiB",
+            "publicFileName": "V7g88e1Z.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "6PTFd2I4",
+        "name": "05:24.324 / 7776",
+        "images": [
+          {
+            "name": "JPN BDBOX (P)",
+            "sizeValue": "1.9 MiB",
+            "publicFileName": "khKQ4HKz.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (P)",
+            "sizeValue": "1.8 MiB",
+            "publicFileName": "kVn88kNx.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "2.0 MiB",
+            "publicFileName": "575wCsNn.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "OGJ9eyCV",
+        "name": "05:46.763 / 8314",
+        "images": [
+          {
+            "name": "JPN BDBOX (B)",
+            "sizeValue": "2.0 MiB",
+            "publicFileName": "EmgcHow6.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (B)",
+            "sizeValue": "2.0 MiB",
+            "publicFileName": "5EBoAzCA.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "2.1 MiB",
+            "publicFileName": "7etYKqjV.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "m0vj98RW",
+        "name": "06:41.151 / 9618",
+        "images": [
+          {
+            "name": "JPN BDBOX (P)",
+            "sizeValue": "1.8 MiB",
+            "publicFileName": "cbOZO9ox.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (B)",
+            "sizeValue": "1.8 MiB",
+            "publicFileName": "fdtHLLJ1.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "1.9 MiB",
+            "publicFileName": "hzMDsZxp.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "EPPg5saj",
+        "name": "07:57.310 / 11444",
+        "images": [
+          {
+            "name": "JPN BDBOX (B)",
+            "sizeValue": "2.0 MiB",
+            "publicFileName": "PmotQ5Oz.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (P)",
+            "sizeValue": "2.0 MiB",
+            "publicFileName": "2PNnlbeo.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "2.1 MiB",
+            "publicFileName": "y2uDYXIi.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "JRvgHE1B",
+        "name": "09:52.675 / 14210",
+        "images": [
+          {
+            "name": "JPN BDBOX (B)",
+            "sizeValue": "2.0 MiB",
+            "publicFileName": "zQcWdo1J.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (B)",
+            "sizeValue": "1.8 MiB",
+            "publicFileName": "nQvkOswy.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "2.0 MiB",
+            "publicFileName": "1sm2yXKs.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "4exEbcJL",
+        "name": "10:23.832 / 14957",
+        "images": [
+          {
+            "name": "JPN BDBOX (B)",
+            "sizeValue": "2.0 MiB",
+            "publicFileName": "PXCTP0DS.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (B)",
+            "sizeValue": "1.8 MiB",
+            "publicFileName": "8VSBZF15.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "1.9 MiB",
+            "publicFileName": "qZNJSObd.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "Irk04NHp",
+        "name": "11:35.028 / 16664",
+        "images": [
+          {
+            "name": "JPN BDBOX (P)",
+            "sizeValue": "1.9 MiB",
+            "publicFileName": "CyWbiLsy.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (P)",
+            "sizeValue": "1.7 MiB",
+            "publicFileName": "q5YL2iQb.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "1.9 MiB",
+            "publicFileName": "i2TGi1Yf.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "jUq3Stc6",
+        "name": "13:48.244 / 19858",
+        "images": [
+          {
+            "name": "JPN BDBOX (B)",
+            "sizeValue": "1.9 MiB",
+            "publicFileName": "YYou7aJQ.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (B)",
+            "sizeValue": "1.8 MiB",
+            "publicFileName": "wuBJTyfa.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "2.0 MiB",
+            "publicFileName": "LeD777VZ.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "x2f7dmGy",
+        "name": "14:47.178 / 21271",
+        "images": [
+          {
+            "name": "JPN BDBOX (B)",
+            "sizeValue": "1.8 MiB",
+            "publicFileName": "b8wyyHJQ.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (B)",
+            "sizeValue": "1.7 MiB",
+            "publicFileName": "ud14HwXn.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "1.9 MiB",
+            "publicFileName": "tco05KsX.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "yGz9Kv5M",
+        "name": "16:13.806 / 23348",
+        "images": [
+          {
+            "name": "JPN BDBOX (B)",
+            "sizeValue": "2.0 MiB",
+            "publicFileName": "tCSHAPJq.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (P)",
+            "sizeValue": "1.7 MiB",
+            "publicFileName": "YRsNkOn5.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "2.0 MiB",
+            "publicFileName": "GNFN4WDk.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "YUmFQFSD",
+        "name": "16:49.550 / 24205",
+        "images": [
+          {
+            "name": "JPN BDBOX (P)",
+            "sizeValue": "1.6 MiB",
+            "publicFileName": "FiEhRDjD.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (B)",
+            "sizeValue": "1.7 MiB",
+            "publicFileName": "1B1mq7Tq.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "1.8 MiB",
+            "publicFileName": "U9LvzZko.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "w1oLSQ7P",
+        "name": "18:20.600 / 26388",
+        "images": [
+          {
+            "name": "JPN BDBOX (B)",
+            "sizeValue": "1.9 MiB",
+            "publicFileName": "H5NZTQ4e.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (B)",
+            "sizeValue": "1.8 MiB",
+            "publicFileName": "gBMS2j0v.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "1.8 MiB",
+            "publicFileName": "IX4FfY7b.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "e75nXMD4",
+        "name": "19:32.088 / 28102",
+        "images": [
+          {
+            "name": "JPN BDBOX (P)",
+            "sizeValue": "2.0 MiB",
+            "publicFileName": "DAsmxt72.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (B)",
+            "sizeValue": "1.7 MiB",
+            "publicFileName": "hc328ZcM.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "1.9 MiB",
+            "publicFileName": "fZ86BUoa.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "cSzhpOHC",
+        "name": "20:28.936 / 29465",
+        "images": [
+          {
+            "name": "JPN BDBOX (I)",
+            "sizeValue": "1.9 MiB",
+            "publicFileName": "wquya044.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (B)",
+            "sizeValue": "1.8 MiB",
+            "publicFileName": "VNo0UhUh.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "1.9 MiB",
+            "publicFileName": "esXmM6Dm.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "1vJNWc2P",
+        "name": "21:39.924 / 31167",
+        "images": [
+          {
+            "name": "JPN BDBOX (P)",
+            "sizeValue": "2.2 MiB",
+            "publicFileName": "Wx2xcBgl.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (P)",
+            "sizeValue": "2.0 MiB",
+            "publicFileName": "7yXqDXBL.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "2.1 MiB",
+            "publicFileName": "eLCfJpjg.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "iwPd0mwp",
+        "name": "22:15.918 / 32030",
+        "images": [
+          {
+            "name": "JPN BDBOX (I)",
+            "sizeValue": "1.7 MiB",
+            "publicFileName": "tLOkKJB0.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (B)",
+            "sizeValue": "1.6 MiB",
+            "publicFileName": "Lnq8VbpB.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "1.7 MiB",
+            "publicFileName": "aQRgjSPb.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "0R3Einbl",
+        "name": "23:53.432 / 34368",
+        "images": [
+          {
+            "name": "JPN BDBOX (B)",
+            "sizeValue": "2.0 MiB",
+            "publicFileName": "YGufqWCA.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (P)",
+            "sizeValue": "1.8 MiB",
+            "publicFileName": "LvHQd2ug.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "1.9 MiB",
+            "publicFileName": "RlIPQnfo.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "rDsWLKuy",
+        "name": "26:00.100 / 37405",
+        "images": [
+          {
+            "name": "JPN BDBOX (B)",
+            "sizeValue": "2.2 MiB",
+            "publicFileName": "CCH9nvEa.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (B)",
+            "sizeValue": "1.9 MiB",
+            "publicFileName": "2E1Rp3Ih.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "2.1 MiB",
+            "publicFileName": "0nvAOVUy.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "OJlWZ4Et",
+        "name": "27:10.587 / 39095",
+        "images": [
+          {
+            "name": "JPN BDBOX (B)",
+            "sizeValue": "1.9 MiB",
+            "publicFileName": "SQnVLrNt.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (B)",
+            "sizeValue": "1.8 MiB",
+            "publicFileName": "o8zJCPvV.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "2.0 MiB",
+            "publicFileName": "3QWRPXIz.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "caFF1fwH",
+        "name": "27:33.652 / 39648",
+        "images": [
+          {
+            "name": "JPN BDBOX (P)",
+            "sizeValue": "2.5 MiB",
+            "publicFileName": "5u5sd8eY.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (P)",
+            "sizeValue": "2.3 MiB",
+            "publicFileName": "fPhoPZzu.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "2.4 MiB",
+            "publicFileName": "3D9KKYo0.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "ZwrHIjqh",
+        "name": "29:12.834 / 42026",
+        "images": [
+          {
+            "name": "JPN BDBOX (B)",
+            "sizeValue": "2.0 MiB",
+            "publicFileName": "ZsnO8GF2.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (B)",
+            "sizeValue": "1.9 MiB",
+            "publicFileName": "WyeIyqnS.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "2.0 MiB",
+            "publicFileName": "FIuKfO3J.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "BHZNw4zM",
+        "name": "30:29.786 / 43871",
+        "images": [
+          {
+            "name": "JPN BDBOX (B)",
+            "sizeValue": "2.2 MiB",
+            "publicFileName": "JCtDN9aC.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (P)",
+            "sizeValue": "2.1 MiB",
+            "publicFileName": "P1mp30E3.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "2.2 MiB",
+            "publicFileName": "mzKxpq4t.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "jjXIPUGU",
+        "name": "30:35.459 / 44007",
+        "images": [
+          {
+            "name": "JPN BDBOX (P)",
+            "sizeValue": "2.6 MiB",
+            "publicFileName": "ndgXwaEM.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (B)",
+            "sizeValue": "2.5 MiB",
+            "publicFileName": "vYo0sQ3m.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "2.5 MiB",
+            "publicFileName": "QMdgBz7v.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "cCHWo6jU",
+        "name": "30:47.888 / 44305",
+        "images": [
+          {
+            "name": "JPN BDBOX (P)",
+            "sizeValue": "1.9 MiB",
+            "publicFileName": "sLFmCiF2.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (P)",
+            "sizeValue": "1.9 MiB",
+            "publicFileName": "fGmC8CCt.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "1.9 MiB",
+            "publicFileName": "Cf6BhA26.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "Jh3RYeOO",
+        "name": "32:14.141 / 46373",
+        "images": [
+          {
+            "name": "JPN BDBOX (P)",
+            "sizeValue": "2.0 MiB",
+            "publicFileName": "OsRXvJR6.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (B)",
+            "sizeValue": "1.7 MiB",
+            "publicFileName": "LZF01vQd.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "1.9 MiB",
+            "publicFileName": "YyAArB9X.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "xGS7hJK9",
+        "name": "33:28.590 / 48158",
+        "images": [
+          {
+            "name": "JPN BDBOX (B)",
+            "sizeValue": "1.7 MiB",
+            "publicFileName": "gtaB0jMV.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (P)",
+            "sizeValue": "1.5 MiB",
+            "publicFileName": "fgD9AbcW.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "1.7 MiB",
+            "publicFileName": "mIhWh8IR.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "SQX35RQd",
+        "name": "34:32.070 / 49680",
+        "images": [
+          {
+            "name": "JPN BDBOX (B)",
+            "sizeValue": "2.1 MiB",
+            "publicFileName": "4a22qEDp.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (B)",
+            "sizeValue": "2.0 MiB",
+            "publicFileName": "tTT7wZuN.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "2.1 MiB",
+            "publicFileName": "1NgGrKeW.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "NwjwmGIk",
+        "name": "35:39.804 / 51304",
+        "images": [
+          {
+            "name": "JPN BDBOX (B)",
+            "sizeValue": "1.4 MiB",
+            "publicFileName": "Ol0h65Sm.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (B)",
+            "sizeValue": "1.2 MiB",
+            "publicFileName": "ATuP7hXJ.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "1.6 MiB",
+            "publicFileName": "1SAGonVu.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "UeKTnbGd",
+        "name": "37:02.011 / 53275",
+        "images": [
+          {
+            "name": "JPN BDBOX (P)",
+            "sizeValue": "1.9 MiB",
+            "publicFileName": "HitTcbSi.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (B)",
+            "sizeValue": "1.8 MiB",
+            "publicFileName": "qp56MYF9.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "1.9 MiB",
+            "publicFileName": "53EboEOd.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "ymAte7b0",
+        "name": "37:46.848 / 54350",
+        "images": [
+          {
+            "name": "JPN BDBOX (B)",
+            "sizeValue": "1.9 MiB",
+            "publicFileName": "j2Gj3yOX.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (B)",
+            "sizeValue": "1.7 MiB",
+            "publicFileName": "pd5gPXpM.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "1.9 MiB",
+            "publicFileName": "X8mlgB0b.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "6GOZx6p7",
+        "name": "39:24.946 / 56702",
+        "images": [
+          {
+            "name": "JPN BDBOX (P)",
+            "sizeValue": "2.1 MiB",
+            "publicFileName": "vHYHzHMe.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (B)",
+            "sizeValue": "2.0 MiB",
+            "publicFileName": "85FAlQWO.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "2.2 MiB",
+            "publicFileName": "GGLj3EHr.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "n6BrXNrY",
+        "name": "39:57.770 / 57489",
+        "images": [
+          {
+            "name": "JPN BDBOX (B)",
+            "sizeValue": "1.9 MiB",
+            "publicFileName": "allvuksI.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (P)",
+            "sizeValue": "1.9 MiB",
+            "publicFileName": "vwMW3mpe.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "2.0 MiB",
+            "publicFileName": "ML4Dn1N5.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "EeUVMl9R",
+        "name": "41:31.698 / 59741",
+        "images": [
+          {
+            "name": "JPN BDBOX (B)",
+            "sizeValue": "2.0 MiB",
+            "publicFileName": "gECdTmrx.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (B)",
+            "sizeValue": "1.7 MiB",
+            "publicFileName": "xHR5GJZD.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "1.8 MiB",
+            "publicFileName": "6LjCbSiQ.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "rxk3Xd4M",
+        "name": "42:42.185 / 61431",
+        "images": [
+          {
+            "name": "JPN BDBOX (B)",
+            "sizeValue": "1.7 MiB",
+            "publicFileName": "UVUJ5Ish.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (B)",
+            "sizeValue": "1.7 MiB",
+            "publicFileName": "6JlMWbau.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "1.8 MiB",
+            "publicFileName": "fALykRN8.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "DunK2sZN",
+        "name": "43:10.505 / 62110",
+        "images": [
+          {
+            "name": "JPN BDBOX (B)",
+            "sizeValue": "1.7 MiB",
+            "publicFileName": "M2TStP0J.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (B)",
+            "sizeValue": "1.7 MiB",
+            "publicFileName": "t4AksS7X.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "1.8 MiB",
+            "publicFileName": "3Hb66Ijh.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "BPQqG3Gs",
+        "name": "44:59.488 / 64723",
+        "images": [
+          {
+            "name": "JPN BDBOX (B)",
+            "sizeValue": "1.9 MiB",
+            "publicFileName": "Ml3FeXjK.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (B)",
+            "sizeValue": "1.8 MiB",
+            "publicFileName": "bZ2WUToj.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "2.0 MiB",
+            "publicFileName": "My3eqi1R.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "upHL1mFW",
+        "name": "45:23.512 / 65299",
+        "images": [
+          {
+            "name": "JPN BDBOX (P)",
+            "sizeValue": "1.8 MiB",
+            "publicFileName": "iVQP1q0T.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (B)",
+            "sizeValue": "1.7 MiB",
+            "publicFileName": "1AGGCV0Q.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "1.9 MiB",
+            "publicFileName": "mNokNr8h.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "70bzE27a",
+        "name": "46:14.814 / 66529",
+        "images": [
+          {
+            "name": "JPN BDBOX (P)",
+            "sizeValue": "2.1 MiB",
+            "publicFileName": "WZzlOhPK.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (P)",
+            "sizeValue": "2.0 MiB",
+            "publicFileName": "wBexwtGZ.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "2.2 MiB",
+            "publicFileName": "sQywCfBW.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "9CQgcQf7",
+        "name": "48:13.933 / 69385",
+        "images": [
+          {
+            "name": "JPN BDBOX (P)",
+            "sizeValue": "1.9 MiB",
+            "publicFileName": "JvfziqE1.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (P)",
+            "sizeValue": "1.7 MiB",
+            "publicFileName": "W18tQyfQ.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "1.9 MiB",
+            "publicFileName": "dqLk9q6z.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "9muJLMPc",
+        "name": "49:11.157 / 70757",
+        "images": [
+          {
+            "name": "JPN BDBOX (B)",
+            "sizeValue": "1.8 MiB",
+            "publicFileName": "54SwCa3k.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (B)",
+            "sizeValue": "1.7 MiB",
+            "publicFileName": "wq9X2qwM.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "1.8 MiB",
+            "publicFileName": "u8PBCvRQ.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "9Aqh1Cyq",
+        "name": "50:24.396 / 72513",
+        "images": [
+          {
+            "name": "JPN BDBOX (P)",
+            "sizeValue": "2.1 MiB",
+            "publicFileName": "HUvqLIvN.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (B)",
+            "sizeValue": "1.9 MiB",
+            "publicFileName": "2ILwCz7R.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "2.1 MiB",
+            "publicFileName": "Y2bhtyiA.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "8uZJMTGO",
+        "name": "50:59.181 / 73347",
+        "images": [
+          {
+            "name": "JPN BDBOX (I)",
+            "sizeValue": "1.8 MiB",
+            "publicFileName": "fmiDPThj.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (B)",
+            "sizeValue": "1.8 MiB",
+            "publicFileName": "CdDl81md.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "1.9 MiB",
+            "publicFileName": "uz2n7Zdn.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "PGgGk1hd",
+        "name": "52:06.957 / 74972",
+        "images": [
+          {
+            "name": "JPN BDBOX (B)",
+            "sizeValue": "2.0 MiB",
+            "publicFileName": "kRsTGjZ6.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (B)",
+            "sizeValue": "1.9 MiB",
+            "publicFileName": "7o7dJg3x.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "2.1 MiB",
+            "publicFileName": "mmUEov8A.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "rqZujvUM",
+        "name": "53:15.401 / 76613",
+        "images": [
+          {
+            "name": "JPN BDBOX (I)",
+            "sizeValue": "2.0 MiB",
+            "publicFileName": "IE5o8dij.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (P)",
+            "sizeValue": "1.8 MiB",
+            "publicFileName": "F8taCLj6.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "2.0 MiB",
+            "publicFileName": "vLFSjPA4.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "27ihEeKo",
+        "name": "53:24.451 / 76830",
+        "images": [
+          {
+            "name": "JPN BDBOX (B)",
+            "sizeValue": "2.0 MiB",
+            "publicFileName": "yjDgcnbH.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (B)",
+            "sizeValue": "1.8 MiB",
+            "publicFileName": "6McmiGyk.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "1.9 MiB",
+            "publicFileName": "6tsPTQAf.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "r94ugwah",
+        "name": "54:20.632 / 78177",
+        "images": [
+          {
+            "name": "JPN BDBOX (B)",
+            "sizeValue": "2.1 MiB",
+            "publicFileName": "9A6sSEdg.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Kawatare (B)",
+            "sizeValue": "2.1 MiB",
+            "publicFileName": "FM5inzDT.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          },
+          {
+            "name": "Tasokare (P)",
+            "sizeValue": "2.3 MiB",
+            "publicFileName": "pGVS0vnQ.png",
+            "width": 1920,
+            "height": 1080,
+            "hdr": false,
+            "deepColor": false
+          }
+        ],
+        "hentai": false
+      }
+    ],
+    "hdr": null,
+    "canvasMode": null,
+    "imageFit": null,
+    "imagePosition": null
+  }
+}

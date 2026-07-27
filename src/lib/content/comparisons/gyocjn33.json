@@ -1,0 +1,1718 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "provider": "slowpics",
+    "key": "ioBmA3m0",
+    "url": "https://slow.pics/c/ioBmA3m0"
+  },
+  "collection": {
+    "key": "ioBmA3m0",
+    "name": "My Tomorrow, Your Yesterday (2016) - JPN BD VS NotRO VS NSDAB",
+    "comparisons": [
+      {
+        "key": "ihnyBoPu",
+        "name": "01:02.229 / 1492",
+        "images": [
+          {
+            "name": "JPN BD (B)",
+            "sizeValue": "1.6 MiB",
+            "publicFileName": "riKjsg86.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "1.5 MiB",
+            "publicFileName": "QOzJQanb.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "1.4 MiB",
+            "publicFileName": "QdDHytz9.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "fl6pmutT",
+        "name": "03:06.395 / 4469",
+        "images": [
+          {
+            "name": "JPN BD (B)",
+            "sizeValue": "2.0 MiB",
+            "publicFileName": "4qOgWflp.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "1.8 MiB",
+            "publicFileName": "8a2PGt07.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "1.8 MiB",
+            "publicFileName": "uuhUhCoG.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "9jQOAJUF",
+        "name": "06:31.141 / 9378",
+        "images": [
+          {
+            "name": "JPN BD (P)",
+            "sizeValue": "1.8 MiB",
+            "publicFileName": "uA9Ox6p6.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "1.6 MiB",
+            "publicFileName": "IdBsKBgt.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "1.6 MiB",
+            "publicFileName": "G3JdsXsA.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "ox2q5MT2",
+        "name": "08:12.909 / 11818",
+        "images": [
+          {
+            "name": "JPN BD (B)",
+            "sizeValue": "1.6 MiB",
+            "publicFileName": "eMRrgWls.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "1.5 MiB",
+            "publicFileName": "HLYNfl98.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "1.5 MiB",
+            "publicFileName": "zGG8Mpmt.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "CA8G5qEv",
+        "name": "10:25.875 / 15006",
+        "images": [
+          {
+            "name": "JPN BD (P)",
+            "sizeValue": "2.1 MiB",
+            "publicFileName": "aWyeTp6K.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "2.1 MiB",
+            "publicFileName": "qysJpa3d.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "2.0 MiB",
+            "publicFileName": "QSjHH0pc.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "tWur0GeL",
+        "name": "13:11.332 / 18973",
+        "images": [
+          {
+            "name": "JPN BD (P)",
+            "sizeValue": "1.8 MiB",
+            "publicFileName": "SkU0Ye9Q.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "1.6 MiB",
+            "publicFileName": "OXXC0WlT.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "1.6 MiB",
+            "publicFileName": "vG6BJko2.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "U8cnitUm",
+        "name": "14:56.604 / 21497",
+        "images": [
+          {
+            "name": "JPN BD (P)",
+            "sizeValue": "1.6 MiB",
+            "publicFileName": "FsauizfM.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "1.5 MiB",
+            "publicFileName": "qfyQ2Qi8.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "1.5 MiB",
+            "publicFileName": "mCwUPLkX.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "WoY174RV",
+        "name": "16:41.792 / 24019",
+        "images": [
+          {
+            "name": "JPN BD (B)",
+            "sizeValue": "1.9 MiB",
+            "publicFileName": "qCwfXPCJ.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (P)",
+            "sizeValue": "1.8 MiB",
+            "publicFileName": "E1IuCvQ0.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (P)",
+            "sizeValue": "1.8 MiB",
+            "publicFileName": "AHTOejjZ.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "uHh0iFMV",
+        "name": "19:32.338 / 28108",
+        "images": [
+          {
+            "name": "JPN BD (B)",
+            "sizeValue": "1.5 MiB",
+            "publicFileName": "xMHfnhwG.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "1.4 MiB",
+            "publicFileName": "C0YepxCT.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "1.4 MiB",
+            "publicFileName": "f7tb99Ev.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "4rblL6yq",
+        "name": "21:23.365 / 30770",
+        "images": [
+          {
+            "name": "JPN BD (P)",
+            "sizeValue": "1.6 MiB",
+            "publicFileName": "JEajkf1X.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "1.4 MiB",
+            "publicFileName": "yhah5Fk4.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "1.4 MiB",
+            "publicFileName": "GUPiaW5Q.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "WGqOEBNR",
+        "name": "24:06.612 / 34684",
+        "images": [
+          {
+            "name": "JPN BD (B)",
+            "sizeValue": "1.7 MiB",
+            "publicFileName": "Ta1C2hYf.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "1.6 MiB",
+            "publicFileName": "SpjxE9U2.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "1.6 MiB",
+            "publicFileName": "tjTmKwxp.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "OxcVifmN",
+        "name": "25:03.085 / 36038",
+        "images": [
+          {
+            "name": "JPN BD (P)",
+            "sizeValue": "1.7 MiB",
+            "publicFileName": "b7ZnY82F.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "1.5 MiB",
+            "publicFileName": "W6sS4dlF.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "1.5 MiB",
+            "publicFileName": "tIzH37gb.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "Wj8z3lT6",
+        "name": "28:04.141 / 40379",
+        "images": [
+          {
+            "name": "JPN BD (B)",
+            "sizeValue": "1.8 MiB",
+            "publicFileName": "Bh9XxwPj.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "1.7 MiB",
+            "publicFileName": "8AbGbnM3.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (P)",
+            "sizeValue": "1.7 MiB",
+            "publicFileName": "X6bTAp10.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "kEgdDL3k",
+        "name": "28:36.590 / 41157",
+        "images": [
+          {
+            "name": "JPN BD (B)",
+            "sizeValue": "1.8 MiB",
+            "publicFileName": "EAIEqlwb.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (P)",
+            "sizeValue": "1.7 MiB",
+            "publicFileName": "5KGId8po.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (P)",
+            "sizeValue": "1.7 MiB",
+            "publicFileName": "JlFMFCK7.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "uVTq5UeJ",
+        "name": "32:04.256 / 46136",
+        "images": [
+          {
+            "name": "JPN BD (P)",
+            "sizeValue": "1.8 MiB",
+            "publicFileName": "kwEpI7QU.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "1.7 MiB",
+            "publicFileName": "pFSKJqs8.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "1.7 MiB",
+            "publicFileName": "XlvbtFks.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "Wv7OseiN",
+        "name": "34:16.680 / 49311",
+        "images": [
+          {
+            "name": "JPN BD (B)",
+            "sizeValue": "1.7 MiB",
+            "publicFileName": "bj4ebtBr.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "1.6 MiB",
+            "publicFileName": "yRCebVhT.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "1.6 MiB",
+            "publicFileName": "tQmfvLwh.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "iCKcfqoK",
+        "name": "34:51.298 / 50141",
+        "images": [
+          {
+            "name": "JPN BD (B)",
+            "sizeValue": "1.6 MiB",
+            "publicFileName": "7CP08BfC.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "1.4 MiB",
+            "publicFileName": "xWyLCibt.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "1.4 MiB",
+            "publicFileName": "i1de9STy.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "8Vj5xWrI",
+        "name": "38:16.586 / 55063",
+        "images": [
+          {
+            "name": "JPN BD (B)",
+            "sizeValue": "1.4 MiB",
+            "publicFileName": "yLhW7U00.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "1.3 MiB",
+            "publicFileName": "mT1CJMdG.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "1.3 MiB",
+            "publicFileName": "388q94rU.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "L45dv9Py",
+        "name": "39:39.127 / 57042",
+        "images": [
+          {
+            "name": "JPN BD (P)",
+            "sizeValue": "1.6 MiB",
+            "publicFileName": "iFJiRSz3.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "1.4 MiB",
+            "publicFileName": "ISWcwAbE.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "1.4 MiB",
+            "publicFileName": "wa8Q4XaE.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "rVEC60ti",
+        "name": "41:31.906 / 59746",
+        "images": [
+          {
+            "name": "JPN BD (B)",
+            "sizeValue": "1.6 MiB",
+            "publicFileName": "OeKc9ucp.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "1.5 MiB",
+            "publicFileName": "OzzrucWX.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "1.4 MiB",
+            "publicFileName": "KeUZMIYy.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "lmWUgNoo",
+        "name": "43:58.719 / 63266",
+        "images": [
+          {
+            "name": "JPN BD (B)",
+            "sizeValue": "1.7 MiB",
+            "publicFileName": "Tztz6792.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "1.6 MiB",
+            "publicFileName": "AEcrMaSi.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "1.6 MiB",
+            "publicFileName": "yvaYHNje.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "VIJJTejA",
+        "name": "46:59.191 / 67593",
+        "images": [
+          {
+            "name": "JPN BD (B)",
+            "sizeValue": "1.5 MiB",
+            "publicFileName": "D5NQFzP1.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "1.4 MiB",
+            "publicFileName": "OXAFVuJ4.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "1.3 MiB",
+            "publicFileName": "dz2Qczp6.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "8xF9yg0J",
+        "name": "48:46.048 / 70155",
+        "images": [
+          {
+            "name": "JPN BD (B)",
+            "sizeValue": "1.5 MiB",
+            "publicFileName": "Mbhk44zE.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "1.4 MiB",
+            "publicFileName": "PWP6yPDu.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "1.4 MiB",
+            "publicFileName": "hUcSstcn.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "gFWnHUiu",
+        "name": "50:54.677 / 73239",
+        "images": [
+          {
+            "name": "JPN BD (B)",
+            "sizeValue": "1.6 MiB",
+            "publicFileName": "hA5mzzhH.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "1.5 MiB",
+            "publicFileName": "y7CLDSy2.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "1.5 MiB",
+            "publicFileName": "RJ3W1sQQ.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "aeH36TxH",
+        "name": "53:06.975 / 76411",
+        "images": [
+          {
+            "name": "JPN BD (P)",
+            "sizeValue": "1.8 MiB",
+            "publicFileName": "8NIV9cUu.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "1.7 MiB",
+            "publicFileName": "KLrsaGnE.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "1.7 MiB",
+            "publicFileName": "Cvj7xI8E.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "4VQzgUl4",
+        "name": "55:39.795 / 80075",
+        "images": [
+          {
+            "name": "JPN BD (P)",
+            "sizeValue": "1.7 MiB",
+            "publicFileName": "d6qAZ5qS.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "1.5 MiB",
+            "publicFileName": "PNUNrj8d.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "1.5 MiB",
+            "publicFileName": "eKUzkARZ.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "byWjL5SO",
+        "name": "56:57.039 / 81927",
+        "images": [
+          {
+            "name": "JPN BD (P)",
+            "sizeValue": "2.2 MiB",
+            "publicFileName": "vqX0cUXX.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "2.2 MiB",
+            "publicFileName": "htLtExGr.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "2.2 MiB",
+            "publicFileName": "4Z8rGWss.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "JHqYhvFK",
+        "name": "59:26.271 / 85505",
+        "images": [
+          {
+            "name": "JPN BD (B)",
+            "sizeValue": "1.7 MiB",
+            "publicFileName": "eXfc6Rpn.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "1.6 MiB",
+            "publicFileName": "KUKVC3el.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "1.6 MiB",
+            "publicFileName": "vb5XUSwD.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "Cq1aRM71",
+        "name": "02:25.825 / 89810",
+        "images": [
+          {
+            "name": "JPN BD (B)",
+            "sizeValue": "1.6 MiB",
+            "publicFileName": "ZkAxZ2se.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "1.5 MiB",
+            "publicFileName": "x1ATtMro.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "1.5 MiB",
+            "publicFileName": "1w6nBo4N.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "bnY37Jop",
+        "name": "03:44.696 / 91701",
+        "images": [
+          {
+            "name": "JPN BD (B)",
+            "sizeValue": "1.5 MiB",
+            "publicFileName": "0xtkodE4.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "1.4 MiB",
+            "publicFileName": "wBW9nLGn.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "1.4 MiB",
+            "publicFileName": "7VazavhF.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "3jeAo81e",
+        "name": "06:34.115 / 95763",
+        "images": [
+          {
+            "name": "JPN BD (B)",
+            "sizeValue": "1.5 MiB",
+            "publicFileName": "Xc2HRnTB.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "1.4 MiB",
+            "publicFileName": "3cR2jyKF.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "1.4 MiB",
+            "publicFileName": "DnyPLyI3.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "Ldc7vezc",
+        "name": "08:02.704 / 97887",
+        "images": [
+          {
+            "name": "JPN BD (B)",
+            "sizeValue": "1.6 MiB",
+            "publicFileName": "Sx6HdUwe.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (P)",
+            "sizeValue": "1.5 MiB",
+            "publicFileName": "tBrOxoj9.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "1.5 MiB",
+            "publicFileName": "67NjEfpO.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "MK82OOcA",
+        "name": "11:07.930 / 102328",
+        "images": [
+          {
+            "name": "JPN BD (B)",
+            "sizeValue": "1.6 MiB",
+            "publicFileName": "UJGNE8Y3.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (P)",
+            "sizeValue": "1.5 MiB",
+            "publicFileName": "WeaA0dAb.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (P)",
+            "sizeValue": "1.5 MiB",
+            "publicFileName": "lVEcQj9k.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "WiBgTI8J",
+        "name": "12:26.717 / 104217",
+        "images": [
+          {
+            "name": "JPN BD (B)",
+            "sizeValue": "1.6 MiB",
+            "publicFileName": "efHYRp4k.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (P)",
+            "sizeValue": "1.6 MiB",
+            "publicFileName": "qbBCq88O.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "1.5 MiB",
+            "publicFileName": "ISMQJh6u.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "8PeHwuW0",
+        "name": "15:22.309 / 108427",
+        "images": [
+          {
+            "name": "JPN BD (P)",
+            "sizeValue": "1.6 MiB",
+            "publicFileName": "Z4umO2ST.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (P)",
+            "sizeValue": "1.5 MiB",
+            "publicFileName": "5LMbKPId.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "1.5 MiB",
+            "publicFileName": "0TCOdJ81.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "p1TDmVQ2",
+        "name": "16:28.876 / 110023",
+        "images": [
+          {
+            "name": "JPN BD (P)",
+            "sizeValue": "1.5 MiB",
+            "publicFileName": "oM7bGm7e.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "1.3 MiB",
+            "publicFileName": "4rBOhPoC.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (P)",
+            "sizeValue": "1.5 MiB",
+            "publicFileName": "MkZWSnDf.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "5ZyFmdCP",
+        "name": "19:14.959 / 114005",
+        "images": [
+          {
+            "name": "JPN BD (P)",
+            "sizeValue": "2.1 MiB",
+            "publicFileName": "Qd336fMg.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "2.0 MiB",
+            "publicFileName": "THVkF4Wi.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "2.0 MiB",
+            "publicFileName": "QfEX9LqM.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "vlSkuF0i",
+        "name": "21:24.797 / 117118",
+        "images": [
+          {
+            "name": "JPN BD (P)",
+            "sizeValue": "1.7 MiB",
+            "publicFileName": "IM9tmxCr.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "1.6 MiB",
+            "publicFileName": "W2hAUw2l.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "1.5 MiB",
+            "publicFileName": "RrRJwBd9.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "FKe5Gbnx",
+        "name": "22:36.326 / 118833",
+        "images": [
+          {
+            "name": "JPN BD (B)",
+            "sizeValue": "1.9 MiB",
+            "publicFileName": "oct9RStM.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "1.8 MiB",
+            "publicFileName": "W8ojP1Sb.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "1.8 MiB",
+            "publicFileName": "fVhkMcr2.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "zC1oxz7m",
+        "name": "25:17.696 / 122702",
+        "images": [
+          {
+            "name": "JPN BD (B)",
+            "sizeValue": "1.5 MiB",
+            "publicFileName": "0LwOuP7k.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (P)",
+            "sizeValue": "1.4 MiB",
+            "publicFileName": "Y4y2FQPs.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "1.3 MiB",
+            "publicFileName": "jl5F33HX.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "Ad4Gnb3S",
+        "name": "26:42.280 / 124730",
+        "images": [
+          {
+            "name": "JPN BD (P)",
+            "sizeValue": "1.7 MiB",
+            "publicFileName": "56lKSA4Q.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "1.5 MiB",
+            "publicFileName": "VBaEiTGs.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "1.5 MiB",
+            "publicFileName": "isaaSBin.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "hU8Mpmd9",
+        "name": "26:44.533 / 124784",
+        "images": [
+          {
+            "name": "JPN BD (B)",
+            "sizeValue": "1.6 MiB",
+            "publicFileName": "xJMbHNVr.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "1.4 MiB",
+            "publicFileName": "AY8TgDPh.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "1.5 MiB",
+            "publicFileName": "AaxyjjhR.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "RLyANIRw",
+        "name": "29:59.519 / 129459",
+        "images": [
+          {
+            "name": "JPN BD (B)",
+            "sizeValue": "1.6 MiB",
+            "publicFileName": "Sn7sWXEF.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "1.5 MiB",
+            "publicFileName": "MVz0DzHp.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "1.4 MiB",
+            "publicFileName": "FqA03gGP.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "dTDDMdYs",
+        "name": "30:26.838 / 130114",
+        "images": [
+          {
+            "name": "JPN BD (B)",
+            "sizeValue": "1.6 MiB",
+            "publicFileName": "K9353rzv.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "1.4 MiB",
+            "publicFileName": "wE1fBxgk.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "1.4 MiB",
+            "publicFileName": "BdDn5HMS.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "yRtGzmfY",
+        "name": "33:02.327 / 133842",
+        "images": [
+          {
+            "name": "JPN BD (B)",
+            "sizeValue": "1.5 MiB",
+            "publicFileName": "2VJi6hCH.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "1.4 MiB",
+            "publicFileName": "phufCoTy.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "1.4 MiB",
+            "publicFileName": "61T9hgtm.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "xJRtfOKS",
+        "name": "36:12.350 / 138398",
+        "images": [
+          {
+            "name": "JPN BD (B)",
+            "sizeValue": "1.4 MiB",
+            "publicFileName": "XKu4anPV.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "1.3 MiB",
+            "publicFileName": "FsBkO5lB.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "1.3 MiB",
+            "publicFileName": "yDrsj27K.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "T2PjQV1Q",
+        "name": "37:39.687 / 140492",
+        "images": [
+          {
+            "name": "JPN BD (B)",
+            "sizeValue": "1.5 MiB",
+            "publicFileName": "1cRFTkHU.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (P)",
+            "sizeValue": "1.4 MiB",
+            "publicFileName": "pY1aDGnj.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (P)",
+            "sizeValue": "1.4 MiB",
+            "publicFileName": "yOIRZCNf.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "41PJxutj",
+        "name": "40:31.567 / 144613",
+        "images": [
+          {
+            "name": "JPN BD (P)",
+            "sizeValue": "1.6 MiB",
+            "publicFileName": "gM4Ou7Fi.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "1.4 MiB",
+            "publicFileName": "FjZTOGXr.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (B)",
+            "sizeValue": "1.4 MiB",
+            "publicFileName": "13NGXMTM.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "T4NotE1F",
+        "name": "42:05.119 / 146856",
+        "images": [
+          {
+            "name": "JPN BD (B)",
+            "sizeValue": "1.6 MiB",
+            "publicFileName": "lqrPKgmZ.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (P)",
+            "sizeValue": "1.5 MiB",
+            "publicFileName": "QOa85SGQ.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (P)",
+            "sizeValue": "1.5 MiB",
+            "publicFileName": "NDlp1zn9.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      },
+      {
+        "key": "OrgeCO3u",
+        "name": "45:08.052 / 151242",
+        "images": [
+          {
+            "name": "JPN BD (B)",
+            "sizeValue": "1.7 MiB",
+            "publicFileName": "XFj07qHR.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NotRO (B)",
+            "sizeValue": "1.6 MiB",
+            "publicFileName": "WNGsVNIM.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          },
+          {
+            "name": "NSDAB (P)",
+            "sizeValue": "1.6 MiB",
+            "publicFileName": "rgM2ie20.png",
+            "width": 1920,
+            "height": 804,
+            "hdr": null,
+            "deepColor": null
+          }
+        ],
+        "hentai": false
+      }
+    ],
+    "hdr": null,
+    "canvasMode": null,
+    "imageFit": null,
+    "imagePosition": null
+  }
+}
