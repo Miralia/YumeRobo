@@ -86,6 +86,6 @@ describe("slow.pics comparison metadata", () => {
 
   test("builds the public viewer deep link", () => {
     expect(getComparisonDeepLink("https://yumerobo.moe/", "release1"))
-      .toBe("https://yumerobo.moe/release1#comparison");
+      .toBe("https://yumerobo.moe/release1/comparisons");
   });
 });

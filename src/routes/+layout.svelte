@@ -20,6 +20,10 @@
 		// Query-only navigations (debounced search keystrokes) must not
 		// trigger a full-page transition — Magic Move is for route changes.
 		if (navigation.from?.url.pathname === navigation.to?.url.pathname) return;
+		if (
+			navigation.from?.route.id === "/[slug]/comparisons" ||
+			navigation.to?.route.id === "/[slug]/comparisons"
+		) return;
 
 		// Name only the card involved in this navigation, then let the
 		// DOM update before the old state is captured.
