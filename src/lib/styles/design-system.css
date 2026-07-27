@@ -93,6 +93,20 @@
 	--glass-background: rgba(248, 247, 250, 0.72);
 	--glass-blur: 20px;
 
+	/* Liquid Glass — neutral navigation and control material */
+	--liquid-surface: rgba(250, 249, 252, 0.72);
+	--liquid-surface-elevated: rgba(255, 255, 255, 0.82);
+	--liquid-surface-opaque: #f8f7fa;
+	--liquid-border: rgba(60, 60, 67, 0.18);
+	--liquid-highlight: rgba(255, 255, 255, 0.78);
+	--liquid-control: rgba(120, 120, 128, 0.12);
+	--liquid-control-hover: rgba(120, 120, 128, 0.2);
+	--liquid-control-active: rgba(120, 120, 128, 0.26);
+	--liquid-blur: 18px;
+	--liquid-saturate: 135%;
+	--liquid-shadow: 0 12px 36px rgba(31, 31, 46, 0.12), 0 2px 8px rgba(31, 31, 46, 0.08);
+	--liquid-shadow-elevated: 0 18px 48px rgba(31, 31, 46, 0.18), 0 4px 12px rgba(31, 31, 46, 0.1);
+
 	/* Shadows */
 	--shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
 	--shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -135,6 +149,17 @@
 
 		/* Glass Effect */
 		--glass-background: rgba(21, 21, 29, 0.72);
+
+		--liquid-surface: rgba(24, 24, 34, 0.7);
+		--liquid-surface-elevated: rgba(32, 32, 44, 0.82);
+		--liquid-surface-opaque: #1a1a24;
+		--liquid-border: rgba(255, 255, 255, 0.14);
+		--liquid-highlight: rgba(255, 255, 255, 0.17);
+		--liquid-control: rgba(255, 255, 255, 0.08);
+		--liquid-control-hover: rgba(255, 255, 255, 0.14);
+		--liquid-control-active: rgba(255, 255, 255, 0.2);
+		--liquid-shadow: 0 12px 36px rgba(0, 0, 0, 0.36), 0 2px 8px rgba(0, 0, 0, 0.26);
+		--liquid-shadow-elevated: 0 18px 48px rgba(0, 0, 0, 0.48), 0 4px 12px rgba(0, 0, 0, 0.34);
 
 		/* Shadows */
 		--shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
@@ -179,6 +204,17 @@
 
 	/* Glass Effect */
 	--glass-background: rgba(21, 21, 29, 0.72);
+
+	--liquid-surface: rgba(24, 24, 34, 0.7);
+	--liquid-surface-elevated: rgba(32, 32, 44, 0.82);
+	--liquid-surface-opaque: #1a1a24;
+	--liquid-border: rgba(255, 255, 255, 0.14);
+	--liquid-highlight: rgba(255, 255, 255, 0.17);
+	--liquid-control: rgba(255, 255, 255, 0.08);
+	--liquid-control-hover: rgba(255, 255, 255, 0.14);
+	--liquid-control-active: rgba(255, 255, 255, 0.2);
+	--liquid-shadow: 0 12px 36px rgba(0, 0, 0, 0.36), 0 2px 8px rgba(0, 0, 0, 0.26);
+	--liquid-shadow-elevated: 0 18px 48px rgba(0, 0, 0, 0.48), 0 4px 12px rgba(0, 0, 0, 0.34);
 
 	/* Shadows */
 	--shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
@@ -363,10 +399,92 @@ pre {
 }
 
 /* ===== UTILITY CLASSES ===== */
+.liquid-surface {
+	position: relative;
+	isolation: isolate;
+	background: var(--liquid-surface-opaque);
+	border: 1px solid var(--liquid-border);
+	box-shadow:
+		inset 0 1px 0 var(--liquid-highlight),
+		var(--liquid-shadow);
+}
+
+.liquid-surface--elevated {
+	background: var(--liquid-surface-opaque);
+	box-shadow:
+		inset 0 1px 0 var(--liquid-highlight),
+		var(--liquid-shadow-elevated);
+}
+
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+	.liquid-surface {
+		background:
+			linear-gradient(145deg, var(--liquid-highlight), transparent 38%),
+			var(--liquid-surface);
+		backdrop-filter: blur(var(--liquid-blur)) saturate(var(--liquid-saturate));
+		-webkit-backdrop-filter: blur(var(--liquid-blur)) saturate(var(--liquid-saturate));
+	}
+
+	.liquid-surface--elevated {
+		background:
+			linear-gradient(145deg, var(--liquid-highlight), transparent 42%),
+			var(--liquid-surface-elevated);
+	}
+}
+
+.liquid-control {
+	background-color: var(--liquid-control);
+	border: 1px solid transparent;
+	box-shadow: inset 0 1px 0 color-mix(in srgb, var(--liquid-highlight) 65%, transparent);
+	transition:
+		background-color var(--duration-fast) var(--ease-out),
+		border-color var(--duration-fast) var(--ease-out),
+		color var(--duration-fast) var(--ease-out),
+		transform var(--duration-fast) var(--ease-spring),
+		opacity var(--duration-fast) var(--ease-out);
+}
+
+.liquid-control:hover,
+.liquid-control:focus-visible {
+	background-color: var(--liquid-control-hover);
+	border-color: var(--liquid-border);
+}
+
+.liquid-control:active {
+	background-color: var(--liquid-control-active);
+	transform: scale(0.96);
+}
+
 .glass {
 	background: var(--glass-background);
 	backdrop-filter: blur(var(--glass-blur));
 	-webkit-backdrop-filter: blur(var(--glass-blur));
+}
+
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+	.liquid-surface,
+	.liquid-surface--elevated {
+		background: var(--liquid-surface-opaque);
+		backdrop-filter: none;
+		-webkit-backdrop-filter: none;
+	}
+
+	.liquid-control {
+		background-color: var(--color-background-secondary);
+		border-color: var(--color-separator-opaque);
+	}
+}
+
+@media (forced-colors: active) {
+	.liquid-surface,
+	.liquid-surface--elevated,
+	.liquid-control {
+		background: Canvas;
+		border-color: ButtonBorder;
+		box-shadow: none;
+		backdrop-filter: none;
+		-webkit-backdrop-filter: none;
+	}
 }
 
 .container {
