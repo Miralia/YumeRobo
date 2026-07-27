@@ -3,6 +3,7 @@
     import { cardTransition } from "$lib/utils/card-transition.svelte";
     import { formatDate } from "$lib/utils/date";
     import { getPosterLoadingAttributes } from "$lib/utils/poster-loading";
+    import { posterTilt } from "$lib/utils/poster-tilt";
 
     interface Props {
         /** Trimmed card projection of the release */
@@ -32,7 +33,8 @@
 >
     <!-- Poster -->
     <div
-        class="poster-container"
+        class="poster-container poster-motion"
+        use:posterTilt
         style:view-transition-name={isTransitioning
             ? `poster-${card.slug}`
             : undefined}
@@ -105,15 +107,12 @@
         /* Dominant color doubles as the loading placeholder */
         background: color-mix(in srgb, var(--pc) 55%, var(--color-background-secondary));
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
-        transition:
-            transform var(--duration-normal) var(--ease-spring),
-            box-shadow var(--duration-normal) var(--ease-out);
+        transition: box-shadow var(--duration-normal) var(--ease-out);
         view-transition-class: poster;
     }
 
-    .release-card:hover .poster-container,
+    .poster-container:global([data-poster-active]),
     .release-card:focus-visible .poster-container {
-        transform: translateY(-4px) scale(1.02);
         box-shadow: 0 16px 32px -12px color-mix(in srgb, var(--pc) 60%, rgba(0, 0, 0, 0.45));
     }
 

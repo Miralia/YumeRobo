@@ -7,6 +7,7 @@
     import { externalIcons } from "$lib/utils/icons";
     import { env } from "$env/dynamic/public";
     import { entranceFly, slideParams } from "$lib/utils/animation";
+    import { posterTilt } from "$lib/utils/poster-tilt";
 
     const SITE_URL = env.PUBLIC_SITE_URL || "https://yumerobo.moe";
 
@@ -232,7 +233,8 @@
 
         <!-- Poster -->
         <div
-            class="poster-container poster-hero"
+            class="poster-container poster-hero poster-motion"
+            use:posterTilt
             style:view-transition-name="poster-{data.release.slug}"
         >
             <!-- The grid already cached the 200w card variant; painting
@@ -591,6 +593,10 @@
         view-transition-class: poster;
         /* Lets the shadow settle in after the Magic Move lands */
         transition: box-shadow 280ms var(--ease-out);
+    }
+
+    .poster-container:global([data-poster-active]) {
+        box-shadow: 0 24px 52px -14px color-mix(in srgb, var(--dyn) 55%, rgba(0, 0, 0, 0.5));
     }
 
     @media (min-width: 640px) {

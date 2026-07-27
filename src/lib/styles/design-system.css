@@ -529,6 +529,68 @@ pre {
 	outline-offset: 0;
 }
 
+/* ===== SHARED POSTER MOTION ===== */
+/* Only the poster under a fine pointer becomes a compositor candidate;
+   keeping the resting grid transform-free avoids promoting every card. */
+.poster-motion {
+	transform-origin: center;
+}
+
+.poster-motion[data-poster-active] {
+	transform:
+		perspective(900px)
+		translate3d(0, var(--poster-lift, 0px), 0)
+		rotateX(var(--poster-tilt-x, 0deg))
+		rotateY(var(--poster-tilt-y, 0deg))
+		scale(var(--poster-scale, 1));
+	transform-style: preserve-3d;
+	will-change: transform;
+}
+
+.poster-motion::after {
+	content: "";
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	width: 82%;
+	aspect-ratio: 1;
+	border-radius: 50%;
+	background: radial-gradient(
+		circle,
+		rgba(255, 255, 255, 0.34) 0%,
+		rgba(255, 255, 255, 0.12) 34%,
+		transparent 72%
+	);
+	opacity: 0;
+	pointer-events: none;
+	z-index: 1;
+}
+
+.poster-motion[data-poster-active]::after {
+	opacity: var(--poster-glare-opacity, 0);
+	transform: translate3d(
+		calc(-50% + var(--poster-glare-x, 0px)),
+		calc(-50% + var(--poster-glare-y, 0px)),
+		1px
+	);
+	will-change: transform, opacity;
+}
+
+.poster-motion > .badge-chip {
+	z-index: 2;
+}
+
+@media (prefers-reduced-motion: reduce), (prefers-contrast: more) {
+	.poster-motion[data-poster-active] {
+		transform: none;
+		will-change: auto;
+	}
+
+	.poster-motion::after {
+		display: none;
+	}
+}
+
 /* ===== VIEW TRANSITIONS ===== */
 @keyframes fade-in {
 	from {
