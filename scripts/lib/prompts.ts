@@ -110,16 +110,6 @@ export async function promptLinksEditor(): Promise<string> {
 }
 
 /**
- * Prompt for Comparisons link (for Telegram)
- */
-export async function promptComparisons(): Promise<string> {
-    return input({
-        message: 'Comparisons link (slow.pics, optional):',
-        default: ''
-    });
-}
-
-/**
  * Prompt for Telegram image (file path or URL)
  */
 export async function promptTelegramImage(): Promise<string> {
