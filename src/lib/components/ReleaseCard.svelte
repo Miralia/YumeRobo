@@ -35,6 +35,7 @@
     <div
         class="poster-container poster-motion"
         use:posterTilt
+        data-poster-id={card.slug}
         style:view-transition-name={isTransitioning
             ? `poster-${card.slug}`
             : undefined}

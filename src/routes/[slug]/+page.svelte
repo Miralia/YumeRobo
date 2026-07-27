@@ -238,6 +238,7 @@
         <div
             class="poster-container poster-hero poster-motion"
             use:posterTilt
+            data-poster-id={data.release.slug}
             style:view-transition-name="poster-{data.release.slug}"
         >
             <!-- The grid already cached the 200w card variant; painting

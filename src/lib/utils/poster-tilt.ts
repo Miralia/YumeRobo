@@ -24,6 +24,24 @@ interface SpringValue {
     target: number;
 }
 
+interface PreservedPosterInteraction {
+    id: string;
+    clientX: number;
+    clientY: number;
+    rotateX: number;
+    rotateY: number;
+    engagement: number;
+    glareStrength: number;
+    glareXRatio: number;
+    glareYRatio: number;
+    glareLevel: number;
+    glareAngle: number;
+    expiresAt: number;
+}
+
+const PRESERVED_INTERACTION_TTL = 2000;
+let preservedPosterInteraction: PreservedPosterInteraction | null = null;
+
 /**
  * Pointer-driven poster tilt shared by cards and the detail hero.
  *
@@ -50,10 +68,13 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
 
     let bounds: DOMRect | null = null;
     let frame: number | null = null;
+    let restorationFrame: number | null = null;
     let previousTime = 0;
     let suspended = false;
     let pointerX = 0;
     let pointerY = 0;
+    let lastClientX: number | null = null;
+    let lastClientY: number | null = null;
     let glareLevel = 0.32;
     let glareAngle = -18;
 
@@ -190,15 +211,17 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
         if (frame === null) frame = requestAnimationFrame(animate);
     }
 
-    function updateTargets(event: PointerEvent) {
+    function updateTargets(clientX: number, clientY: number) {
         if (!bounds) return;
+        lastClientX = clientX;
+        lastClientY = clientY;
         const x = Math.max(
             -1,
-            Math.min(1, ((event.clientX - bounds.left) / bounds.width) * 2 - 1),
+            Math.min(1, ((clientX - bounds.left) / bounds.width) * 2 - 1),
         );
         const y = Math.max(
             -1,
-            Math.min(1, ((event.clientY - bounds.top) / bounds.height) * 2 - 1),
+            Math.min(1, ((clientY - bounds.top) / bounds.height) * 2 - 1),
         );
 
         rotateX.target = -y * opts.maxTilt;
@@ -215,12 +238,12 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
         bounds = node.getBoundingClientRect();
         node.setAttribute("data-poster-active", "");
         node.setAttribute("data-poster-hover", "");
-        updateTargets(event);
+        updateTargets(event.clientX, event.clientY);
     }
 
     function handlePointerMove(event: PointerEvent) {
         if (!supportsInteraction(event) || !bounds) return;
-        updateTargets(event);
+        updateTargets(event.clientX, event.clientY);
     }
 
     function settle() {
@@ -228,6 +251,8 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
         bounds = null;
         pointerX = 0;
         pointerY = 0;
+        lastClientX = null;
+        lastClientY = null;
         glareLevel = 0.32;
         glareAngle = -18;
         node.removeAttribute("data-poster-hover");
@@ -248,6 +273,8 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
         bounds = null;
         pointerX = 0;
         pointerY = 0;
+        lastClientX = null;
+        lastClientY = null;
         glareLevel = 0.32;
         glareAngle = -18;
         for (const spring of springs) {
@@ -265,10 +292,87 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
     }
 
     function handleNavigationReset() {
+        const posterId = node.dataset.posterId;
+        if (
+            posterId &&
+            node.hasAttribute("data-poster-hover") &&
+            bounds &&
+            bounds.width > 0 &&
+            bounds.height > 0 &&
+            lastClientX !== null &&
+            lastClientY !== null
+        ) {
+            preservedPosterInteraction = {
+                id: posterId,
+                clientX: lastClientX,
+                clientY: lastClientY,
+                rotateX: rotateX.value,
+                rotateY: rotateY.value,
+                engagement: engagement.value,
+                glareStrength: glareStrength.value,
+                glareXRatio: glareX.value / bounds.width,
+                glareYRatio: glareY.value / bounds.height,
+                glareLevel,
+                glareAngle,
+                expiresAt: performance.now() + PRESERVED_INTERACTION_TTL,
+            };
+        }
+
         // Keep the clicked poster neutral between the old-state capture and
         // teardown even if the pointer moves during that short interval.
         suspended = true;
         resetImmediately();
+    }
+
+    function restorePreservedInteraction() {
+        restorationFrame = null;
+        const preserved = preservedPosterInteraction;
+        const posterId = node.dataset.posterId;
+
+        // Other cards mount at the same time as the matching destination and
+        // must leave its one-shot interaction state untouched.
+        if (!preserved || !posterId || preserved.id !== posterId) return;
+
+        if (
+            performance.now() > preserved.expiresAt ||
+            reducedMotion.matches ||
+            !finePointer.matches
+        ) {
+            preservedPosterInteraction = null;
+            return;
+        }
+
+        const nextBounds = node.getBoundingClientRect();
+        const pointerIsInside =
+            preserved.clientX >= nextBounds.left &&
+            preserved.clientX <= nextBounds.right &&
+            preserved.clientY >= nextBounds.top &&
+            preserved.clientY <= nextBounds.bottom;
+
+        // Geometry alone is not enough: :hover verifies that the physical
+        // pointer still targets this poster after the route has changed.
+        if (!pointerIsInside || !node.matches(":hover")) {
+            preservedPosterInteraction = null;
+            return;
+        }
+
+        preservedPosterInteraction = null;
+        suspended = false;
+        bounds = nextBounds;
+        node.setAttribute("data-poster-active", "");
+        node.setAttribute("data-poster-hover", "");
+
+        rotateX.value = preserved.rotateX;
+        rotateY.value = preserved.rotateY;
+        engagement.value = preserved.engagement;
+        glareStrength.value = preserved.glareStrength;
+        glareX.value = preserved.glareXRatio * nextBounds.width;
+        glareY.value = preserved.glareYRatio * nextBounds.height;
+        glareLevel = preserved.glareLevel;
+        glareAngle = preserved.glareAngle;
+        updateTargets(preserved.clientX, preserved.clientY);
+        render();
+        schedule();
     }
 
     node.addEventListener("pointerenter", handlePointerEnter);
@@ -280,6 +384,11 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
     reducedMotion.addEventListener("change", handleCapabilityChange);
     finePointer.addEventListener("change", handleCapabilityChange);
     render();
+    if (preservedPosterInteraction) {
+        // A frame scheduled from the new action runs after the destination
+        // snapshot, keeping tilt and glare out of the View Transition image.
+        restorationFrame = requestAnimationFrame(restorePreservedInteraction);
+    }
 
     return {
         update(nextOptions: PosterTiltOptions = {}) {
@@ -288,6 +397,9 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
         },
         destroy() {
             if (frame !== null) cancelAnimationFrame(frame);
+            if (restorationFrame !== null) {
+                cancelAnimationFrame(restorationFrame);
+            }
             node.removeEventListener("pointerenter", handlePointerEnter);
             node.removeEventListener("pointermove", handlePointerMove);
             node.removeEventListener("pointerleave", settle);
