@@ -608,11 +608,11 @@ pre {
 
 /* Fade-only page transition - lets Magic Move be the sole motion focal point */
 ::view-transition-old(root) {
-	animation: 150ms cubic-bezier(0.4, 0, 1, 1) both fade-out;
+	animation: 120ms cubic-bezier(0.4, 0, 1, 1) both fade-out;
 }
 
 ::view-transition-new(root) {
-	animation: 200ms cubic-bezier(0, 0, 0.2, 1) 50ms both fade-in;
+	animation: 180ms cubic-bezier(0, 0, 0.2, 1) 120ms both fade-in;
 }
 
 /* Stabilize persistent elements */
@@ -624,6 +624,13 @@ pre {
 ::view-transition-new(app-header) {
 	animation: none;
 	mix-blend-mode: normal;
+}
+
+/* During route changes the persistent header's two translucent snapshots
+   would stack their borders and shadows. The new snapshot is sufficient;
+   theme transitions retain both snapshots for their color cross-fade. */
+html:not(.theme-vt)::view-transition-old(app-header) {
+	opacity: 0;
 }
 
 /* The leading slot swaps between the home mark and detail back arrow.
@@ -698,6 +705,12 @@ pre {
 	overflow: hidden;
 }
 
+/* The old and new poster contain the same artwork. Showing both doubles
+   semi-transparent shadows while the geometry morph is in flight. */
+html:not(.theme-vt)::view-transition-old(*.poster) {
+	opacity: 0;
+}
+
 /* Title morph rides the same clock as the poster so they land together */
 ::view-transition-group(*.title) {
 	animation-duration: var(--vt-morph-duration);
@@ -735,6 +748,10 @@ pre {
 ::view-transition-new(*.badge) {
 	animation: none;
 	mix-blend-mode: normal;
+}
+
+html:not(.theme-vt)::view-transition-old(*.badge) {
+	opacity: 0;
 }
 
 /*
