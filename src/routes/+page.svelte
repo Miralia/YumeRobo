@@ -133,15 +133,15 @@
     <meta name="twitter:description" content="Latest release" />
 </svelte:head>
 
-<div class="home-page container container-wide">
+<div class="home-page container">
     <!-- Search result announcement for assistive tech. Permanently
          mounted: newly inserted live regions aren't reliably announced,
          so only the text content changes. -->
     <p class="visually-hidden" role="status">
         {#if isSearching}
             {filteredCards.length === 0
-                ? `No releases match “${searchQuery}”`
-                : `${filteredCards.length} release${filteredCards.length === 1 ? "" : "s"} match “${searchQuery}”`}
+                ? `No releases match "${searchQuery}"`
+                : `${filteredCards.length} release${filteredCards.length === 1 ? "" : "s"} match "${searchQuery}"`}
         {/if}
     </p>
 
@@ -188,14 +188,14 @@
     /* Poster grid: posters carry the browsing, captions stay compact */
     .release-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
         gap: var(--space-5) var(--space-4);
     }
 
     @media (max-width: 480px) {
         .release-grid {
             grid-template-columns: repeat(2, 1fr);
-            gap: var(--space-4) var(--space-3);
+            gap: var(--space-3) var(--space-2);
         }
     }
 
