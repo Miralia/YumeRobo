@@ -745,6 +745,23 @@ pre {
 	will-change: transform, opacity;
 }
 
+/* A modal owns the pointer interaction plane. Remove all pointer-reactive
+   poster lighting beneath it so the blurred background stays visually still. */
+:root[data-contact-dialog-open]
+	.poster-transition-shell
+	> .poster-motion:is([data-poster-hover], [data-poster-handoff]) {
+	box-shadow: var(--poster-shadow-rest);
+}
+
+:root[data-contact-dialog-open] .poster-motion[data-poster-active] {
+	transform: none;
+	will-change: auto;
+}
+
+:root[data-contact-dialog-open] .poster-motion::after {
+	display: none;
+}
+
 .poster-motion > .badge-chip {
 	z-index: 2;
 }

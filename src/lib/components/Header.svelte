@@ -7,9 +7,17 @@
 	import { prefersReducedMotion } from "svelte/motion";
 	import { debounce } from "$lib/utils/debounce";
 	import { liquidGlass } from "$lib/utils/liquid-glass";
+	import ContactConfirmDialog from "$lib/components/ContactConfirmDialog.svelte";
+	import TelegramIcon from "$lib/components/TelegramIcon.svelte";
 	import ThemeIcon from "$lib/components/ThemeIcon.svelte";
 
 	type ThemeMode = "auto" | "light" | "dark";
+	type ContactKind = "telegram" | "email";
+	type PendingContact = {
+		kind: ContactKind;
+		url: string;
+		opener: HTMLButtonElement;
+	};
 
 	const TELEGRAM_URL = "https://t.me/YumeRobo_Channel";
 	const EMAIL_URL = "mailto:YumeRobo@proton.me";
@@ -24,6 +32,7 @@
 	let canReturnToHomeThroughHistory = false;
 	let searchQuery = $state("");
 	let isMobileMenuOpen = $state(false);
+	let pendingContact = $state<PendingContact | null>(null);
 	let isDetailPage = $derived(Boolean(page.params.slug));
 
 	let themeButton = $state<HTMLButtonElement | null>(null);
@@ -81,6 +90,9 @@
 	beforeNavigate(({ from, to }) => {
 		navigateToSearch.cancel();
 		isTyping = false;
+		// The persistent layout header survives route changes. Dismiss its modal
+		// before a navigation snapshot so dialogs never travel with page history.
+		pendingContact = null;
 
 		// The home snapshot (including its loaded card count and scroll
 		// position) is restored only when revisiting its history entry.
@@ -284,10 +296,40 @@
 	}
 
 	function handleWindowKeydown(event: KeyboardEvent) {
+		if (pendingContact) return;
 		if (event.key === "Escape" && isMobileMenuOpen) {
 			event.preventDefault();
 			isMobileMenuOpen = false;
 			mobileMenuButton?.focus();
+		}
+	}
+
+	function requestContact(event: MouseEvent, kind: ContactKind, url: string) {
+		pendingContact = {
+			kind,
+			url,
+			opener: event.currentTarget as HTMLButtonElement,
+		};
+		isThemeMenuOpen = false;
+		isMobileMenuOpen = false;
+	}
+
+	async function cancelContact() {
+		const opener = pendingContact?.opener;
+		pendingContact = null;
+		await tick();
+		opener?.focus();
+	}
+
+	function confirmContact() {
+		const contact = pendingContact;
+		if (!contact) return;
+
+		pendingContact = null;
+		if (contact.kind === "telegram") {
+			window.open(contact.url, "_blank", "noopener,noreferrer");
+		} else {
+			window.location.href = contact.url;
 		}
 	}
 
@@ -447,30 +489,19 @@
 				class="contact-group liquid-surface"
 				use:liquidGlass={{ interactive: true, refraction: 9 }}
 			>
-				<a
-					href={TELEGRAM_URL}
-					target="_blank"
-					rel="noopener noreferrer"
+				<button
+					type="button"
 					class="contact-button"
 					aria-label="Telegram channel"
+					onclick={(event) => requestContact(event, "telegram", TELEGRAM_URL)}
 				>
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					width="18"
-					height="18"
-					viewBox="0 0 24 24"
-					fill="currentColor"
-					aria-hidden="true"
-				>
-					<path
-						d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"
-					/>
-				</svg>
-				</a>
-				<a
-					href={EMAIL_URL}
+					<TelegramIcon size={20} />
+				</button>
+				<button
+					type="button"
 					class="contact-button"
 					aria-label="Email YumeRobo@proton.me"
+					onclick={(event) => requestContact(event, "email", EMAIL_URL)}
 				>
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
@@ -487,7 +518,7 @@
 					<rect width="20" height="16" x="2" y="4" rx="2" />
 					<path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
 				</svg>
-				</a>
+				</button>
 			</div>
 			<div class="theme-dropdown">
 				<button
@@ -623,30 +654,19 @@
 			</form>
 
 			<div class="mobile-links">
-				<a
-					href={TELEGRAM_URL}
-					target="_blank"
-					rel="noopener noreferrer"
+				<button
+					type="button"
 					class="contact-button mobile"
 					aria-label="Telegram channel"
+					onclick={(event) => requestContact(event, "telegram", TELEGRAM_URL)}
 				>
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						width="18"
-						height="18"
-						viewBox="0 0 24 24"
-						fill="currentColor"
-						aria-hidden="true"
-					>
-						<path
-							d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"
-						/>
-					</svg>
-				</a>
-				<a
-					href={EMAIL_URL}
+					<TelegramIcon size={20} />
+				</button>
+				<button
+					type="button"
 					class="contact-button mobile"
 					aria-label="Email YumeRobo@proton.me"
+					onclick={(event) => requestContact(event, "email", EMAIL_URL)}
 				>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
@@ -663,7 +683,7 @@
 						<rect width="20" height="16" x="2" y="4" rx="2" />
 						<path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
 					</svg>
-				</a>
+				</button>
 			</div>
 
 			<div class="mobile-controls">
@@ -691,8 +711,16 @@
 				</div>
 			</div>
 		</nav>
+		{/if}
+	</header>
+
+	{#if pendingContact}
+		<ContactConfirmDialog
+			kind={pendingContact.kind}
+			oncancel={cancelContact}
+			onconfirm={confirmContact}
+		/>
 	{/if}
-</header>
 
 <style>
 	.header {
@@ -882,9 +910,13 @@
 		width: var(--header-control-size);
 		height: calc(var(--header-control-size) - 2px);
 		padding: 0;
+		font: inherit;
+		background: transparent;
+		border: 0;
 		border-radius: var(--header-control-radius);
 		color: var(--color-label-secondary);
 		text-decoration: none;
+		cursor: pointer;
 		transition:
 			color var(--duration-fast) var(--ease-out),
 			background-color var(--duration-fast) var(--ease-out);
