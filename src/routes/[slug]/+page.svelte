@@ -856,8 +856,11 @@
         color: var(--color-label);
     }
 
-    .external-link svg {
-        flex-shrink: 0;
+    .action-button svg {
+        display: block;
+        width: 16px;
+        height: 16px;
+        flex: 0 0 16px;
     }
 
     .external-link:hover,
