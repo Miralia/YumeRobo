@@ -44,7 +44,6 @@ import {
     promptBBCode,
     promptTelegramLabel,
     promptLinksEditor,
-    promptComparisons,
     promptTelegramImage,
     promptRefineMetadata,
     displayMetadata
@@ -75,6 +74,18 @@ import {
     hasDeployPreflightIssues,
 } from './lib/deploy';
 import { getCliConfig, getReleaseUrl, getTelegramConfig } from './lib/config';
+import {
+    createStoredComparison,
+    extractSlowPicsCandidates,
+    getComparisonFilePath,
+    readStoredComparison,
+    writeStoredComparison,
+    type SlowPicsCandidate,
+} from './lib/comparisons';
+import {
+    createSlowPicsBrowserCollector,
+    type SlowPicsBrowserCollector,
+} from './lib/slowpics-browser';
 import {
     clearCreateDraft,
     clearEditDraft,
@@ -520,6 +531,99 @@ async function stepLinks(tmdbId: number, mediaType: string): Promise<Record<stri
     return result.links;
 }
 
+async function chooseSlowPicsCandidate(
+    release: Pick<ReleaseData, 'title' | 'specs'>,
+): Promise<SlowPicsCandidate> {
+    const candidates = extractSlowPicsCandidates(release.specs);
+    if (candidates.length === 0) {
+        throw new Error(`No slow.pics comparison link found in Tech Info for ${release.title}`);
+    }
+    if (candidates.length === 1) {
+        console.log(`[i] slow.pics comparison: ${candidates[0].label} (${candidates[0].url})`);
+        return candidates[0];
+    }
+
+    return select({
+        message: `Select the slow.pics comparison for ${release.title}:`,
+        choices: candidates.map((candidate) => ({
+            name: `${candidate.label} - ${candidate.url}`,
+            value: candidate,
+        })),
+    });
+}
+
+async function syncReleaseComparison(
+    release: Pick<ReleaseData, 'slug' | 'title' | 'specs'>,
+    collector?: SlowPicsBrowserCollector,
+): Promise<string> {
+    const candidate = await chooseSlowPicsCandidate(release);
+    const ownedCollector = collector ?? await createSlowPicsBrowserCollector();
+    try {
+        const collection = await ownedCollector.collect(candidate.url, candidate.key);
+        const target = await writeStoredComparison(
+            release.slug,
+            createStoredComparison(candidate, collection),
+        );
+        console.log(`[+] Comparison metadata saved: ${target}`);
+        return target;
+    } finally {
+        if (!collector) await ownedCollector.close();
+    }
+}
+
+async function readAllStdin(): Promise<string> {
+    const chunks: Buffer[] = [];
+    for await (const chunk of process.stdin) chunks.push(Buffer.from(chunk));
+    return Buffer.concat(chunks).toString('utf8');
+}
+
+async function comparisonSync(args: string[]) {
+    const records = await loadReleaseRecords();
+    const syncAll = args.includes('--all');
+    const fromStdin = args.includes('--stdin');
+    const slugArg = args.find((arg) => !arg.startsWith('--'));
+
+    if (syncAll && fromStdin) {
+        throw new Error('--stdin can only be used with a single release');
+    }
+
+    let targets: ReleaseRecord[];
+    if (syncAll) {
+        targets = records.sort((a, b) => a.data.title.localeCompare(b.data.title));
+    } else if (slugArg) {
+        const record = records.find((entry) => entry.slug === slugArg);
+        if (!record) throw new Error(`Release not found: ${slugArg}`);
+        targets = [record];
+    } else {
+        const selected = await select({
+            message: 'Select release to synchronize:',
+            choices: records.map((record) => ({
+                name: `${record.data.title} (${record.slug})`,
+                value: record,
+            })),
+        });
+        targets = [selected];
+    }
+
+    const collector = fromStdin ? null : await createSlowPicsBrowserCollector();
+    try {
+        for (const record of targets) {
+            console.log(`\n=== ${record.data.title} (${record.slug}) ===`);
+            const candidate = await chooseSlowPicsCandidate(record.data);
+            const collection = fromStdin
+                ? JSON.parse(await readAllStdin())
+                : await collector!.collect(candidate.url, candidate.key);
+            const target = await writeStoredComparison(
+                record.slug,
+                createStoredComparison(candidate, collection),
+            );
+            console.log(`[+] Comparison metadata saved: ${target}`);
+        }
+    } finally {
+        await collector?.close();
+    }
+}
+
 async function stepTelegram(release: ReleaseData): Promise<void> {
     const config = getCliConfig();
     const telegramConfig = getTelegramConfig(config);
@@ -555,7 +659,8 @@ async function stepTelegram(release: ReleaseData): Promise<void> {
         }
     }
 
-    const comparisons = await promptComparisons();
+    const comparison = await readStoredComparison(release.slug);
+    const comparisons = comparison?.source.url ?? '';
     const caption = await buildCaption(release, comparisons, config.siteUrl);
 
     console.log('\n--- Telegram Preview ---');
@@ -729,6 +834,12 @@ export const release: Release = ${cleanCode};
         });
 
         if (action === 'confirm') {
+            try {
+                await syncReleaseComparison(releaseData);
+            } catch (error) {
+                console.log(`[!] Comparison sync failed: ${error}`);
+                continue;
+            }
             const targetPath = path.join(RELEASES_DIR, `${slug}.ts`);
             await fs.writeFile(targetPath, fileContent, 'utf-8');
             const validation = await validateReleaseAssets({ release: releaseData });
@@ -888,6 +999,7 @@ async function edit() {
                 { name: 'Poster (Select new)', value: 'poster' },
                 { name: 'Torrents (Enter new list)', value: 'torrents' },
                 { name: 'Tech Specs (Enter new)', value: 'specs' },
+                { name: 'Comparison (Select and refresh)', value: 'comparison' },
                 { name: 'Links (Re-enter)', value: 'links' },
                 { name: 'Save & Exit', value: 'save' },
                 { name: 'Cancel', value: 'cancel' }
@@ -1016,6 +1128,8 @@ export const release: Release = ${cleanCode};
                 links,
                 date,
             }));
+        } else if (action === 'comparison') {
+            await syncReleaseComparison({ slug, title: metadata.title, specs });
         }
     }
 }
@@ -1214,6 +1328,13 @@ async function deleteRelease(slug: string) {
 
         await fs.unlink(targetPath);
         console.log(`[+] Deleted ${targetPath}`);
+        try {
+            const comparisonPath = getComparisonFilePath(slug);
+            await fs.unlink(comparisonPath);
+            console.log(`[+] Deleted ${comparisonPath}`);
+        } catch (error) {
+            if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+        }
 
         if (!record) {
             console.log('[!] Could not parse release file, deleted the .ts file only');
@@ -1298,6 +1419,9 @@ async function main() {
             break;
         case 'telegram':
             await telegramPush();
+            break;
+        case 'comparison-sync':
+            await comparisonSync(args);
             break;
         case 'audit-assets':
             await auditAssets();
