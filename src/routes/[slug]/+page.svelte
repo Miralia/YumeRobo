@@ -579,6 +579,7 @@
     }
 
     .poster-transition-shell {
+        --poster-shadow-color: var(--dyn);
         position: relative;
         width: 100%;
         aspect-ratio: 2/3;
@@ -592,15 +593,7 @@
         border-radius: inherit;
         /* Dominant color doubles as the loading placeholder */
         background: color-mix(in srgb, var(--dyn) 55%, var(--color-background-secondary));
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
         overflow: hidden;
-        /* Lets the shadow settle in after the Magic Move lands */
-        transition: box-shadow var(--duration-normal) var(--ease-out);
-    }
-
-    .poster-container:global([data-poster-hover]),
-    .poster-container:global([data-poster-handoff]) {
-        box-shadow: 0 24px 52px -14px color-mix(in srgb, var(--dyn) 55%, rgba(0, 0, 0, 0.5));
     }
 
     .poster {

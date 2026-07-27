@@ -105,6 +105,7 @@
     }
 
     .poster-transition-shell {
+        --poster-shadow-color: var(--pc);
         position: relative;
         aspect-ratio: 2 / 3;
         border-radius: var(--radius-poster);
@@ -118,14 +119,10 @@
         overflow: hidden;
         /* Dominant color doubles as the loading placeholder */
         background: color-mix(in srgb, var(--pc) 55%, var(--color-background-secondary));
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
-        transition: box-shadow var(--duration-normal) var(--ease-out);
     }
 
-    .poster-container:global([data-poster-hover]),
-    .poster-container:global([data-poster-handoff]),
-    .release-card:focus-visible .poster-container {
-        box-shadow: 0 16px 32px -12px color-mix(in srgb, var(--pc) 60%, rgba(0, 0, 0, 0.45));
+    .release-card:focus-visible .poster-transition-shell {
+        box-shadow: var(--poster-shadow-hover);
     }
 
     .poster {

@@ -545,6 +545,35 @@ pre {
 }
 
 /* ===== SHARED POSTER MOTION ===== */
+/* The static shell owns elevation as well as Magic Move geometry. Keeping
+   shadow off the clipped, tilting child gives both routes one visual frame
+   and lets the transition snapshot retain its full ink overflow. */
+.poster-transition-shell {
+	--poster-shadow-color: var(--color-accent);
+	--poster-shadow-rest: 0 1px 3px rgba(0, 0, 0, 0.18);
+	--poster-shadow-hover: 0 16px 32px -12px
+		color-mix(
+			in srgb,
+			var(--poster-shadow-color) 60%,
+			rgba(0, 0, 0, 0.45)
+		);
+	box-shadow: var(--poster-shadow-rest);
+	transition: box-shadow var(--duration-normal) var(--ease-out);
+}
+
+.poster-transition-shell:has(
+		> .poster-motion:is([data-poster-hover], [data-poster-handoff])
+	) {
+	box-shadow: var(--poster-shadow-hover);
+}
+
+/* Destination geometry is measured before the action restores hover state.
+   Skip the normal resting-to-hover interpolation during that one handoff so
+   the new snapshot captures the exact same shadow as the old snapshot. */
+.poster-transition-shell:has(> .poster-motion[data-poster-handoff]) {
+	transition: none;
+}
+
 /* Only the poster under a fine pointer becomes a compositor candidate;
    keeping the resting grid transform-free avoids promoting every card. */
 .poster-motion {
@@ -708,7 +737,7 @@ html:not(.theme-vt)::view-transition-old(app-header) {
 
 ::view-transition-image-pair(*.poster) {
 	border-radius: var(--radius-poster);
-	overflow: hidden;
+	overflow: visible;
 }
 
 ::view-transition-old(*.poster),
@@ -717,12 +746,12 @@ html:not(.theme-vt)::view-transition-old(app-header) {
 	mix-blend-mode: normal;
 	height: 100%;
 	object-fit: cover;
-	overflow: hidden;
+	overflow: visible;
 }
 
 /* The old and new poster contain the same artwork. Showing both doubles
    semi-transparent shadows while the geometry morph is in flight. */
-html:not(.theme-vt)::view-transition-old(*.poster) {
+::view-transition-old(*.poster) {
 	opacity: 0;
 }
 
