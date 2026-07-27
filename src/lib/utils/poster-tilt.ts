@@ -44,8 +44,9 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
     const glareY: SpringValue = { value: 0, velocity: 0, target: 0 };
     const engagement: SpringValue = { value: 0, velocity: 0, target: 0 };
     const glareStrength: SpringValue = { value: 0, velocity: 0, target: 0 };
-    const motionSprings = [rotateX, rotateY, glareX, glareY, engagement];
-    const springs = [...motionSprings, glareStrength];
+    const motionSprings = [rotateX, rotateY, engagement];
+    const glarePosition = [glareX, glareY];
+    const springs = [...motionSprings, ...glarePosition, glareStrength];
 
     let bounds: DOMRect | null = null;
     let frame: number | null = null;
@@ -112,6 +113,16 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
         glareStrength.velocity = 0;
     }
 
+    function integrateGlarePosition(delta: number) {
+        // The light should stay close to the pointer while remaining on the
+        // shared animation frame, instead of inheriting tilt's slower spring.
+        const response = 1 - Math.exp(-36 * delta);
+        for (const spring of glarePosition) {
+            spring.value += (spring.target - spring.value) * response;
+            spring.velocity = 0;
+        }
+    }
+
     function isSettled(): boolean {
         return springs.every(
             (spring) =>
@@ -127,6 +138,7 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
         previousTime = time;
 
         for (const spring of motionSprings) integrate(spring, delta);
+        integrateGlarePosition(delta);
         integrateGlare(delta);
         render();
 
