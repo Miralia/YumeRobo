@@ -673,18 +673,18 @@
 		align-items: center;
 		justify-content: center;
 		justify-self: start;
-		width: 28px;
-		height: 28px;
+		width: 36px;
+		height: 36px;
 		padding: 0;
 		view-transition-class: header-leading;
 	}
 
-	/* Keep the visual slot aligned to the 28px logo while preserving a
-	   44px pointer target around both leading controls. */
+	/* Center both leading visuals in the same 36px slot while preserving
+	   a 44px pointer target. */
 	.header-leading::after {
 		content: "";
 		position: absolute;
-		inset: -8px;
+		inset: -4px;
 	}
 
 	.logo {
@@ -704,16 +704,10 @@
 	}
 
 	.context-back {
-		width: 36px;
-		height: 36px;
 		color: var(--color-accent);
 		text-decoration: none;
 		border-color: var(--liquid-border);
 		border-radius: var(--radius-full);
-	}
-
-	.context-back::after {
-		inset: -4px;
 	}
 
 	.context-back:hover,
