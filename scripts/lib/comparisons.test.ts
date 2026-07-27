@@ -4,6 +4,7 @@ import path from "node:path";
 import { describe, expect, test } from "bun:test";
 import {
   createStoredComparison,
+  deleteStoredComparison,
   extractSlowPicsCandidates,
   getComparisonDeepLink,
   readStoredComparison,
@@ -96,6 +97,25 @@ describe("slow.pics comparison metadata", () => {
       );
       expect(await writeStoredComparisonFile(target, stored)).toBe(target);
       expect(await readStoredComparisonFile(target)).toEqual(stored);
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test("deletes a stored sidecar idempotently", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "yumerobo-comparison-delete-"));
+    try {
+      await writeStoredComparison(
+        "release1",
+        createStoredComparison(
+          { key: "abc123", url: "https://slow.pics/c/abc123", label: "Example" },
+          collection(),
+        ),
+        root,
+      );
+      expect(await deleteStoredComparison("release1", root)).toBe(true);
+      expect(await deleteStoredComparison("release1", root)).toBe(false);
+      expect(await readStoredComparison("release1", root)).toBeNull();
     } finally {
       await fs.rm(root, { recursive: true, force: true });
     }
