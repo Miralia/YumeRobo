@@ -14,6 +14,8 @@
         data: {
             release: Release;
             badges: string[];
+            accent: string | null;
+            posterBlur: string | null;
         };
     }
 
@@ -242,18 +244,25 @@
     </nav>
 
     <!-- Hero Section -->
-    <header class="hero">
-        <div
-            class="hero-ambient"
-            aria-hidden="true"
-            style:background-image="url({data.release.poster})"
-        ></div>
+    <header class="hero" style:--dyn={data.accent ?? "var(--color-accent)"}>
+        {#if data.posterBlur}
+            <div
+                class="hero-ambient"
+                aria-hidden="true"
+                style:background-image="url({data.posterBlur})"
+            ></div>
+        {:else}
+            <div class="hero-ambient hero-ambient-flat" aria-hidden="true"></div>
+        {/if}
 
         <!-- Poster -->
         <div
             class="poster-container poster-hero"
             style:view-transition-name="poster-{data.release.slug}"
         >
+            <!-- The grid already cached the 200w card variant; painting
+                 it underneath keeps the Magic Move landing sharp while
+                 the full poster decodes -->
             <img
                 src={data.release.poster}
                 alt="{data.release.title} poster"
@@ -262,6 +271,10 @@
                 height="750"
                 fetchpriority="high"
                 decoding="async"
+                style:background-image="url({data.release.poster.replace(
+                    '.avif',
+                    '.card.avif',
+                )})"
             />
             <div class="poster-gradient"></div>
             <div
@@ -581,16 +594,17 @@
         }
     }
 
-    /* Soft poster-derived glow behind the hero. Horizontal inset stays
-       at 0 — a wider box overflows the page and creates horizontal
-       scroll. The radial mask fades every edge so the glow dissolves
-       into the page background with no visible boundary. */
+    /* Poster-derived glow behind the hero: a build-time 24px micro
+       thumb upscaled by CSS — naturally soft, no runtime blur() cost.
+       Horizontal inset stays at 0 (a wider box overflows the page and
+       creates horizontal scroll); the radial mask fades every edge so
+       the glow dissolves into the page background with no boundary. */
     .hero-ambient {
         position: absolute;
         inset: -20% 0;
         background-size: cover;
         background-position: center;
-        filter: blur(64px) saturate(1.4);
+        filter: saturate(1.35);
         opacity: var(--hero-ambient-opacity, 0.16);
         pointer-events: none;
         z-index: -1;
@@ -606,6 +620,16 @@
         );
     }
 
+    /* Fallback when no micro thumb exists: dominant-color wash */
+    .hero-ambient-flat {
+        background-image: radial-gradient(
+            ellipse 60% 70% at 30% 35%,
+            var(--dyn),
+            transparent 75%
+        );
+        filter: none;
+    }
+
     @media (prefers-reduced-transparency: reduce), (forced-colors: active) {
         .hero-ambient {
             display: none;
@@ -618,8 +642,10 @@
         width: 180px;
         aspect-ratio: 2/3;
         border-radius: var(--radius-poster);
-        background: var(--color-fill);
-        box-shadow: var(--shadow-lg);
+        /* Dominant color doubles as the loading placeholder */
+        background: color-mix(in srgb, var(--dyn) 55%, var(--color-background-secondary));
+        /* Shadow carries the poster's own color */
+        box-shadow: 0 18px 40px -12px color-mix(in srgb, var(--dyn) 45%, rgba(0, 0, 0, 0.45));
         overflow: hidden;
         view-transition-class: poster;
         /* Lets the shadow settle in after the Magic Move lands */
@@ -637,6 +663,8 @@
         height: 100%;
         object-fit: cover;
         border-radius: var(--radius-poster);
+        background-size: cover;
+        background-position: center;
     }
 
     /* Gradient layer (always visible, no transition) */

@@ -298,7 +298,7 @@
 <svelte:window onkeydown={handleWindowKeydown} />
 
 <header class="header glass" style:view-transition-name="app-header">
-	<div class="header-content container">
+	<div class="header-content container container-wide">
 		<a href="/" class="logo" aria-label="YumeRobo home">
 			<img src="/icon.svg" alt="" class="logo-icon" />
 		</a>

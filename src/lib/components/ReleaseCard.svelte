@@ -47,7 +47,7 @@
             height="300"
             loading={posterLoading.loading}
             fetchpriority={posterLoading.fetchpriority}
-            decoding="async"
+            decoding={posterLoading.decoding}
         />
         {#if card.badges.length > 0}
             <span class="badge-chip">{card.badges.join(" · ")}</span>
@@ -75,13 +75,15 @@
 </a>
 
 <style>
+    /* No content-visibility here: Chromium can miss repainting images
+       that finish decoding while the element is in the skipped state,
+       leaving loaded posters stuck on their placeholder. loading=lazy
+       already keeps offscreen image work off the critical path. */
     .release-card {
         display: flex;
         flex-direction: column;
         text-decoration: none;
         color: inherit;
-        content-visibility: auto;
-        contain-intrinsic-size: auto 176px auto 320px;
     }
 
     .release-card:focus-visible {

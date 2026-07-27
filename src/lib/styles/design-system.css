@@ -52,10 +52,11 @@
 :root {
 	color-scheme: light dark;
 
-	/* System Colors - Light Mode */
-	--color-background: #ffffff;
-	--color-background-secondary: #f2f2f7;
-	--color-background-tertiary: #e5e5ea;
+	/* System Colors - Light Mode (Ginmaku paper: white surfaces on a
+	   softly tinted ground) */
+	--color-background: #f2f1f4;
+	--color-background-secondary: #ffffff;
+	--color-background-tertiary: #e9e8ee;
 
 	--color-label: #000000;
 	/* ≥4.5:1 on every light surface (composited ≈ #62626b on #f2f2f7) */
@@ -89,7 +90,7 @@
 	--hero-ambient-opacity: 0.16;
 
 	/* Glass Effect */
-	--glass-background: rgba(255, 255, 255, 0.72);
+	--glass-background: rgba(248, 247, 250, 0.72);
 	--glass-blur: 20px;
 
 	/* Shadows */
@@ -101,9 +102,10 @@
 /* System Colors - Dark Mode (Auto) */
 @media (prefers-color-scheme: dark) {
 	:root:not([data-theme="light"]) {
-		--color-background: #000000;
-		--color-background-secondary: #1c1c1e;
-		--color-background-tertiary: #2c2c2e;
+		/* Ginmaku theater dark: blue-biased near-black */
+		--color-background: #0c0c12;
+		--color-background-secondary: #15151d;
+		--color-background-tertiary: #1d1d27;
 
 		--color-label: #ffffff;
 		--color-label-secondary: rgba(235, 235, 245, 0.64);
@@ -132,7 +134,7 @@
 		--hero-ambient-opacity: 0.24;
 
 		/* Glass Effect */
-		--glass-background: rgba(28, 28, 30, 0.72);
+		--glass-background: rgba(21, 21, 29, 0.72);
 
 		/* Shadows */
 		--shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
@@ -145,9 +147,10 @@
 :root[data-theme="dark"] {
 	color-scheme: dark;
 
-	--color-background: #000000;
-	--color-background-secondary: #1c1c1e;
-	--color-background-tertiary: #2c2c2e;
+	/* Ginmaku theater dark: blue-biased near-black */
+	--color-background: #0c0c12;
+	--color-background-secondary: #15151d;
+	--color-background-tertiary: #1d1d27;
 
 	--color-label: #ffffff;
 	--color-label-secondary: rgba(235, 235, 245, 0.64);
@@ -175,7 +178,7 @@
 	--hero-ambient-opacity: 0.24;
 
 	/* Glass Effect */
-	--glass-background: rgba(28, 28, 30, 0.72);
+	--glass-background: rgba(21, 21, 29, 0.72);
 
 	/* Shadows */
 	--shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
