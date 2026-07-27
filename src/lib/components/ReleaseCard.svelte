@@ -172,12 +172,20 @@
         line-clamp: 2;
         -webkit-box-orient: vertical;
         overflow: hidden;
-        transition: color var(--duration-fast) var(--ease-out);
+        text-decoration-line: underline;
+        text-decoration-color: transparent;
+        text-decoration-thickness: 1px;
+        text-underline-offset: 2px;
+        transition:
+            color var(--duration-fast) var(--ease-out),
+            text-decoration-color var(--duration-fast) var(--ease-out);
         view-transition-class: title;
     }
 
-    .release-card:hover .title {
+    .release-card:hover .title,
+    .release-card:focus-visible .title {
         color: var(--color-accent);
+        text-decoration-color: currentColor;
     }
 
     .sub {

@@ -690,6 +690,7 @@
 					onclick={(event) => requestContact(event, "telegram", TELEGRAM_URL)}
 				>
 					<TelegramIcon size={20} />
+					<span class="mobile-contact-label">Telegram</span>
 				</button>
 				<button
 					type="button"
@@ -712,6 +713,7 @@
 						<rect width="20" height="16" x="2" y="4" rx="2" />
 						<path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
 					</svg>
+					<span class="mobile-contact-label">Email</span>
 				</button>
 			</div>
 
@@ -734,6 +736,7 @@
 								<span class="control-theme-icon" aria-hidden="true">
 									<ThemeIcon {mode} size={18} />
 								</span>
+								<span>{themeLabel(mode)}</span>
 							</button>
 						{/each}
 					</div>
@@ -896,8 +899,8 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 20px;
-		height: 20px;
+		width: 28px;
+		height: 28px;
 		padding: 0;
 		background: transparent;
 		border: none;
@@ -952,6 +955,15 @@
 	}
 
 	.contact-button:hover {
+		background-color: var(--liquid-control-hover);
+		color: var(--color-accent);
+	}
+
+	/* The contact capsule clips at its glass edge, so keep the keyboard
+	   indicator inside each button instead of losing the outer outline. */
+	.contact-button:focus-visible {
+		outline: 2px solid var(--color-accent);
+		outline-offset: -3px;
 		background-color: var(--liquid-control-hover);
 		color: var(--color-accent);
 	}
@@ -1100,7 +1112,7 @@
 
 	.mobile-links {
 		display: flex;
-		align-self: flex-start;
+		width: 100%;
 		height: var(--header-control-size);
 		background: var(--liquid-control);
 		border: 1px solid transparent;
@@ -1117,8 +1129,22 @@
 	}
 
 	.contact-button.mobile {
-		width: var(--header-control-size);
+		width: auto;
+		min-width: 0;
+		flex: 1 1 50%;
 		height: var(--header-control-size);
+		gap: var(--space-2);
+		padding-inline: var(--space-3);
+		font-size: var(--text-sm);
+		font-weight: 500;
+	}
+
+	.contact-button.mobile:first-child {
+		border-right: 1px solid var(--liquid-border);
+	}
+
+	.mobile-contact-label {
+		white-space: nowrap;
 	}
 
 	.mobile-controls {
@@ -1129,8 +1155,9 @@
 
 	.control-group {
 		display: flex;
-		align-items: center;
-		justify-content: space-between;
+		flex-direction: column;
+		align-items: stretch;
+		gap: var(--space-2);
 	}
 
 	.control-label {
@@ -1139,7 +1166,8 @@
 	}
 
 	.control-buttons {
-		display: flex;
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
 		gap: var(--space-1);
 		background: var(--liquid-control);
 		border: 1px solid var(--liquid-border);
@@ -1148,9 +1176,11 @@
 	}
 
 	.control-btn {
-		display: grid;
-		place-items: center;
-		min-width: 44px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 6px;
+		min-width: 0;
 		min-height: 44px;
 		padding: var(--space-1) var(--space-2);
 		font-size: var(--text-sm);

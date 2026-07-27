@@ -39,12 +39,21 @@
     }
 
     .repo-link {
+        display: inline-flex;
+        align-items: center;
+        min-height: 24px;
         color: inherit;
-        text-decoration: none;
-        transition: color var(--duration-fast) var(--ease-out);
+        text-decoration: underline;
+        text-decoration-color: color-mix(in srgb, currentColor 48%, transparent);
+        text-underline-offset: 2px;
+        transition:
+            color var(--duration-fast) var(--ease-out),
+            text-decoration-color var(--duration-fast) var(--ease-out);
     }
 
-    .repo-link:hover {
+    .repo-link:hover,
+    .repo-link:focus-visible {
         color: var(--color-accent);
+        text-decoration-color: currentColor;
     }
 </style>
