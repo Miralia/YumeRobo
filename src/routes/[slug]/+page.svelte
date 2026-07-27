@@ -523,7 +523,7 @@
     <section class="mediainfo-section" aria-label="MediaInfo">
         <h2
             class="section-title"
-            in:fly={entranceFly("mediainfo", 0, { lead: 60 })}
+            in:fly={entranceFly("specs", 0, { lead: 60 })}
         >
             MediaInfo
         </h2>
@@ -549,7 +549,7 @@
     <section class="torrents-section" aria-label="Torrents">
         <h2
             class="section-title"
-            in:fly={entranceFly("torrents", 0, { lead: 60 })}
+            in:fly={entranceFly("specs", 0, { lead: 60 })}
         >
             Torrents
         </h2>
@@ -866,9 +866,8 @@
     .external-link:hover,
     .external-link:focus-visible {
         color: #ffffff;
-        background: var(--link-color, var(--color-accent));
+        background-color: var(--link-color, var(--color-accent));
         border-color: var(--link-color, var(--color-accent));
-        transform: translateY(-1px);
     }
 
     .external-link.dark-text:hover,
@@ -888,10 +887,9 @@
     .comparison-button:hover,
     .comparison-button:focus-visible {
         color: white;
-        background: var(--color-accent);
+        background-color: var(--color-accent);
         border-color: var(--color-accent);
         box-shadow: 0 8px 22px color-mix(in srgb, var(--color-accent) 28%, transparent);
-        transform: translateY(-1px);
     }
 
     .comparison-button:active {
