@@ -85,6 +85,9 @@
 	/* Success */
 	--color-success: #059669;
 
+	/* Poster-derived hero glow strength */
+	--hero-ambient-opacity: 0.16;
+
 	/* Glass Effect */
 	--glass-background: rgba(255, 255, 255, 0.72);
 	--glass-blur: 20px;
@@ -125,6 +128,9 @@
 
 		--color-success: #30d158;
 
+		/* Glow needs more presence against pure black */
+		--hero-ambient-opacity: 0.24;
+
 		/* Glass Effect */
 		--glass-background: rgba(28, 28, 30, 0.72);
 
@@ -164,6 +170,9 @@
 	--badge-fin-fg: #05310f;
 
 	--color-success: #30d158;
+
+	/* Glow needs more presence against pure black */
+	--hero-ambient-opacity: 0.24;
 
 	/* Glass Effect */
 	--glass-background: rgba(28, 28, 30, 0.72);
@@ -472,7 +481,17 @@ pre {
 	animation-timing-function: var(--ease-morph);
 }
 
-::view-transition-old(*.title),
+/*
+ * Text can't cross-fade cleanly: with both snapshots visible the two
+ * title sizes double-expose. Hide the old snapshot entirely — the new
+ * title alone rides the group's geometry morph.
+ */
+::view-transition-old(*.title) {
+	animation: none;
+	mix-blend-mode: normal;
+	opacity: 0;
+}
+
 ::view-transition-new(*.title) {
 	animation: none;
 	mix-blend-mode: normal;

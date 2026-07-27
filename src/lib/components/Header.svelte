@@ -866,6 +866,14 @@
 		gap: var(--space-2);
 	}
 
+	/* Between 481-639px the header search is already visible; the
+	   mobile menu would otherwise show a redundant second search box */
+	@media (min-width: 481px) {
+		.mobile-search-wrapper {
+			display: none;
+		}
+	}
+
 	.telegram-button.mobile {
 		width: 36px;
 		height: 36px;

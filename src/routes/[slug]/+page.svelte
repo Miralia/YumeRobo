@@ -591,7 +591,7 @@
         background-size: cover;
         background-position: center;
         filter: blur(64px) saturate(1.4);
-        opacity: 0.16;
+        opacity: var(--hero-ambient-opacity, 0.16);
         pointer-events: none;
         z-index: -1;
         mask-image: radial-gradient(

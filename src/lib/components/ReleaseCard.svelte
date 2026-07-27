@@ -43,7 +43,6 @@
             fetchpriority={posterLoading.fetchpriority}
             decoding="async"
         />
-        <div class="poster-overlay"></div>
     </div>
 
     <!-- Info -->
@@ -144,17 +143,6 @@
 
     .release-card:hover .poster {
         transform: scale(1.05);
-    }
-
-    /* Gradient overlay */
-    .poster-overlay {
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(
-            to top,
-            rgba(0, 0, 0, 0.4) 0%,
-            transparent 30%
-        );
     }
 
     .info {
