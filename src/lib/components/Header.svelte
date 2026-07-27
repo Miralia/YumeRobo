@@ -704,14 +704,16 @@
 	}
 
 	.context-back {
+		width: 36px;
+		height: 36px;
 		color: var(--color-accent);
 		text-decoration: none;
 		border-color: var(--liquid-border);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-full);
 	}
 
-	.context-back svg {
-		transition: transform var(--duration-fast) var(--ease-spring);
+	.context-back::after {
+		inset: -4px;
 	}
 
 	.context-back:hover,
@@ -719,9 +721,8 @@
 		color: var(--color-accent);
 	}
 
-	.context-back:hover svg,
-	.context-back:focus-visible svg {
-		transform: translateX(-2px);
+	.context-back:active {
+		transform: none;
 	}
 
 	.search-wrapper {
@@ -819,7 +820,7 @@
 		width: 36px;
 		height: 36px;
 		padding: 0;
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-full);
 		color: var(--color-label-secondary);
 		text-decoration: none;
 		transition:
@@ -840,7 +841,7 @@
 		height: 36px;
 		border: none;
 		color: var(--color-label-secondary);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-full);
 		cursor: pointer;
 		transition:
 			background-color var(--duration-fast) var(--ease-out),
@@ -916,7 +917,7 @@
 		height: 44px;
 		border: none;
 		color: var(--color-label);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-full);
 		cursor: pointer;
 		flex-shrink: 0;
 	}
