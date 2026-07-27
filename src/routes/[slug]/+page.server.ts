@@ -2,6 +2,7 @@ import type { PageServerLoad } from './$types';
 import { getAllReleases, getReleaseBySlug } from '$lib/content/loader';
 import { getReleaseBadges } from '$lib/content/schema';
 import { getPosterMeta } from '$lib/content/poster-meta';
+import { getComparisonAsset } from '$lib/content/comparison-assets.server';
 import { error } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async ({ params }) => {
@@ -14,6 +15,7 @@ export const load: PageServerLoad = async ({ params }) => {
     }
 
     const meta = getPosterMeta(release.poster);
+    const comparison = getComparisonAsset(release.slug);
 
     return {
         release,
@@ -22,7 +24,8 @@ export const load: PageServerLoad = async ({ params }) => {
         // Build-time dynamic color data (Ginmaku): dominant accent +
         // micro blur thumb replacing runtime poster blurring
         accent: meta?.accent ?? null,
-        posterBlur: meta?.blur ?? null
+        posterBlur: meta?.blur ?? null,
+        comparison
     };
 };
 
