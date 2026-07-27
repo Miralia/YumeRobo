@@ -595,7 +595,7 @@
         transition: box-shadow 280ms var(--ease-out);
     }
 
-    .poster-container:global([data-poster-active]) {
+    .poster-container:global([data-poster-hover]) {
         box-shadow: 0 24px 52px -14px color-mix(in srgb, var(--dyn) 55%, rgba(0, 0, 0, 0.5));
     }
 

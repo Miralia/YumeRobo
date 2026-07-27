@@ -43,7 +43,9 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
     const glareX: SpringValue = { value: 0, velocity: 0, target: 0 };
     const glareY: SpringValue = { value: 0, velocity: 0, target: 0 };
     const engagement: SpringValue = { value: 0, velocity: 0, target: 0 };
-    const springs = [rotateX, rotateY, glareX, glareY, engagement];
+    const glareStrength: SpringValue = { value: 0, velocity: 0, target: 0 };
+    const motionSprings = [rotateX, rotateY, glareX, glareY, engagement];
+    const springs = [...motionSprings, glareStrength];
 
     let bounds: DOMRect | null = null;
     let frame: number | null = null;
@@ -61,6 +63,7 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
 
     function render() {
         const engaged = Math.max(0, Math.min(1, engagement.value));
+        const glare = Math.max(0, Math.min(1, glareStrength.value));
         node.style.setProperty(
             "--poster-tilt-x",
             `${rotateX.value.toFixed(3)}deg`,
@@ -87,7 +90,7 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
         );
         node.style.setProperty(
             "--poster-glare-opacity",
-            `${(opts.glareOpacity * engaged).toFixed(3)}`,
+            `${(opts.glareOpacity * glare).toFixed(3)}`,
         );
     }
 
@@ -98,6 +101,15 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
             (spring.target - spring.value) * stiffness * delta;
         spring.velocity *= Math.exp(-damping * delta);
         spring.value += spring.velocity * delta;
+    }
+
+    function integrateGlare(delta: number) {
+        // Light intensity should follow quickly without the overshoot and
+        // long tail that make physical rotation feel natural.
+        const response = 1 - Math.exp(-24 * delta);
+        glareStrength.value +=
+            (glareStrength.target - glareStrength.value) * response;
+        glareStrength.velocity = 0;
     }
 
     function isSettled(): boolean {
@@ -114,7 +126,8 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
             : 1 / 60;
         previousTime = time;
 
-        for (const spring of springs) integrate(spring, delta);
+        for (const spring of motionSprings) integrate(spring, delta);
+        integrateGlare(delta);
         render();
 
         if (isSettled()) {
@@ -154,6 +167,7 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
         glareX.target = x * bounds.width * 0.28;
         glareY.target = y * bounds.height * 0.22;
         engagement.target = 1;
+        glareStrength.target = 1;
         schedule();
     }
 
@@ -161,6 +175,7 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
         if (!supportsInteraction(event)) return;
         bounds = node.getBoundingClientRect();
         node.setAttribute("data-poster-active", "");
+        node.setAttribute("data-poster-hover", "");
         updateTargets(event);
     }
 
@@ -172,11 +187,14 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
     function settle() {
         suspended = false;
         bounds = null;
+        node.removeAttribute("data-poster-hover");
         rotateX.target = 0;
         rotateY.target = 0;
         glareX.target = 0;
         glareY.target = 0;
         engagement.target = 0;
+        glareStrength.target = 0;
+        glareStrength.velocity = 0;
         schedule();
     }
 
@@ -191,6 +209,7 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
             spring.target = 0;
         }
         node.removeAttribute("data-poster-active");
+        node.removeAttribute("data-poster-hover");
         render();
     }
 

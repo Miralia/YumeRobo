@@ -111,7 +111,7 @@
         view-transition-class: poster;
     }
 
-    .poster-container:global([data-poster-active]),
+    .poster-container:global([data-poster-hover]),
     .release-card:focus-visible .poster-container {
         box-shadow: 0 16px 32px -12px color-mix(in srgb, var(--pc) 60%, rgba(0, 0, 0, 0.45));
     }
