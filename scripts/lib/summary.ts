@@ -16,6 +16,14 @@ function getLinksCount(links?: Record<string, string>): number {
 	return Object.keys(links ?? {}).length;
 }
 
+function formatComparisonStatus(draft: CreateDraft | EditDraft): string {
+	if (draft.comparison?.status === "ready") {
+		return `comparison status=ready source=${draft.comparison.sourceUrl}`;
+	}
+	if (draft.comparison?.status === "skipped") return "comparison status=skipped";
+	return "comparison status=missing";
+}
+
 export function formatCreateDraftSummary(draft: CreateDraft): string {
 	const torrentMetrics = getTorrentMetrics(draft.torrents);
 	const lines = [`CREATE_DRAFT slug=${draft.slug}`];
@@ -40,6 +48,7 @@ export function formatCreateDraftSummary(draft: CreateDraft): string {
 			? `specs status=done count=${draft.specs.length}`
 			: "specs status=missing",
 	);
+	lines.push(formatComparisonStatus(draft));
 	lines.push(
 		draft.links && getLinksCount(draft.links) > 0
 			? `links status=done count=${getLinksCount(draft.links)}`
@@ -76,6 +85,7 @@ export function formatEditDraftSummary(draft: EditDraft): string {
 			? `specs status=done count=${draft.specs.length}`
 			: "specs status=missing",
 	);
+	lines.push(formatComparisonStatus(draft));
 	lines.push(
 		draft.links && getLinksCount(draft.links) > 0
 			? `links status=done count=${getLinksCount(draft.links)}`

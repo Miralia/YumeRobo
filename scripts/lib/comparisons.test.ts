@@ -7,8 +7,10 @@ import {
   extractSlowPicsCandidates,
   getComparisonDeepLink,
   readStoredComparison,
+  readStoredComparisonFile,
   validateSlowPicsCollection,
   writeStoredComparison,
+  writeStoredComparisonFile,
 } from "./comparisons";
 
 function collection(key = "abc123") {
@@ -79,6 +81,21 @@ describe("slow.pics comparison metadata", () => {
       expect(target).toEndWith("src/lib/content/comparisons/release1.json");
       expect(await readStoredComparison("release1", root)).toEqual(stored);
       expect(await fs.readFile(target, "utf8")).not.toContain("data:image");
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test("writes and reads a staged sidecar at an explicit path", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "yumerobo-comparison-stage-"));
+    const target = path.join(root, "drafts", "comparison.json");
+    try {
+      const stored = createStoredComparison(
+        { key: "abc123", url: "https://slow.pics/c/abc123", label: "Example" },
+        collection(),
+      );
+      expect(await writeStoredComparisonFile(target, stored)).toBe(target);
+      expect(await readStoredComparisonFile(target)).toEqual(stored);
     } finally {
       await fs.rm(root, { recursive: true, force: true });
     }
