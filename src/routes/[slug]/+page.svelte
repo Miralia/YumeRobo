@@ -6,11 +6,7 @@
     import type { Release, ExternalLinks } from "$lib/content/schema";
     import { externalIcons } from "$lib/utils/icons";
     import { env } from "$env/dynamic/public";
-    import {
-        entranceFly,
-        slideParams,
-        updateDisclosure,
-    } from "$lib/utils/animation";
+    import { entranceFly, slideParams } from "$lib/utils/animation";
     import { posterTilt } from "$lib/utils/poster-tilt";
 
     const SITE_URL = env.PUBLIC_SITE_URL || "https://yumerobo.moe";
@@ -78,10 +74,7 @@
     }
 
     function toggleSpec(index: number) {
-        updateDisclosure(() => {
-            specOverrides[`${data.release.slug}:${index}`] =
-                !isSpecExpanded(index);
-        });
+        specOverrides[`${data.release.slug}:${index}`] = !isSpecExpanded(index);
     }
 
     function isTorrentExpanded(index: number): boolean {
@@ -89,10 +82,8 @@
     }
 
     function toggleTorrent(index: number) {
-        updateDisclosure(() => {
-            torrentOverrides[`${data.release.slug}:${index}`] =
-                !isTorrentExpanded(index);
-        });
+        torrentOverrides[`${data.release.slug}:${index}`] =
+            !isTorrentExpanded(index);
     }
 
     // MediaInfo state - stores raw text
@@ -552,6 +543,10 @@
         flex-direction: column;
         gap: var(--space-8);
         padding-bottom: var(--space-16);
+        /* Expanding a disclosure must not turn nearby content into a moving
+           viewport anchor. Scope this to the detail document rather than
+           mutating the root scroller, which can itself trigger a jump. */
+        overflow-anchor: none;
     }
 
     /* Hero */

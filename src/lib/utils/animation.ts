@@ -76,31 +76,3 @@ export function slideParams() {
         easing: cubicOut,
     };
 }
-
-let disclosureAnchorTimer: number | undefined;
-
-/**
- * Apply a disclosure state update while scroll anchoring is suspended.
- *
- * A height transition near the viewport edge can otherwise make the browser
- * repeatedly re-anchor the page while Svelte's `slide` updates the panel on
- * every frame, followed by a reverse correction when the temporary height is
- * removed. This only suppresses automatic anchoring; it never locks scrollY,
- * so deliberate wheel/touch scrolling remains responsive during the motion.
- */
-export function updateDisclosure(update: () => void) {
-    if (typeof document === "undefined") {
-        update();
-        return;
-    }
-
-    const root = document.documentElement;
-    root.dataset.disclosureTransition = "";
-    update();
-
-    if (disclosureAnchorTimer) clearTimeout(disclosureAnchorTimer);
-    disclosureAnchorTimer = window.setTimeout(() => {
-        delete root.dataset.disclosureTransition;
-        disclosureAnchorTimer = undefined;
-    }, motionSafe(duration.normal) + 50);
-}

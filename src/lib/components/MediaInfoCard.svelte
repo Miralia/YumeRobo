@@ -18,7 +18,7 @@
         rawContent: string | null;
         /** True when fetching the raw MediaInfo definitively failed */
         hasFailed?: boolean;
-        /** Invoked when the user expands the raw view before content arrived */
+        /** Invoked when the card expands before MediaInfo has been prefetched */
         onexpand?: () => void;
     }
 
@@ -30,8 +30,7 @@
         onexpand,
     }: Props = $props();
 
-    // Toggle state: false = show structured view, true = show raw MediaInfo
-    let showRaw = $state(false);
+    let expanded = $state(false);
 
     // Parse MediaInfo when content is available
     let parsed = $derived<MediaInfoParsed | null>(
@@ -107,60 +106,55 @@
         return parts.join(" / ");
     }
 
-    function toggleView() {
-        showRaw = !showRaw;
-        if (showRaw && !rawContent) {
+    function toggleExpanded() {
+        expanded = !expanded;
+        if (expanded && !rawContent && !hasFailed) {
             onexpand?.();
         }
     }
 </script>
 
-<div class="mediainfo-card">
-    <!-- Header: toggle button and raw link are siblings (a link may not
-         live inside a button) -->
-    <div class="card-header">
+<div class="mediainfo-card info-surface" data-expanded={expanded}>
+    <div class="card-header info-surface__header">
         <h3 class="card-heading">
             <button
-                class="card-toggle"
-                onclick={toggleView}
-                aria-expanded={showRaw}
+                class="card-toggle info-surface__trigger"
+                onclick={toggleExpanded}
+                aria-expanded={expanded}
                 aria-controls="mediainfo-panel-{rawHash}"
             >
                 <span class="filename">{filename}</span>
-                <span class="header-actions">
-                    <span class="toggle-hint" aria-hidden="true"
-                        >{showRaw ? "Hide" : "Expand"}</span
-                    >
-                    <svg
-                        class="chevron"
-                        class:expanded={showRaw}
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="18"
-                        height="18"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        aria-hidden="true"
-                    >
-                        <path d="m6 9 6 6 6-6" />
-                    </svg>
-                </span>
+                <svg
+                    class="chevron"
+                    class:expanded
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                >
+                    <path d="m6 9 6 6 6-6" />
+                </svg>
             </button>
         </h3>
+
         <a
             href="/mediainfo/{rawHash}"
-            class="raw-link"
+            class="raw-link liquid-control"
             target="_blank"
             rel="noopener"
             aria-label="Open raw MediaInfo in new tab"
         >
+            <span>Raw</span>
             <svg
                 xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
+                width="14"
+                height="14"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -178,15 +172,14 @@
         </a>
     </div>
 
-    <div id="mediainfo-panel-{rawHash}">
-        {#if showRaw && rawContent}
-            <!-- Raw MediaInfo view -->
-            <div class="raw-view" transition:slide={slideParams()}>
-                <pre class="raw-content">{rawContent}</pre>
-            </div>
-        {:else if structured}
-            <!-- Structured view (columns) -->
-            <div class="card-body">
+    {#if expanded}
+        <div
+            class="card-panel"
+            id="mediainfo-panel-{rawHash}"
+            transition:slide={slideParams()}
+        >
+            {#if structured}
+                <div class="card-body">
                 <div class="columns">
                     <!-- General -->
                     <div class="column">
@@ -308,104 +301,68 @@
                 {#if encodingSettings}
                     <div class="encode-section">
                         <h4 class="section-title">ENCODE SETTINGS</h4>
-                        <pre class="encode-settings">{encodingSettings}</pre>
+                        <pre class="encode-settings info-recessed">{encodingSettings}</pre>
                     </div>
                 {/if}
-            </div>
-        {:else if hasFailed}
-            <div class="loading">No MediaInfo available</div>
-        {:else}
-            <!-- Prerendered + loading state: skeleton mirrors the
-                 structured layout to avoid a jump when content lands -->
-            <div class="card-body skeleton-body" aria-hidden="true">
-                <div class="columns">
-                    {#each [0, 1, 2] as column (column)}
-                        <div class="column">
-                            <div class="skeleton skeleton-title"></div>
-                            <div class="skeleton skeleton-row"></div>
-                            <div class="skeleton skeleton-row"></div>
-                            <div class="skeleton skeleton-row short"></div>
-                        </div>
-                    {/each}
                 </div>
-            </div>
-            <p class="visually-hidden">Loading MediaInfo</p>
-        {/if}
-    </div>
+            {:else if hasFailed}
+                <div class="loading">No MediaInfo available</div>
+            {:else}
+                <!-- The skeleton mirrors the structured layout to avoid a
+                     second jump when prefetched content becomes available. -->
+                <div class="card-body skeleton-body" aria-hidden="true">
+                    <div class="columns">
+                        {#each [0, 1, 2] as column (column)}
+                            <div class="column">
+                                <div class="skeleton skeleton-title"></div>
+                                <div class="skeleton skeleton-row"></div>
+                                <div class="skeleton skeleton-row"></div>
+                                <div class="skeleton skeleton-row short"></div>
+                            </div>
+                        {/each}
+                    </div>
+                </div>
+                <p class="visually-hidden">Loading MediaInfo</p>
+            {/if}
+        </div>
+    {/if}
 </div>
 
 <style>
     .mediainfo-card {
-        background: var(--color-background-secondary);
-        border-radius: var(--radius-md);
-        overflow: hidden;
+        width: 100%;
     }
 
     .card-header {
-        display: flex;
-        align-items: stretch;
-        background: var(--color-background-tertiary);
-        border-bottom: 1px solid var(--color-separator);
+        position: relative;
     }
 
     .card-heading {
-        flex: 1;
+        width: 100%;
         min-width: 0;
         margin: 0;
         font-size: inherit;
         font-weight: inherit;
-        display: flex;
     }
 
     .card-toggle {
-        flex: 1;
-        min-width: 0;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: var(--space-3);
-        padding: var(--space-3) var(--space-4);
-        background: transparent;
-        border: none;
-        cursor: pointer;
-        text-align: left;
-        transition: background var(--duration-fast) var(--ease-out);
-    }
-
-    .card-toggle:hover {
-        background: var(--color-fill);
-    }
-
-    .card-toggle:focus-visible {
-        outline: 2px solid var(--color-accent);
-        outline-offset: -2px;
+        min-height: 49px;
     }
 
     .filename {
-        flex: 1;
+        display: block;
         font-family: var(--font-mono);
         font-size: var(--text-sm);
         font-weight: 500;
-        /* Accent variant tuned for the tertiary header surface */
-        color: var(--color-accent-on-tertiary);
-        word-break: break-all;
-    }
-
-    .header-actions {
-        display: flex;
-        align-items: center;
-        gap: var(--space-2);
-        flex-shrink: 0;
-    }
-
-    .toggle-hint {
-        font-family: var(--font-sans);
-        font-size: var(--text-xs);
-        color: var(--color-label-secondary);
+        color: var(--color-label);
+        flex: 1;
+        min-width: 0;
+        padding-right: 76px;
+        overflow-wrap: anywhere;
     }
 
     .chevron {
-        /* State-bearing graphic: needs ≥3:1, tertiary is decorative-only */
+        flex: 0 0 auto;
         color: var(--color-label-secondary);
         transition: transform var(--duration-normal) var(--ease-spring);
     }
@@ -415,23 +372,43 @@
     }
 
     .raw-link {
+        position: absolute;
+        z-index: 2;
+        top: 50%;
+        right: 46px;
+        transform: translateY(-50%);
         display: flex;
         align-items: center;
         justify-content: center;
-        align-self: center;
-        width: 28px;
-        height: 28px;
-        margin-right: var(--space-3);
+        gap: 5px;
+        min-width: 58px;
+        height: 32px;
+        padding: 0 var(--space-2);
+        font-family: var(--font-sans);
+        font-size: var(--text-xs);
+        font-weight: 600;
         color: var(--color-label-secondary);
-        border-radius: var(--radius-sm);
+        border-radius: var(--radius-full);
         transition:
             background-color var(--duration-fast) var(--ease-out),
-            color var(--duration-fast) var(--ease-out);
+            border-color var(--duration-fast) var(--ease-out),
+            color var(--duration-fast) var(--ease-out),
+            transform var(--duration-fast) var(--ease-spring);
     }
 
-    .raw-link:hover {
-        background: var(--color-fill-secondary);
+    .raw-link:hover,
+    .raw-link:focus-visible {
+        background-color: color-mix(in srgb, var(--color-accent) 12%, var(--liquid-control-hover));
+        border-color: color-mix(in srgb, var(--color-accent) 34%, var(--liquid-border));
         color: var(--color-accent);
+    }
+
+    .raw-link:active {
+        transform: translateY(-50%) scale(0.96);
+    }
+
+    .card-panel {
+        min-width: 0;
     }
 
     .card-body {
@@ -439,25 +416,6 @@
         display: flex;
         flex-direction: column;
         gap: var(--space-4);
-    }
-
-    .raw-view {
-        padding: var(--space-4);
-    }
-
-    .raw-content {
-        font-family: var(--font-mono);
-        font-size: var(--text-xs);
-        line-height: var(--leading-relaxed);
-        color: var(--color-label-secondary);
-        background: var(--color-background-tertiary);
-        padding: var(--space-4);
-        border-radius: var(--radius-md);
-        overflow-x: auto;
-        white-space: pre;
-        margin: 0;
-        max-height: 500px;
-        overflow-y: auto;
     }
 
     .loading {
@@ -514,7 +472,8 @@
     }
 
     .info-row {
-        display: flex;
+        display: grid;
+        grid-template-columns: minmax(70px, 0.75fr) minmax(0, 1.25fr);
         gap: var(--space-2);
         font-size: var(--text-xs);
     }
@@ -522,14 +481,14 @@
     .info-row dt {
         font-family: var(--font-sans);
         color: var(--color-label-secondary);
-        min-width: 70px;
-        flex-shrink: 0;
     }
 
     .info-row dd {
+        min-width: 0;
         color: var(--color-label);
         margin: 0;
         font-family: var(--font-mono);
+        overflow-wrap: anywhere;
     }
 
     /* Audio */
@@ -557,8 +516,10 @@
     }
 
     .audio-info {
+        min-width: 0;
         font-family: var(--font-mono);
         color: var(--color-label);
+        overflow-wrap: anywhere;
     }
 
     /* Subtitles */
@@ -599,13 +560,43 @@
         font-size: 10px;
         line-height: 1.6;
         color: var(--color-label-secondary);
-        background: var(--color-background-tertiary);
+        background: color-mix(in srgb, var(--color-background-tertiary) 72%, transparent);
         padding: var(--space-3);
-        border-radius: var(--radius-sm);
         overflow-x: auto;
         white-space: pre-wrap;
-        word-break: break-all;
+        overflow-wrap: anywhere;
         margin: 0;
         font-variant-numeric: tabular-nums;
+    }
+
+    @media (max-width: 639px) {
+        .card-toggle {
+            min-height: 56px;
+        }
+
+        .filename {
+            padding-right: 84px;
+        }
+
+        .raw-link {
+            right: 48px;
+            min-width: 64px;
+            height: 40px;
+        }
+
+        .card-body {
+            padding: var(--space-3);
+        }
+    }
+
+    @media (max-width: 420px) {
+        .info-row {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 1px;
+        }
+
+        .info-row dt {
+            font-size: 11px;
+        }
     }
 </style>

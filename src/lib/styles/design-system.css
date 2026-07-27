@@ -338,14 +338,6 @@ html {
 	scrollbar-gutter: stable;
 }
 
-/* Disclosure panels animate their block size. Temporarily opting the root out
-   of scroll anchoring prevents the browser from chasing a moving anchor near
-   the viewport edge and snapping back when the transition's inline height is
-   removed. The attribute is scoped to the transition window in animation.ts. */
-html[data-disclosure-transition] {
-	overflow-anchor: none;
-}
-
 body {
 	font-family: var(--font-sans);
 	font-size: var(--text-base);

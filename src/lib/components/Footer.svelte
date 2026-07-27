@@ -22,6 +22,9 @@
         padding: var(--space-6) 0;
         border-top: 1px solid var(--color-separator);
         background: var(--color-background-secondary);
+        /* A visible footer below an expanding detail card would otherwise be
+           selected as the replacement scroll anchor. */
+        overflow-anchor: none;
     }
 
     .footer-content {
