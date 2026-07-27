@@ -81,6 +81,9 @@
 		margin: 0;
 	}
 
+	/* Badge token pair keeps the ink ≥4.5:1 in both themes; hover
+	   feedback comes from motion + a slight brightness shift so the
+	   contrast pairing never changes */
 	.home-link {
 		display: inline-flex;
 		align-items: center;
@@ -89,18 +92,18 @@
 		padding: var(--space-2) var(--space-5);
 		font-size: var(--text-sm);
 		font-weight: 600;
-		color: #ffffff;
-		background: var(--color-accent);
+		color: var(--badge-fg);
+		background: var(--badge-bg);
 		border-radius: var(--radius-full);
 		transition:
-			background-color var(--duration-fast) var(--ease-out),
+			filter var(--duration-fast) var(--ease-out),
 			transform var(--duration-fast) var(--ease-spring);
 	}
 
 	.home-link:hover,
 	.home-link:focus-visible {
-		color: #ffffff;
-		background: var(--color-accent-hover);
+		color: var(--badge-fg);
+		filter: brightness(1.06);
 		transform: translateY(-1px);
 	}
 

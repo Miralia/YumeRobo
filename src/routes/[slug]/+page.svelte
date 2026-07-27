@@ -133,9 +133,13 @@
     $effect(() => {
         const torrents = data.release.torrents;
 
-        const idle =
-            window.requestIdleCallback ??
-            ((cb: () => void) => window.setTimeout(cb, 250));
+        // The 800ms ceiling keeps the fetch out of the Magic Move +
+        // entrance window (Safari lacks requestIdleCallback and would
+        // otherwise fire mid-choreography) without stalling long enough
+        // for the skeleton swap to drift far down the visit.
+        const idle = window.requestIdleCallback
+            ? (cb: () => void) => window.requestIdleCallback(cb, { timeout: 800 })
+            : (cb: () => void) => window.setTimeout(cb, 800);
         const cancelIdle = window.cancelIdleCallback ?? window.clearTimeout;
 
         const handle = idle(() => {
@@ -577,10 +581,12 @@
         }
     }
 
-    /* Soft poster-derived glow behind the hero */
+    /* Soft poster-derived glow behind the hero. Horizontal inset stays
+       at 0 — a wider box overflows the page and creates horizontal
+       scroll; the 64px blur provides the sideways bleed instead. */
     .hero-ambient {
         position: absolute;
-        inset: -15% -8%;
+        inset: -15% 0;
         background-size: cover;
         background-position: center;
         filter: blur(64px) saturate(1.4);
@@ -689,6 +695,10 @@
         color: var(--color-label);
         margin: 0;
         text-wrap: pretty;
+        /* Forward morphs take the class list from the NEW element —
+           without this the list→detail title morph falls back to UA
+           defaults while detail→list stays styled */
+        view-transition-class: title;
     }
 
     @media (min-width: 640px) {
@@ -871,17 +881,18 @@
         margin: 0;
     }
 
-    /* Use global styles for spec links to ensure they work even with @html */
+    /* Use global styles for spec links to ensure they work even with @html.
+       The tertiary surface needs the surface-tuned accent, and hover keeps
+       the underline — color alone at hover contrast is not a reliable cue. */
     :global(.spec-link) {
-        color: var(--color-accent);
+        color: var(--color-accent-on-tertiary);
         text-decoration: underline;
         text-decoration-thickness: 1px;
         text-underline-offset: 2px;
     }
 
     :global(.spec-link:hover) {
-        color: var(--color-accent-hover);
-        text-decoration: none;
+        text-decoration-thickness: 2px;
     }
 
     /* Torrents */
@@ -944,7 +955,8 @@
 
     .chevron {
         flex-shrink: 0;
-        color: var(--color-label-tertiary);
+        /* State-bearing graphic: needs ≥3:1, tertiary is decorative-only */
+        color: var(--color-label-secondary);
         transition: transform var(--duration-normal) var(--ease-spring);
     }
 

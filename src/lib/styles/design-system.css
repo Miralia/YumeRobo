@@ -72,6 +72,9 @@
 	/* Accent - Purple (YumeRobo Brand) */
 	--color-accent: #5856d6;
 	--color-accent-hover: #7674e0;
+	/* Accent as TEXT on the tertiary surface (#e5e5ea / #2c2c2e) — the
+	   base accent misses 4.5:1 there in dark mode */
+	--color-accent-on-tertiary: #5856d6;
 
 	/* Badges — paired bg/fg tokens keep text ≥4.5:1 in both themes */
 	--badge-bg: #5856d6;
@@ -112,6 +115,7 @@
 		/* Accent - Purple (YumeRobo Brand) */
 		--color-accent: #7b7aff;
 		--color-accent-hover: #9d9cff;
+		--color-accent-on-tertiary: #9d9cff;
 
 		/* White on #7b7aff is 3.5:1 — flip to dark ink on the bright badge */
 		--badge-bg: #7b7aff;
@@ -152,6 +156,7 @@
 	/* Accent - Purple (YumeRobo Brand) */
 	--color-accent: #7b7aff;
 	--color-accent-hover: #9d9cff;
+	--color-accent-on-tertiary: #9d9cff;
 
 	--badge-bg: #7b7aff;
 	--badge-fg: #14143c;
@@ -509,9 +514,17 @@ pre {
  * While a Magic Move is in flight the hero shadow stays off; the
  * poster container's own box-shadow transition then settles it in
  * once the morph lands — a deliberate afterbeat, like the badges.
+ * Theme cross-fades (.theme-vt, stamped by the theme switcher) are
+ * not navigations: they keep the shadow and skip the badge fly-in.
  */
-html:active-view-transition .poster-hero {
+html:active-view-transition:not(.theme-vt) .poster-hero {
 	box-shadow: none;
+}
+
+.theme-vt::view-transition-old(detail-badges),
+.theme-vt::view-transition-new(detail-badges) {
+	animation: none;
+	mix-blend-mode: normal;
 }
 
 /* ===== ENTRANCE ANIMATIONS ===== */
@@ -557,8 +570,10 @@ html:active-view-transition .poster-hero {
 	*::before,
 	*::after {
 		animation-duration: 0.01ms !important;
+		animation-delay: 0s !important;
 		animation-iteration-count: 1 !important;
 		transition-duration: 0.01ms !important;
+		transition-delay: 0s !important;
 	}
 
 	::view-transition-group(*),

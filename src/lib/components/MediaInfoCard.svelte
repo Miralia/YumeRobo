@@ -317,7 +317,7 @@
         {:else}
             <!-- Prerendered + loading state: skeleton mirrors the
                  structured layout to avoid a jump when content lands -->
-            <div class="card-body" aria-hidden="true">
+            <div class="card-body skeleton-body" aria-hidden="true">
                 <div class="columns">
                     {#each [0, 1, 2] as column (column)}
                         <div class="column">
@@ -386,7 +386,8 @@
         font-family: var(--font-mono);
         font-size: var(--text-sm);
         font-weight: 500;
-        color: var(--color-accent);
+        /* Accent variant tuned for the tertiary header surface */
+        color: var(--color-accent-on-tertiary);
         word-break: break-all;
     }
 
@@ -404,7 +405,8 @@
     }
 
     .chevron {
-        color: var(--color-label-tertiary);
+        /* State-bearing graphic: needs ≥3:1, tertiary is decorative-only */
+        color: var(--color-label-secondary);
         transition: transform var(--duration-normal) var(--ease-spring);
     }
 
@@ -466,6 +468,12 @@
     }
 
     /* Skeleton */
+    /* Approximates the typical structured view height (three columns
+       plus subtitles row) to keep the content swap from shifting layout */
+    .skeleton-body {
+        min-height: 150px;
+    }
+
     .skeleton-title {
         width: 40%;
         height: 12px;

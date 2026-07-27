@@ -69,22 +69,27 @@
 		isTyping = false;
 	}
 
-	// A pending debounced search must not fire after the user has
-	// already navigated somewhere else (e.g. clicked a release card).
-	beforeNavigate((navigation) => {
-		if (navigation.to?.url.pathname !== "/") {
-			navigateToSearch.cancel();
-			isTyping = false;
-		}
+	// A pending debounced search must not fire after any navigation the
+	// user initiated elsewhere (card click, back/forward, clear). Only
+	// one timer is ever pending, and the search's own goto fires after
+	// its timer has been consumed, so cancelling unconditionally is safe.
+	beforeNavigate(() => {
+		navigateToSearch.cancel();
+		isTyping = false;
 	});
 
 	function clearSearch() {
 		navigateToSearch.cancel();
 		searchQuery = "";
 		isTyping = false;
-		const returnUrl = originUrl || "/";
-		originUrl = null;
-		goto(returnUrl, { replaceState: true });
+		// Only navigate when a search is actually applied to the URL;
+		// clearing an uncommitted query must not yank the user off the
+		// page they're on (or erase it from history via replaceState).
+		if (page.url.searchParams.has("q")) {
+			const returnUrl = originUrl || "/";
+			originUrl = null;
+			goto(returnUrl, { replaceState: true, keepFocus: true });
+		}
 	}
 
 	function handleCompositionStart() {
@@ -95,10 +100,18 @@
 	function handleCompositionEnd(event: CompositionEvent) {
 		isComposing = false;
 		const target = event.target as HTMLInputElement;
-		const value = target.value.trim();
-		if (!value) return;
-
 		searchQuery = target.value;
+
+		if (!target.value.trim()) {
+			// Composition cancelled/deleted: release the typing flag so
+			// URL sync resumes, and clear an applied search if present.
+			isTyping = false;
+			if (page.url.searchParams.has("q")) {
+				navigateToSearch(searchQuery);
+			}
+			return;
+		}
+
 		navigateToSearch(searchQuery);
 	}
 
@@ -118,6 +131,9 @@
 	}
 
 	function handleSearchKeydown(event: KeyboardEvent) {
+		// Escape during IME composition dismisses the candidate window —
+		// it must never clear the search or navigate.
+		if (event.isComposing || isComposing) return;
 		if (event.key !== "Escape") return;
 		event.preventDefault();
 		if (searchQuery) {
@@ -146,19 +162,30 @@
 
 	function setTheme(mode: ThemeMode) {
 		themeMode = mode;
-		closeThemeMenu();
-		// Cross-fade the recolor with the same primitive Magic Move uses
+		closeThemeMenu(true);
+		// Cross-fade the recolor with the same primitive Magic Move uses.
+		// The .theme-vt class scopes out navigation-only choreography
+		// (badge fly-in, hero shadow settle) during the recolor.
 		if (document.startViewTransition && !prefersReducedMotion.current) {
-			document.startViewTransition(() => applyTheme(mode));
+			const root = document.documentElement;
+			root.classList.add("theme-vt");
+			const transition = document.startViewTransition(() =>
+				applyTheme(mode),
+			);
+			transition.finished.finally(() =>
+				root.classList.remove("theme-vt"),
+			);
 		} else {
 			applyTheme(mode);
 		}
 	}
 
-	async function openThemeMenu() {
+	async function openThemeMenu(focusItem: boolean) {
 		isThemeMenuOpen = true;
-		await tick();
-		focusThemeItem(THEME_MODES.indexOf(themeMode));
+		if (focusItem) {
+			await tick();
+			focusThemeItem(THEME_MODES.indexOf(themeMode));
+		}
 	}
 
 	function closeThemeMenu(returnFocus = false) {
@@ -181,9 +208,14 @@
 	function handleThemeButtonKeydown(event: KeyboardEvent) {
 		if (event.key === "ArrowDown" || event.key === "ArrowUp") {
 			event.preventDefault();
-			if (!isThemeMenuOpen) {
-				openThemeMenu();
+			if (isThemeMenuOpen) {
+				focusThemeItem(THEME_MODES.indexOf(themeMode));
+			} else {
+				openThemeMenu(true);
 			}
+		} else if (event.key === "Escape" && isThemeMenuOpen) {
+			event.preventDefault();
+			closeThemeMenu(false);
 		}
 	}
 
@@ -366,7 +398,9 @@
 						if (isThemeMenuOpen) {
 							closeThemeMenu();
 						} else {
-							openThemeMenu();
+							// detail === 0 → keyboard-originated click:
+							// move focus into the menu; mouse keeps it here
+							openThemeMenu(event.detail === 0);
 						}
 					}}
 					onkeydown={handleThemeButtonKeydown}
@@ -395,6 +429,11 @@
 								role="menuitemradio"
 								aria-checked={themeMode === mode}
 								tabindex="-1"
+								onmousedown={(event) =>
+									// Safari doesn't focus buttons on
+									// mousedown; without this, focusout
+									// closes the menu before click lands
+									event.preventDefault()}
 								onclick={() => setTheme(mode)}
 								onkeydown={(event) =>
 									handleThemeMenuKeydown(event, index)}

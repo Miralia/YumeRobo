@@ -25,7 +25,12 @@
     // first-render divergence.
     let searchQuery = $state("");
     let displayCount = $state(HOME_RELEASE_BATCH_SIZE);
-    let restoredCount = $state(0);
+    // Cards below this index play the entrance animation. The initial
+    // batch is exempt: prerendered HTML must paint cards immediately
+    // (the fade-up's backwards fill would hold the LCP poster at
+    // opacity 0 through its stagger delay), so only content mounted
+    // later — infinite-scroll batches — animates in.
+    let restoredCount = $state(HOME_RELEASE_BATCH_SIZE);
     let sentinel = $state<HTMLDivElement | null>(null);
     let previousQuery = "";
 
@@ -45,7 +50,10 @@
         if (searchQuery === previousQuery) return;
 
         displayCount = HOME_RELEASE_BATCH_SIZE;
-        restoredCount = 0;
+        // Surviving cards glide via flip; replaying the staggered
+        // entrance on them would blank the list, so the first batch
+        // stays exempt from the entrance animation.
+        restoredCount = HOME_RELEASE_BATCH_SIZE;
         previousQuery = searchQuery;
     });
 
@@ -125,25 +133,30 @@
 </svelte:head>
 
 <div class="home-page container">
-    <!-- Search result announcement for assistive tech -->
-    {#if isSearching}
-        <p class="visually-hidden" role="status">
+    <!-- Search result announcement for assistive tech. Permanently
+         mounted: newly inserted live regions aren't reliably announced,
+         so only the text content changes. -->
+    <p class="visually-hidden" role="status">
+        {#if isSearching}
             {filteredCards.length === 0
                 ? `No releases match “${searchQuery}”`
                 : `${filteredCards.length} release${filteredCards.length === 1 ? "" : "s"} match “${searchQuery}”`}
-        </p>
-    {/if}
+        {/if}
+    </p>
 
     <!-- Release List -->
     <section class="release-list" aria-label="Releases">
         {#if displayedCards.length > 0}
             {#each displayedCards as card, index (card.slug)}
-                <div
-                    class:animate-fade-up={index >= restoredCount}
-                    style:animation-delay={entranceDelay(index)}
-                    animate:flip={flipParams}
-                >
-                    <ReleaseCard {card} {index} />
+                <!-- flip (WAAPI) and the entrance animation (CSS) both
+                     drive transform, so they live on separate elements -->
+                <div animate:flip={flipParams}>
+                    <div
+                        class:animate-fade-up={index >= restoredCount}
+                        style:animation-delay={entranceDelay(index)}
+                    >
+                        <ReleaseCard {card} {index} />
+                    </div>
                 </div>
             {/each}
         {:else if isSearching}
