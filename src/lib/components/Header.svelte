@@ -693,6 +693,10 @@
 
 <style>
 	.header {
+		--header-control-size: 44px;
+		--header-control-radius: calc(var(--header-control-size) / 2);
+		--header-control-icon-size: 20px;
+
 		position: sticky;
 		top: var(--space-2);
 		z-index: 100;
@@ -704,6 +708,7 @@
 	.header-content {
 		display: grid;
 		grid-template-columns: 44px minmax(0, 1fr) 44px;
+		column-gap: var(--space-2);
 		align-items: center;
 		height: 60px;
 		padding-inline: var(--space-4);
@@ -715,25 +720,22 @@
 		align-items: center;
 		justify-content: center;
 		justify-self: start;
-		width: 36px;
-		height: 36px;
+		width: var(--header-control-size);
+		height: var(--header-control-size);
 		padding: 0;
 		view-transition-class: header-leading;
 	}
 
-	/* Center both leading visuals in the same 36px slot while preserving
-	   a 44px pointer target. */
-	.header-leading::after {
-		content: "";
-		position: absolute;
-		inset: -4px;
+	.leading-control svg {
+		width: var(--header-control-icon-size);
+		height: var(--header-control-icon-size);
 	}
 
 	.leading-control {
 		color: var(--color-label-secondary);
 		text-decoration: none;
 		border-color: var(--liquid-border);
-		border-radius: var(--radius-full);
+		border-radius: var(--header-control-radius);
 	}
 
 	.home-button:hover,
@@ -757,7 +759,8 @@
 		position: relative;
 		display: flex;
 		align-items: center;
-		border-radius: var(--radius-full);
+		height: var(--header-control-size);
+		border-radius: var(--header-control-radius);
 		transition:
 			border-color var(--duration-fast) var(--ease-out),
 			box-shadow var(--duration-fast) var(--ease-out);
@@ -785,6 +788,7 @@
 
 	.search-input {
 		width: 100%;
+		height: 100%;
 		padding: var(--space-2) var(--space-3);
 		padding-left: calc(var(--space-3) + 18px + var(--space-2));
 		padding-right: var(--space-8);
@@ -846,7 +850,8 @@
 	.contact-group {
 		display: flex;
 		align-items: center;
-		border-radius: var(--radius-full);
+		height: var(--header-control-size);
+		border-radius: var(--header-control-radius);
 		overflow: hidden;
 	}
 
@@ -854,10 +859,10 @@
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		width: 36px;
-		height: 36px;
+		width: var(--header-control-size);
+		height: calc(var(--header-control-size) - 2px);
 		padding: 0;
-		border-radius: var(--radius-full);
+		border-radius: var(--header-control-radius);
 		color: var(--color-label-secondary);
 		text-decoration: none;
 		transition:
@@ -870,14 +875,20 @@
 		color: var(--color-accent);
 	}
 
+	.contact-button svg,
+	.mobile-menu-button svg {
+		width: var(--header-control-icon-size);
+		height: var(--header-control-icon-size);
+	}
+
 	.nav-button {
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 36px;
-		height: 36px;
+		width: var(--header-control-size);
+		height: var(--header-control-size);
 		color: var(--color-label-secondary);
-		border-radius: var(--radius-full);
+		border-radius: var(--header-control-radius);
 		cursor: pointer;
 		transition:
 			background-color var(--duration-fast) var(--ease-out),
@@ -890,7 +901,7 @@
 	}
 
 	.theme-icon {
-		font-size: var(--text-lg);
+		font-size: var(--header-control-icon-size);
 	}
 
 	.theme-dropdown {
@@ -949,10 +960,10 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 44px;
-		height: 44px;
+		width: var(--header-control-size);
+		height: var(--header-control-size);
 		color: var(--color-label);
-		border-radius: var(--radius-full);
+		border-radius: var(--header-control-radius);
 		cursor: pointer;
 		flex-shrink: 0;
 	}
@@ -992,9 +1003,10 @@
 	.mobile-links {
 		display: flex;
 		align-self: flex-start;
+		height: var(--header-control-size);
 		background: var(--liquid-control);
 		border: 1px solid transparent;
-		border-radius: var(--radius-full);
+		border-radius: var(--header-control-radius);
 		overflow: hidden;
 	}
 
@@ -1007,8 +1019,8 @@
 	}
 
 	.contact-button.mobile {
-		width: 44px;
-		height: 44px;
+		width: var(--header-control-size);
+		height: var(--header-control-size);
 	}
 
 	.mobile-controls {
@@ -1071,9 +1083,9 @@
 
 		.header-content {
 			grid-template-columns:
-				minmax(124px, 1fr)
+				minmax(148px, 1fr)
 				minmax(0, 520px)
-				minmax(124px, 1fr);
+				minmax(148px, 1fr);
 		}
 
 		.nav-desktop {
