@@ -13,6 +13,7 @@
 		"cli": "bun scripts/manage.ts",
 		"backfill:comparisons": "bun scripts/backfill-comparisons.ts",
 		"vendor:yacomp": "bun scripts/vendor-yacomp-web.ts",
+		"check:yacomp": "bun scripts/check-yacomp-web.ts",
 		"update:yacomp": "bun scripts/update-yacomp-web.ts"
 	},
 	"devDependencies": {
