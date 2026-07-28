@@ -97,11 +97,14 @@
     }
 
     onMount(() => {
+        const previousBodyOverflow = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
         void openViewer();
         return () => {
             leaving = true;
             viewerHandle?.close();
             viewerHandle = null;
+            document.body.style.overflow = previousBodyOverflow;
         };
     });
 </script>
@@ -116,84 +119,84 @@
 <section
     class="comparisons-page container"
     aria-labelledby="comparisons-title"
+    aria-busy={loading}
     style:min-height={routeMinHeight}
 >
-    <div class="comparisons-content">
-        <h1 id="comparisons-title">{socialTitle}</h1>
-        <p class="nodes">{data.comparison.summary.nodes.join(" vs ")}</p>
-        <p class="metrics">
-            {data.comparison.summary.comparisonCount}
-            {data.comparison.summary.comparisonCount === 1 ? "comparison" : "comparisons"}
-            {#if data.comparison.summary.maxResolution}
-                <span aria-hidden="true">·</span>
-                {data.comparison.summary.maxResolution}
-            {/if}
-        </p>
+    <h1 id="comparisons-title" class="visually-hidden">{socialTitle} Comparisons</h1>
+    <div class="viewer-overlay">
         {#if errorMessage}
-            <p class="error" role="alert">{errorMessage}</p>
-            <button class="retry liquid-control" type="button" onclick={openViewer}>Try Again</button>
+            <div class="viewer-error" role="alert">
+                <p>Comparison viewer could not be opened.</p>
+                <button class="retry liquid-control" type="button" onclick={openViewer}>Try Again</button>
+            </div>
         {:else if loading}
-            <p class="status" role="status">Opening comparisons…</p>
+            <div class="loading-indicator" role="status" aria-label="Opening comparisons">
+                <span class="loading-spinner" aria-hidden="true"></span>
+                <span class="visually-hidden">Opening comparisons</span>
+            </div>
         {/if}
     </div>
 </section>
 
 <style>
     .comparisons-page {
-        display: grid;
         min-height: min(62vh, 560px);
+    }
+
+    .viewer-overlay {
+        position: fixed;
+        z-index: 1100;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        background: #000;
+    }
+
+    .loading-indicator {
+        display: grid;
         place-items: center;
     }
 
-    .comparisons-content {
-        max-width: 760px;
+    .loading-spinner {
+        width: 32px;
+        height: 32px;
+        border: 3px solid rgb(255 255 255 / 15%);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: spin 700ms linear infinite;
+    }
+
+    .viewer-error {
+        color: rgb(255 255 255 / 88%);
         text-align: center;
     }
 
-    h1 {
+    .viewer-error p {
         margin: 0;
-        color: var(--color-label);
-        font-family: var(--font-display);
-        font-size: var(--text-3xl);
-        line-height: var(--leading-tight);
-        letter-spacing: 0;
-    }
-
-    .nodes {
-        margin: var(--space-4) 0 0;
-        color: var(--color-label);
-        font-size: var(--text-lg);
-    }
-
-    .metrics,
-    .status,
-    .error {
-        margin: var(--space-2) 0 0;
-        color: var(--color-label-secondary);
-    }
-
-    .metrics span {
-        margin: 0 var(--space-2);
     }
 
     .retry {
         min-height: 42px;
         margin-top: var(--space-4);
         padding: var(--space-2) var(--space-4);
-        color: var(--color-label);
+        color: #fff;
         font: inherit;
         font-weight: 600;
         cursor: pointer;
+        border: 1px solid rgb(255 255 255 / 18%);
+        background: rgb(12 12 12 / 82%);
         border-radius: 999px;
     }
 
-    @media (max-width: 639px) {
-        h1 {
-            font-size: var(--text-2xl);
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
         }
+    }
 
-        .nodes {
-            font-size: var(--text-base);
+    @media (prefers-reduced-motion: reduce) {
+        .loading-spinner {
+            animation: none;
         }
     }
 </style>
