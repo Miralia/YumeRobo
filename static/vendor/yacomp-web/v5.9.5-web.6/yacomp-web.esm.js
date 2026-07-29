@@ -365,8 +365,14 @@ var Z4=["click","dblclick","middle","back","forward"];function A0($){if($.t!=="k
     }
     ._scf_source_menu:hover ._scf_source_menu_btn,
     ._scf_source_menu_btn:focus-visible,
-    ._scf_source_menu._scf_open ._scf_source_menu_btn {
+    ._scf_source_menu._scf_open ._scf_source_menu_btn,
+    ._scf_settings_btn:hover,
+    ._scf_settings_btn:focus-visible {
       opacity: 1;
+    }
+    ._scf_source_menu:hover ._scf_source_menu_btn,
+    ._scf_source_menu_btn:focus-visible,
+    ._scf_source_menu._scf_open ._scf_source_menu_btn {
       width: 94px;
     }
     ._scf_source_menu_btn:hover,
