@@ -1,4 +1,6 @@
 import { describe, expect, test } from 'bun:test';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import { buildCaption } from './telegram';
 import type { ReleaseData } from './types';
 
@@ -82,5 +84,36 @@ describe('buildCaption', () => {
 
         expect(caption).toContain('[VP9](https://example\\.com/mediainfo/vp9hash)');
         expect(caption).not.toContain('x264');
+    });
+
+    test('omits the subtitles line when MediaInfo has only blank text fields', async () => {
+        const hash = 'telegram-empty-subtitle-test';
+        const mediaInfoPath = path.join(process.cwd(), 'static', 'mediainfo', hash);
+        await fs.writeFile(mediaInfoPath, `
+General
+Format                                   : Matroska
+
+Text
+Format                                   :
+Language                                 :
+Title                                    :
+        `, 'utf-8');
+
+        try {
+            const release = makeRelease([
+                {
+                    name: 'Show.BD.1080p.x265-GROUP',
+                    files: [],
+                    mediainfo: [{ filename: 'show.mkv', raw_hash: hash }],
+                },
+            ]);
+
+            const caption = await buildCaption(release, '', 'https://example.com');
+
+            expect(caption).not.toContain('Subtitles:');
+            expect(caption).toContain('[x265](https://example\\.com/mediainfo/telegram\\-empty\\-subtitle\\-test)');
+        } finally {
+            await fs.rm(mediaInfoPath, { force: true });
+        }
     });
 });

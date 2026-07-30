@@ -117,7 +117,18 @@ export function parseMediaInfo(text: string): MediaInfoParsed {
  */
 function getFirst(value: string | string[] | undefined): string | undefined {
     if (!value) return undefined;
-    return Array.isArray(value) ? value[0] : value;
+    const first = Array.isArray(value) ? value[0] : value;
+    const trimmed = first.trim();
+    return trimmed ? trimmed : undefined;
+}
+
+function hasStructuredValues(entry: object): boolean {
+    return Object.values(entry).some((value) => Boolean(value));
+}
+
+function nonEmptyStructuredList<T extends object>(entries: T[]): T[] | null {
+    const filtered = entries.filter(hasStructuredValues);
+    return filtered.length ? filtered : null;
 }
 
 /**
@@ -147,8 +158,7 @@ export function toStructured(parsed: MediaInfoParsed): MediaInfoStructured {
                 bit_rate: getFirst(general.data['Overall bit rate'])
             }
             : null,
-        video: videos.length
-            ? videos.map((v) => ({
+        video: nonEmptyStructuredList(videos.map((v) => ({
                 format: getFirst(v.data['Format']),
                 format_profile: getFirst(v.data['Format profile']),
                 codec: getFirst(v.data['Codec ID']),
@@ -159,10 +169,8 @@ export function toStructured(parsed: MediaInfoParsed): MediaInfoStructured {
                 transfer_characteristics: getFirst(v.data['Transfer characteristics']),
                 frame_rate: getFirst(v.data['Frame rate']),
                 bit_rate: getFirst(v.data['Bit rate'])
-            }))
-            : null,
-        audio: audios.length
-            ? audios.map((a) => ({
+            }))),
+        audio: nonEmptyStructuredList(audios.map((a) => ({
                 format: getFirst(a.data['Format']),
                 format_profile: getFirst(a.data['Format profile']),
                 channels: getFirst(a.data['Channel(s)']),
@@ -170,15 +178,12 @@ export function toStructured(parsed: MediaInfoParsed): MediaInfoStructured {
                 title: getFirst(a.data['Title']),
                 language: getFirst(a.data['Language']),
                 commercial_name: getFirst(a.data['Commercial name'])
-            }))
-            : null,
-        text: texts.length
-            ? texts.map((t) => ({
+            }))),
+        text: nonEmptyStructuredList(texts.map((t) => ({
                 format: getFirst(t.data['Format']),
                 title: getFirst(t.data['Title']),
                 language: getFirst(t.data['Language'])
-            }))
-            : null
+            })))
     };
 }
 
