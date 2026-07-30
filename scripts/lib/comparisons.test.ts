@@ -79,7 +79,7 @@ describe("slow.pics comparison metadata", () => {
         collection(),
       );
       const target = await writeStoredComparison("release1", stored, root);
-      expect(target).toEndWith("src/lib/content/comparisons/release1.json");
+      expect(target).toEndWith("static/comparisons/release1.json");
       expect(await readStoredComparison("release1", root)).toEqual(stored);
       expect(await fs.readFile(target, "utf8")).not.toContain("data:image");
     } finally {

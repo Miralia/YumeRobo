@@ -166,7 +166,7 @@ export function createStoredComparison(
 
 export function getComparisonFilePath(slug: string, rootDir: string = process.cwd()): string {
   if (!/^[a-z0-9]+$/.test(slug)) throw new TypeError("Invalid release slug");
-  return path.join(rootDir, "src", "lib", "content", "comparisons", `${slug}.json`);
+  return path.join(rootDir, "static", "comparisons", `${slug}.json`);
 }
 
 export async function readStoredComparison(
