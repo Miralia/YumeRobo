@@ -40,7 +40,7 @@ export function getCliUsage(): string {
 		"  edit                 Edit an existing release",
 		"  delete <slug>        Delete a release by slug and clean owned assets",
 		"  telegram             Push an existing release to Telegram",
-		"  comparison-sync [slug|--all] Collect the selected slow.pics comparison in Chromium",
+		"  comparison-sync [slug|--all] Collect the selected slow.pics comparison metadata",
 		"  audit-assets         Audit managed media assets for drift or orphaning",
 		"  prune-assets         Delete orphaned managed media assets after confirmation",
 		"  backfill-card-posters Generate missing card poster assets for all releases",

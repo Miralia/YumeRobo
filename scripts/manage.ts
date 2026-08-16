@@ -89,9 +89,9 @@ import {
     type StoredComparison,
 } from './lib/comparisons';
 import {
-    createSlowPicsBrowserCollector,
-    type SlowPicsBrowserCollector,
-} from './lib/slowpics-browser';
+    createSlowPicsCollector,
+    type SlowPicsCollector,
+} from './lib/slowpics-collect';
 import {
     clearCreateDraft,
     clearEditDraft,
@@ -567,10 +567,10 @@ async function chooseSlowPicsCandidate(
 
 async function collectReleaseComparison(
     release: Pick<ReleaseData, 'slug' | 'title' | 'specs'>,
-    collector?: SlowPicsBrowserCollector,
+    collector?: SlowPicsCollector,
 ): Promise<StoredComparison> {
     const candidate = await chooseSlowPicsCandidate(release);
-    const ownedCollector = collector ?? await createSlowPicsBrowserCollector();
+    const ownedCollector = collector ?? await createSlowPicsCollector();
     try {
         const collection = await ownedCollector.collect(candidate.url, candidate.key);
         return createStoredComparison(candidate, collection);
@@ -581,7 +581,7 @@ async function collectReleaseComparison(
 
 async function syncReleaseComparison(
     release: Pick<ReleaseData, 'slug' | 'title' | 'specs'>,
-    collector?: SlowPicsBrowserCollector,
+    collector?: SlowPicsCollector,
 ): Promise<string> {
     const comparison = await collectReleaseComparison(release, collector);
     const target = await writeStoredComparison(release.slug, comparison);
@@ -703,7 +703,7 @@ async function comparisonSync(args: string[]) {
         targets = [selected];
     }
 
-    const collector = fromStdin ? null : await createSlowPicsBrowserCollector();
+    const collector = fromStdin ? null : await createSlowPicsCollector();
     try {
         for (const record of targets) {
             console.log(`\n=== ${record.data.title} (${record.slug}) ===`);

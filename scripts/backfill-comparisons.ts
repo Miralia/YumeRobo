@@ -9,7 +9,7 @@ import {
   writeStoredComparison,
   type SlowPicsCandidate,
 } from "./lib/comparisons";
-import { createSlowPicsBrowserCollector } from "./lib/slowpics-browser";
+import { createSlowPicsCollector } from "./lib/slowpics-collect";
 import type { ReleaseData } from "./lib/types";
 
 interface ReleaseRecord {
@@ -69,7 +69,7 @@ async function chooseCandidate(
 }
 
 const releases = await loadReleases();
-const collector = await createSlowPicsBrowserCollector();
+const collector = await createSlowPicsCollector();
 let saved = 0;
 let existing = 0;
 let withoutLink = 0;
