@@ -18,6 +18,9 @@ Thumbs.db
 !.env.example
 !.env.test
 
+# CLI metadata cache (anime_map / anibridge mappings)
+.cache/
+
 # Vite
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*

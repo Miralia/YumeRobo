@@ -101,11 +101,11 @@ export async function promptTelegramLabel(): Promise<string> {
     });
 }
 
-/** Prompt for newline-separated external links. */
-export async function promptLinksEditor(): Promise<string> {
+/** Prompt for newline-separated external links, optionally prefilled. */
+export async function promptLinksEditor(defaultContent?: string): Promise<string> {
     return editor({
         message: 'External links (one URL per line):',
-        default: '# One URL per line\n',
+        default: defaultContent ?? '# One URL per line\n',
     });
 }
 

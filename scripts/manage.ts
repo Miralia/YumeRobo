@@ -54,11 +54,13 @@ import {
     getTVMetadata,
     getMetadataById,
     formatSearchResult,
+    getTmdbApiKey,
     type TMDBMetadata
 } from './lib/tmdb';
 import { parseTorrent, formatSize } from './lib/torrent';
 import { parseBBCodeSpecs } from './lib/bbcode';
 import { buildInitialExternalLinks, collectExternalLinks } from './lib/links';
+import { resolveExternalLinks } from './lib/link-resolver';
 import { classifyTorrentTelegramLabel } from './lib/torrent-label';
 import { generateReleaseCode } from './lib/templates';
 import { generateHash, type ReleaseData, type TorrentEntry, type MediaInfoEntry, type SpecEntry } from './lib/types';
@@ -527,7 +529,18 @@ async function stepSpecs(): Promise<SpecEntry[]> {
     return specs;
 }
 
-async function stepLinks(tmdbId: number, mediaType: string): Promise<Record<string, string>> {
+interface StepLinksContext {
+    season?: number;
+    title?: string;
+    year?: number;
+    specialType?: string;
+}
+
+async function stepLinks(
+    tmdbId: number,
+    mediaType: string,
+    ctx: StepLinksContext = {},
+): Promise<Record<string, string>> {
     console.log('\n--- External Links ---');
     let links = buildInitialExternalLinks(tmdbId, mediaType);
 
@@ -535,7 +548,54 @@ async function stepLinks(tmdbId: number, mediaType: string): Promise<Record<stri
         console.log(`[+] Auto-added: tmdb`);
     }
 
-    const result = collectExternalLinks(links, await promptLinksEditor());
+    // Auto-resolve from deterministic sources. Only confirmed links are
+    // prefilled; fuzzy suggestions are offered as comments for manual review.
+    let prefill = '';
+    try {
+        const resolved = await resolveExternalLinks(tmdbId, mediaType as 'movie' | 'tv', {
+            apiKey: getTmdbApiKey(),
+            season: ctx.season,
+            title: ctx.title,
+            year: ctx.year,
+            isAnime: ['tva', 'ova', 'ona'].includes(ctx.specialType ?? ''),
+        });
+
+        const confirmedKeys = Object.keys(resolved.confirmed) as Array<keyof typeof resolved.confirmed>;
+        for (const platform of confirmedKeys) {
+            const url = resolved.confirmed[platform];
+            if (url && !links[platform]) {
+                links[platform] = url;
+                console.log(`[+] Resolved: ${platform} (${resolved.sources.find((s) => s.startsWith(platform))?.split(': ').slice(1).join(': ') ?? 'auto'})`);
+            }
+        }
+        for (const source of resolved.sources) {
+            if (!confirmedKeys.some((p) => source.startsWith(`${String(p)}:`))) {
+                console.log(`[i] ${source}`);
+            }
+        }
+
+        const lines: string[] = [];
+        for (const [platform, url] of Object.entries(links)) {
+            lines.push(url);
+        }
+        const suggestionKeys = Object.keys(resolved.suggestions) as Array<keyof typeof resolved.suggestions>;
+        if (suggestionKeys.length > 0) {
+            lines.push('');
+            lines.push('# Fuzzy suggestions — verify before uncommenting:');
+            for (const platform of suggestionKeys) {
+                lines.push(`# ${platform}: ${resolved.suggestions[platform]}`);
+            }
+        }
+        if (resolved.missing.length > 0) {
+            lines.push('');
+            lines.push(`# Not found automatically (fill manually if known): ${resolved.missing.join(', ')}`);
+        }
+        prefill = lines.join('\n') + '\n';
+    } catch (error) {
+        console.log(`[!] Link resolution failed, falling back to manual entry: ${error instanceof Error ? error.message : error}`);
+    }
+
+    const result = collectExternalLinks(links, await promptLinksEditor(prefill));
     for (const platform of result.added) {
         console.log(`[+] Added: ${platform}`);
     }
@@ -898,7 +958,12 @@ async function create() {
     }
 
     if (!links) {
-        links = await stepLinks(metadata.tmdb_id, metadata.media_type);
+        links = await stepLinks(metadata.tmdb_id, metadata.media_type, {
+                season: metadata.season,
+                title: metadata.title,
+                year: metadata.year,
+                specialType: metadata.special_type,
+            });
         await persistCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links, comparison }));
     }
 
@@ -1011,7 +1076,12 @@ export const release: Release = ${cleanCode};
             comparison = result.comparison;
             await persistCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links, comparison }));
         } else if (action === 'links') {
-            links = await stepLinks(metadata.tmdb_id, metadata.media_type);
+            links = await stepLinks(metadata.tmdb_id, metadata.media_type, {
+                season: metadata.season,
+                title: metadata.title,
+                year: metadata.year,
+                specialType: metadata.special_type,
+            });
             await persistCreateDraft(buildCreateDraftState({ slug, metadata, posterPath, torrents, specs, links, comparison }));
         }
     }
@@ -1328,7 +1398,12 @@ export const release: Release = ${cleanCode};
                 date,
             }));
         } else if (action === 'links') {
-            links = await stepLinks(metadata.tmdb_id, metadata.media_type);
+            links = await stepLinks(metadata.tmdb_id, metadata.media_type, {
+                season: metadata.season,
+                title: metadata.title,
+                year: metadata.year,
+                specialType: metadata.special_type,
+            });
             await persistEditDraft(buildEditDraftState({
                 slug,
                 originalRelease,

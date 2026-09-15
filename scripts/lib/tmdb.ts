@@ -30,6 +30,11 @@ function getApiKey(): string {
     return key;
 }
 
+/** Expose the configured key for other modules (link resolution). */
+export function getTmdbApiKey(): string {
+    return getApiKey();
+}
+
 /**
  * Search TMDB for movies and TV shows (English results)
  */
