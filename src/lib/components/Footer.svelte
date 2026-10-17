@@ -1,5 +1,15 @@
 <script lang="ts">
-	const currentYear = new Date().getFullYear();
+	import { onMount } from "svelte";
+
+	// Frozen at prerender time so the served HTML and the first hydration
+	// pass agree; a build that predates the new year would otherwise ship a
+	// stale (and, across the year boundary, hydrating) year forever.
+	const prerenderedYear = new Date().getFullYear();
+	let currentYear = $state(prerenderedYear);
+
+	onMount(() => {
+		currentYear = new Date().getFullYear();
+	});
 </script>
 
 <footer class="footer">

@@ -18,4 +18,6 @@
     });
 </script>
 
-<time datetime={formatted.dateTime}>{formatted.label}</time>
+<!-- An invalid value formats to an empty `dateTime`: omit the attribute
+     rather than emitting `datetime=""`, which would be a wrong instant. -->
+<time datetime={formatted.dateTime || undefined}>{formatted.label}</time>

@@ -115,6 +115,10 @@
 />
 
 <div class="home-page container">
+    <!-- The card titles are h2, so the document needs a single h1 for a valid
+         outline; it is visually hidden because the grid is the page. -->
+    <h1 class="visually-hidden">夢みる機械 — release archive</h1>
+
     <!-- Search result announcement for assistive tech. Permanently
          mounted: newly inserted live regions aren't reliably announced,
          so only the text content changes. -->
@@ -135,7 +139,9 @@
                 <div animate:flip={flipParams}>
                     <div
                         class:animate-fade-up={index >= restoredCount}
-                        style:animation-delay={entranceDelay(index)}
+                        style:animation-delay={index >= restoredCount
+                            ? entranceDelay(index)
+                            : undefined}
                     >
                         <ReleaseCard {card} {index} />
                     </div>

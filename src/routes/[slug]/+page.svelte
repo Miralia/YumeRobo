@@ -1,11 +1,47 @@
 <script module lang="ts">
+    /**
+     * Module-level so returning from the viewer does not replay the
+     * skeleton-to-content layout shift. Both caches are capped, otherwise a
+     * long session that walks many releases retains every fetched document
+     * for the lifetime of the tab.
+     */
+    const MEDIAINFO_CONTENT_LIMIT = 24;
+    const MEDIAINFO_FAILURE_LIMIT = 64;
+
     const mediaInfoContentCache = new Map<string, string>();
     const mediaInfoFailureCache = new Set<string>();
     const mediaInfoRequestCache = new Map<string, Promise<string>>();
 
+    /** Insert as most recent and evict the oldest entry past the cap. */
+    function rememberMediaInfoContent(hash: string, content: string) {
+        mediaInfoContentCache.delete(hash);
+        mediaInfoContentCache.set(hash, content);
+
+        while (mediaInfoContentCache.size > MEDIAINFO_CONTENT_LIMIT) {
+            const oldest = mediaInfoContentCache.keys().next().value;
+            if (oldest === undefined) break;
+            mediaInfoContentCache.delete(oldest);
+        }
+    }
+
+    function rememberMediaInfoFailure(hash: string) {
+        mediaInfoFailureCache.delete(hash);
+        mediaInfoFailureCache.add(hash);
+
+        while (mediaInfoFailureCache.size > MEDIAINFO_FAILURE_LIMIT) {
+            const oldest = mediaInfoFailureCache.values().next().value;
+            if (oldest === undefined) break;
+            mediaInfoFailureCache.delete(oldest);
+        }
+    }
+
     async function fetchMediaInfoContent(hash: string): Promise<string> {
         const cached = mediaInfoContentCache.get(hash);
-        if (cached !== undefined) return cached;
+        if (cached !== undefined) {
+            // Touch the entry so the eviction order stays least-recently-used.
+            rememberMediaInfoContent(hash, cached);
+            return cached;
+        }
 
         const existingRequest = mediaInfoRequestCache.get(hash);
         if (existingRequest) return existingRequest;
@@ -16,7 +52,7 @@
             }
 
             const rawText = await response.text();
-            mediaInfoContentCache.set(hash, rawText);
+            rememberMediaInfoContent(hash, rawText);
             mediaInfoFailureCache.delete(hash);
             return rawText;
         }).finally(() => {
@@ -32,7 +68,8 @@
     import { fade, fly, slide } from "svelte/transition";
     import { afterNavigate, goto, replaceState } from "$app/navigation";
     import { page } from "$app/state";
-    import { untrack } from "svelte";
+    import { browser } from "$app/environment";
+    import { onDestroy, untrack } from "svelte";
     import LocalDateTime from "$lib/components/LocalDateTime.svelte";
     import MediaInfoCard from "$lib/components/MediaInfoCard.svelte";
     import SocialMeta from "$lib/components/SocialMeta.svelte";
@@ -44,6 +81,7 @@
         slideParams,
     } from "$lib/utils/animation";
     import { posterTilt } from "$lib/utils/poster-tilt";
+    import { getCardPosterPath } from "$lib/utils/poster-paths";
     import type { ComparisonAssetReference } from "$lib/content/comparison-assets.server";
     import {
         getDetailSocialDescription,
@@ -70,26 +108,42 @@
             ...page.state,
             comparisonsReturnScrollY: returnScrollY,
         });
+        // Callers fire-and-forget this, so a failed navigation must not
+        // surface as an unhandled rejection.
         return goto(comparisonsPath, {
             noScroll: true,
             state: {
                 openedComparisonsFromDetail: true,
                 comparisonsReturnScrollY: returnScrollY,
             },
+        }).catch((error) => {
+            console.error("Failed to open comparisons:", error);
         });
     }
+
+    let restoreScrollFrame: number | null = null;
 
     afterNavigate(() => {
         if (page.url.pathname !== `/${data.release.slug}`) return;
         const returnScrollY = page.state.comparisonsReturnScrollY;
         if (!Number.isFinite(returnScrollY)) return;
 
-        requestAnimationFrame(() => {
+        restoreScrollFrame = requestAnimationFrame(() => {
+            restoreScrollFrame = null;
             window.scrollTo(0, returnScrollY ?? 0);
             const nextState = { ...page.state };
             delete nextState.comparisonsReturnScrollY;
             replaceState("", nextState);
         });
+    });
+
+    // Navigating away before the frame runs must not let it scroll the next
+    // page (and clear that page's own saved return position).
+    onDestroy(() => {
+        if (restoreScrollFrame !== null) {
+            cancelAnimationFrame(restoreScrollFrame);
+            restoreScrollFrame = null;
+        }
     });
 
     function handleComparisonClick(event: MouseEvent) {
@@ -226,7 +280,7 @@
             failedMediaInfo = nextFailed;
         } catch (e) {
             console.error("Failed to load MediaInfo:", e);
-            mediaInfoFailureCache.add(hash);
+            rememberMediaInfoFailure(hash);
             failedMediaInfo = new Set(untrack(() => failedMediaInfo)).add(hash);
         } finally {
             const newLoading = new Set(untrack(() => loadingMediaInfo));
@@ -235,35 +289,58 @@
         }
     }
 
+    let mediaInfoSection = $state<HTMLElement | null>(null);
+
     /*
-     * Prefetch raw MediaInfo once the browser is idle so the requests
-     * never compete with the LCP poster or the entrance choreography.
+     * Prefetch raw MediaInfo only once its section is in or near the
+     * viewport: loading every file for the release on idle spent bandwidth on
+     * releases whose MediaInfo the visitor never scrolled to. The idle
+     * deferral is kept so the requests still stay out of the LCP poster and
+     * the Magic Move + entrance window (Safari lacks requestIdleCallback and
+     * would otherwise fire mid-choreography).
      */
     $effect(() => {
+        const section = mediaInfoSection;
         const torrents = data.release.torrents;
+        if (!browser || !section) return;
 
-        // The 800ms ceiling keeps the fetch out of the Magic Move +
-        // entrance window (Safari lacks requestIdleCallback and would
-        // otherwise fire mid-choreography) without stalling long enough
-        // for the skeleton swap to drift far down the visit.
         const idle = window.requestIdleCallback
             ? (cb: () => void) => window.requestIdleCallback(cb, { timeout: 800 })
             : (cb: () => void) => window.setTimeout(cb, 800);
         const cancelIdle = window.cancelIdleCallback ?? window.clearTimeout;
 
-        const handle = idle(() => {
-            for (const torrent of torrents) {
-                for (const mi of torrent.mediainfo) {
-                    loadMediaInfoContent(mi.raw_hash);
-                }
-            }
-        });
+        let idleHandle: number | undefined;
 
-        return () => cancelIdle(handle);
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (!entries.some((entry) => entry.isIntersecting)) return;
+                observer.disconnect();
+                idleHandle = idle(() => {
+                    for (const torrent of torrents) {
+                        for (const mi of torrent.mediainfo) {
+                            loadMediaInfoContent(mi.raw_hash);
+                        }
+                    }
+                });
+            },
+            { rootMargin: "400px 0px" },
+        );
+
+        observer.observe(section);
+
+        return () => {
+            observer.disconnect();
+            if (idleHandle !== undefined) cancelIdle(idleHandle);
+        };
     });
 
     function formatSize(bytes: number): string {
-        if (!bytes) return "";
+        // `file.size` arrives from JSON, so it can be absent or malformed;
+        // never render "NaN"/"Infinity" or throw on a non-number.
+        if (typeof bytes !== "number" || !Number.isFinite(bytes) || bytes <= 0) {
+            return "";
+        }
+
         const units = ["B", "KiB", "MiB", "GiB", "TiB"];
         let size = bytes;
         let unitIndex = 0;
@@ -325,9 +402,8 @@
                     height="750"
                     fetchpriority="high"
                     decoding="async"
-                    style:background-image="url({data.release.poster.replace(
-                        '.avif',
-                        '.card.avif',
+                    style:background-image="url({getCardPosterPath(
+                        data.release.poster,
                     )})"
                 />
                 {#if data.badges.length > 0}
@@ -448,7 +524,7 @@
                 Technical Info
             </h2>
             <div class="info-card-list">
-                {#each data.release.specs as spec, i}
+                {#each data.release.specs as spec, i (`${data.release.slug}:spec:${i}`)}
                     <div
                         class="spec-block info-surface"
                         data-expanded={isSpecExpanded(i)}
@@ -460,7 +536,9 @@
                                     class="spec-header info-surface__trigger"
                                     onclick={() => toggleSpec(i)}
                                     aria-expanded={isSpecExpanded(i)}
-                                    aria-controls="spec-panel-{i}"
+                                    aria-controls={isSpecExpanded(i)
+                                        ? `spec-panel-${i}`
+                                        : undefined}
                                 >
                                     <span class="spec-title">{spec.title}</span>
                                     <svg
@@ -520,41 +598,47 @@
     {/if}
 
     <!-- MediaInfo Section -->
-    <section class="mediainfo-section" aria-label="MediaInfo">
-        <h2
-            class="section-title"
-            in:fly={entranceFly("specs", 0, { lead: 60 })}
+    {#if mediaInfoEntries.length > 0}
+        <section
+            class="mediainfo-section"
+            aria-label="MediaInfo"
+            bind:this={mediaInfoSection}
         >
-            MediaInfo
-        </h2>
-        <div class="mediainfo-list">
-            {#each mediaInfoEntries as mi, flatIndex}
-                <div
-                    class="mediainfo-wrapper"
-                    in:fly={entranceFly("mediainfo", flatIndex)}
-                >
-                    <MediaInfoCard
-                        filename={mi.filename}
-                        rawHash={mi.raw_hash}
-                        rawContent={loadedMediaInfo.get(mi.raw_hash) ?? null}
-                        hasFailed={failedMediaInfo.has(mi.raw_hash)}
-                        onexpand={() => loadMediaInfoContent(mi.raw_hash)}
-                    />
-                </div>
-            {/each}
-        </div>
-    </section>
+            <h2
+                class="section-title"
+                in:fly={entranceFly("mediainfo", 0, { lead: 60 })}
+            >
+                MediaInfo
+            </h2>
+            <div class="mediainfo-list">
+                {#each mediaInfoEntries as mi, flatIndex (`${data.release.slug}:mediainfo:${flatIndex}`)}
+                    <div
+                        class="mediainfo-wrapper"
+                        in:fly={entranceFly("mediainfo", flatIndex)}
+                    >
+                        <MediaInfoCard
+                            filename={mi.filename}
+                            rawHash={mi.raw_hash}
+                            rawContent={loadedMediaInfo.get(mi.raw_hash) ?? null}
+                            hasFailed={failedMediaInfo.has(mi.raw_hash)}
+                            onexpand={() => loadMediaInfoContent(mi.raw_hash)}
+                        />
+                    </div>
+                {/each}
+            </div>
+        </section>
+    {/if}
 
     <!-- Torrents Section -->
     <section class="torrents-section" aria-label="Torrents">
         <h2
             class="section-title"
-            in:fly={entranceFly("specs", 0, { lead: 60 })}
+            in:fly={entranceFly("torrents", 0, { lead: 60 })}
         >
             Torrents
         </h2>
         <div class="torrent-list">
-            {#each data.release.torrents as torrent, index}
+            {#each data.release.torrents as torrent, index (`${data.release.slug}:torrent:${index}`)}
                 <div
                     class="torrent-item info-surface"
                     data-expanded={isTorrentExpanded(index)}
@@ -565,7 +649,9 @@
                             class="torrent-header info-surface__trigger"
                             onclick={() => toggleTorrent(index)}
                             aria-expanded={isTorrentExpanded(index)}
-                            aria-controls="torrent-panel-{index}"
+                            aria-controls={isTorrentExpanded(index)
+                                ? `torrent-panel-${index}`
+                                : undefined}
                         >
                             <span class="torrent-name">{torrent.name}</span>
                             <span class="file-count"
@@ -599,7 +685,7 @@
                             id="torrent-panel-{index}"
                             transition:slide={slideParams()}
                         >
-                            {#each torrent.files as file}
+                            {#each torrent.files as file, fileIndex (`${data.release.slug}:${index}:file:${fileIndex}`)}
                                 <div class="file-item">
                                     <svg
                                         xmlns="http://www.w3.org/2000/svg"

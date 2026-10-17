@@ -1,11 +1,43 @@
+<script module lang="ts">
+    import {
+        parseMediaInfo,
+        type MediaInfoParsed,
+    } from "$lib/utils/mediainfo-parser";
+
+    /**
+     * Raw MediaInfo runs into hundreds of KB and the card re-derives on
+     * every unrelated state change, so parsing is memoised per raw hash.
+     * Bounded: a long session that walks many releases must not retain
+     * every parsed document.
+     */
+    const PARSE_CACHE_LIMIT = 32;
+    const parseCache = new Map<string, MediaInfoParsed | null>();
+
+    function parseMediaInfoCached(
+        rawHash: string,
+        rawContent: string | null,
+    ): MediaInfoParsed | null {
+        if (!rawContent) return null;
+
+        const cached = parseCache.get(rawHash);
+        if (cached !== undefined) return cached;
+
+        const parsed = parseMediaInfo(rawContent);
+        if (parseCache.size >= PARSE_CACHE_LIMIT) {
+            const oldest = parseCache.keys().next().value;
+            if (oldest !== undefined) parseCache.delete(oldest);
+        }
+        parseCache.set(rawHash, parsed);
+        return parsed;
+    }
+</script>
+
 <script lang="ts">
     import { tick } from "svelte";
     import { duration, motionSafe } from "$lib/utils/animation";
     import { accessibleTooltip } from "$lib/utils/accessible-tooltip";
     import {
-        parseMediaInfo,
         toStructured,
-        type MediaInfoParsed,
         type MediaInfoStructured,
     } from "$lib/utils/mediainfo-parser";
     import {
@@ -35,8 +67,17 @@
     let showRaw = $state(false);
     let isSwitchingView = $state(false);
     let isResizingPanel = $state(false);
+    // Completion of a user-initiated load, announced by the live region
+    // below (the skeleton itself is aria-hidden).
+    let loadAnnouncement = $state("");
     let panelElement: HTMLDivElement;
     let summaryPanelHeight = 0;
+
+    // `raw_hash` is shared by torrents within one release, so it cannot key
+    // the panel id. `$props.id()` is unique per rendered instance and stable
+    // across SSR and hydration.
+    const instanceId = $props.id();
+    const panelId = `mediainfo-panel-${instanceId}`;
 
     // Matches the unexpanded x265 MediaInfo panel on /y3kb1dkq at the
     // standard desktop content width (625px panel / 677px complete card).
@@ -44,7 +85,7 @@
 
     // Parse MediaInfo when content is available
     let parsed = $derived<MediaInfoParsed | null>(
-        rawContent ? parseMediaInfo(rawContent) : null,
+        parseMediaInfoCached(rawHash, rawContent),
     );
 
     let structured = $derived<MediaInfoStructured | null>(
@@ -100,13 +141,17 @@
         if (audio.channels) {
             const ch = audio.channels.replace(/[^\d.]/g, "");
             const num = parseInt(ch);
-            let chStr = ch;
-            if (num === 6) chStr = "5.1ch";
-            else if (num === 8) chStr = "7.1ch";
-            else if (num === 2) chStr = "2.0ch";
-            else if (num === 1) chStr = "1.0ch";
-            else chStr = `${num}ch`;
-            parts.push(chStr);
+            // Unparseable descriptions ("Dolby Atmos") must not render as
+            // "NaNch": skip the suffix and keep the format name alone.
+            if (Number.isFinite(num)) {
+                let chStr: string;
+                if (num === 6) chStr = "5.1ch";
+                else if (num === 8) chStr = "7.1ch";
+                else if (num === 2) chStr = "2.0ch";
+                else if (num === 1) chStr = "1.0ch";
+                else chStr = `${num}ch`;
+                parts.push(chStr);
+            }
         }
 
         if (audio.bit_rate) {
@@ -169,17 +214,58 @@
         panelElement.style.height = retainHeight ? `${targetHeight}px` : "";
     }
 
+    // Set while a user-initiated expansion is waiting for content the card
+    // does not have yet (the click landed while the prefetch was still in
+    // flight). The effect below keeps `aria-expanded` honest and announces the
+    // result once the request settles.
+    let isAwaitingContent = $state(false);
+
+    $effect(() => {
+        if (!isAwaitingContent) return;
+
+        if (rawContent) {
+            isAwaitingContent = false;
+            loadAnnouncement = "MediaInfo loaded";
+        } else if (hasFailed) {
+            // Collapse instead of leaving the trigger claiming an expanded raw
+            // view above "No MediaInfo available".
+            isAwaitingContent = false;
+            showRaw = false;
+            loadAnnouncement = "MediaInfo could not be loaded for this file";
+        }
+    });
+
     async function toggleView() {
         if (isSwitchingView) return;
         isSwitchingView = true;
 
         try {
             const nextRaw = !showRaw;
-            if (nextRaw && !rawContent && !hasFailed) {
-                await onexpand?.();
-            }
 
             if (nextRaw) {
+                // Whether the user has to wait for the content decides both the
+                // optimistic expansion and whether there is a result to announce.
+                const needsWait = !rawContent;
+
+                if (needsWait && !hasFailed) {
+                    await onexpand?.();
+                }
+
+                // A fetch that has definitively failed must never report an
+                // expanded raw view: the panel only says "No MediaInfo
+                // available".
+                if (!rawContent && hasFailed) {
+                    loadAnnouncement =
+                        "MediaInfo could not be loaded for this file";
+                    return;
+                }
+
+                if (!rawContent) {
+                    isAwaitingContent = true;
+                } else if (needsWait) {
+                    loadAnnouncement = "MediaInfo loaded";
+                }
+
                 summaryPanelHeight = panelElement.getBoundingClientRect().height;
                 panelElement.style.height = `${summaryPanelHeight}px`;
                 showRaw = true;
@@ -189,6 +275,7 @@
                     true,
                 );
             } else {
+                isAwaitingContent = false;
                 showRaw = false;
                 await tick();
                 await animatePanelHeight(summaryPanelHeight, false);
@@ -200,6 +287,9 @@
 </script>
 
 <div class="mediainfo-card info-surface" data-expanded="true">
+    <!-- Permanently mounted live region: the skeleton is aria-hidden, so
+         this is the only announcement that a load finished or failed. -->
+    <p class="visually-hidden" role="status">{loadAnnouncement}</p>
     <div
         class="card-header info-surface__header info-surface__header--divided"
     >
@@ -209,7 +299,7 @@
                 onclick={toggleView}
                 aria-expanded={showRaw}
                 aria-busy={isSwitchingView}
-                aria-controls="mediainfo-panel-{rawHash}"
+                aria-controls={panelId}
             >
                 <span class="filename">{filename}</span>
                 <svg
@@ -264,7 +354,7 @@
         class="card-panel"
         class:raw-active={showRaw && !!rawContent}
         class:is-resizing={isResizingPanel}
-        id="mediainfo-panel-{rawHash}"
+        id={panelId}
         bind:this={panelElement}
     >
         <div class="view-content" class:raw-active={showRaw && !!rawContent}>

@@ -1,7 +1,8 @@
 <script lang="ts">
+	import { browser } from "$app/environment";
 	import { goto, beforeNavigate } from "$app/navigation";
 	import { page } from "$app/state";
-	import { tick } from "svelte";
+	import { onMount, tick } from "svelte";
 	import { scale, slide } from "svelte/transition";
 	import { cubicOut } from "svelte/easing";
 	import { prefersReducedMotion } from "svelte/motion";
@@ -24,6 +25,39 @@
 	const EMAIL_URL = "mailto:YumeRobo@proton.me";
 	const THEME_MODES: ThemeMode[] = ["auto", "light", "dark"];
 
+	// Below this width the header search collapses into the mobile menu. The
+	// menu's search form is only mounted while the header's is hidden, so
+	// exactly one `role="search"` landmark is exposed at any width.
+	const DESKTOP_HEADER_QUERY = "(min-width: 640px)";
+	const COMPACT_SEARCH_QUERY = "(max-width: 480px)";
+
+	/**
+	 * `app.html` stamps the saved override on <html> before first paint, so
+	 * reading it back keeps the control in the same mode as the painted page.
+	 *
+	 * Applied from `onMount` rather than at state initialisation: the icon
+	 * switches between three different SVG structures, so choosing a mode
+	 * during the first client render would make it disagree with the
+	 * prerendered "auto" markup.
+	 */
+	function readInitialTheme(): ThemeMode {
+		if (!browser) return "auto";
+
+		const stamped = document.documentElement.dataset.theme;
+		if (stamped === "light" || stamped === "dark") return stamped;
+
+		try {
+			const saved = localStorage.getItem("theme");
+			if (saved && THEME_MODES.includes(saved as ThemeMode)) {
+				return saved as ThemeMode;
+			}
+		} catch {
+			// Storage can be unavailable (private mode, blocked cookies);
+			// the system preference is the safe fallback.
+		}
+		return "auto";
+	}
+
 	let themeMode = $state<ThemeMode>("auto");
 	let isThemeMenuOpen = $state(false);
 	let isSearchFocused = $state(false);
@@ -33,6 +67,7 @@
 	let canReturnToHomeThroughHistory = false;
 	let searchQuery = $state("");
 	let isMobileMenuOpen = $state(false);
+	let showMobileSearch = $state(false);
 	let pendingContact = $state<PendingContact | null>(null);
 	let isDetailPage = $derived(Boolean(page.params.slug));
 
@@ -48,6 +83,13 @@
 	let slideTransition = $derived({
 		duration: prefersReducedMotion.current ? 0 : 250,
 		easing: cubicOut,
+	});
+
+	// The painted theme is already correct (app.html stamps it before first
+	// paint); this only brings the control's icon/label in line with it once
+	// hydration is done.
+	onMount(() => {
+		themeMode = readInitialTheme();
 	});
 
 	$effect(() => {
@@ -72,14 +114,21 @@
 			if (originUrl === null && isFirstSearch) {
 				originUrl = page.url.pathname;
 			}
-			goto(`/?q=${encodeURIComponent(trimmed)}`, {
+			// A failed navigation must not surface as an unhandled rejection.
+			void goto(`/?q=${encodeURIComponent(trimmed)}`, {
 				replaceState: !isFirstSearch,
 				keepFocus: true,
+			}).catch((error) => {
+				console.error("Search navigation failed:", error);
 			});
 		} else if (page.url.searchParams.has("q")) {
 			const returnUrl = originUrl || "/";
 			originUrl = null;
-			goto(returnUrl, { replaceState: true, keepFocus: true });
+			void goto(returnUrl, { replaceState: true, keepFocus: true }).catch(
+				(error) => {
+					console.error("Search navigation failed:", error);
+				},
+			);
 		}
 		isTyping = false;
 	}
@@ -94,6 +143,8 @@
 		// The persistent layout header survives route changes. Dismiss its modal
 		// before a navigation snapshot so dialogs never travel with page history.
 		pendingContact = null;
+		// The mobile panel would otherwise stay open across the route change.
+		isMobileMenuOpen = false;
 
 		// The home snapshot (including its loaded card count and scroll
 		// position) is restored only when revisiting its history entry.
@@ -133,7 +184,11 @@
 		if (page.url.searchParams.has("q")) {
 			const returnUrl = originUrl || "/";
 			originUrl = null;
-			goto(returnUrl, { replaceState: true, keepFocus: true });
+			void goto(returnUrl, { replaceState: true, keepFocus: true }).catch(
+				(error) => {
+					console.error("Search navigation failed:", error);
+				},
+			);
 		}
 	}
 
@@ -172,6 +227,8 @@
 	function handleSearchSubmit(event: SubmitEvent) {
 		event.preventDefault();
 		navigateToSearch.cancel();
+		// Submitting from the mobile menu closes it; on desktop this is a no-op.
+		isMobileMenuOpen = false;
 		performSearch(searchQuery);
 	}
 
@@ -188,11 +245,39 @@
 		}
 	}
 
+	// The mobile panel is hidden by CSS at the desktop breakpoint, but a panel
+	// opened below it would otherwise stay in the tree after a resize, so the
+	// state is reset when crossing into the desktop layout. The two search
+	// forms are also mounted mutually exclusively, so the DOM never holds more
+	// than one `role="search"` landmark at a time.
 	$effect(() => {
-		const saved = localStorage.getItem("theme") as ThemeMode | null;
-		if (saved && THEME_MODES.includes(saved)) {
-			themeMode = saved;
-		}
+		const desktopQuery = window.matchMedia(DESKTOP_HEADER_QUERY);
+		const compactSearchQuery = window.matchMedia(COMPACT_SEARCH_QUERY);
+
+		const syncSearchVisibility = () => {
+			showMobileSearch = compactSearchQuery.matches;
+		};
+		const handleDesktopChange = (event: MediaQueryListEvent) => {
+			if (event.matches) isMobileMenuOpen = false;
+		};
+		const handleCompactChange = (event: MediaQueryListEvent) => {
+			showMobileSearch = event.matches;
+			// The header input unmounts in compact mode, so it never fires a
+			// blur; drop the stale focus flag with it.
+			if (event.matches) isSearchFocused = false;
+		};
+
+		syncSearchVisibility();
+		desktopQuery.addEventListener("change", handleDesktopChange);
+		compactSearchQuery.addEventListener("change", handleCompactChange);
+
+		return () => {
+			desktopQuery.removeEventListener("change", handleDesktopChange);
+			compactSearchQuery.removeEventListener(
+				"change",
+				handleCompactChange,
+			);
+		};
 	});
 
 	function applyTheme(mode: ThemeMode) {
@@ -202,7 +287,12 @@
 		} else {
 			root.setAttribute("data-theme", mode);
 		}
-		localStorage.setItem("theme", mode);
+		try {
+			localStorage.setItem("theme", mode);
+		} catch {
+			// Persisting the override is best-effort; the stamped attribute
+			// already applies it for this session.
+		}
 	}
 
 	function setTheme(mode: ThemeMode) {
@@ -319,7 +409,14 @@
 		const opener = pendingContact?.opener;
 		pendingContact = null;
 		await tick();
-		opener?.focus();
+		// The dialog closes the mobile menu on open, so an opener inside it is
+		// already unmounted; fall back to the menu button rather than dropping
+		// focus onto <body>.
+		if (opener?.isConnected) {
+			opener.focus();
+		} else {
+			mobileMenuButton?.focus();
+		}
 	}
 
 	function confirmContact() {
@@ -426,76 +523,78 @@
 				</a>
 			{/if}
 
-		<form
-			class="search-wrapper liquid-surface"
-			use:liquidGlass={{ interactive: true, refraction: 10 }}
-			class:focused={isSearchFocused}
-			role="search"
-			onsubmit={handleSearchSubmit}
-		>
-			<svg
-				class="search-icon"
-				xmlns="http://www.w3.org/2000/svg"
-				width="18"
-				height="18"
-				viewBox="0 0 24 24"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="2"
-				stroke-linecap="round"
-				stroke-linejoin="round"
-				aria-hidden="true"
+		{#if !showMobileSearch}
+			<form
+				class="search-wrapper liquid-surface"
+				use:liquidGlass={{ interactive: true, refraction: 10 }}
+				class:focused={isSearchFocused}
+				role="search"
+				onsubmit={handleSearchSubmit}
 			>
-				<circle cx="11" cy="11" r="8"></circle>
-				<path d="m21 21-4.3-4.3"></path>
-			</svg>
-			<input
-				type="search"
-				class="search-input"
-				placeholder="Search releases..."
-				aria-label="Search releases"
-				value={searchQuery}
-				oninput={handleSearchInput}
-				onkeydown={handleSearchKeydown}
-				oncompositionstart={handleCompositionStart}
-				oncompositionend={handleCompositionEnd}
-				onfocus={() => (isSearchFocused = true)}
-				onblur={() => (isSearchFocused = false)}
-			/>
-			{#if searchQuery}
-				<button
-					type="button"
-					class="clear-btn"
-					use:accessibleTooltip={{
-						text: "Clear search",
-						placement: "bottom",
-					}}
-					onclick={clearSearch}
-					aria-label="Clear search"
-					transition:scale={{
-						duration: prefersReducedMotion.current ? 0 : 120,
-						start: 0.5,
-						easing: cubicOut,
-					}}
+				<svg
+					class="search-icon"
+					xmlns="http://www.w3.org/2000/svg"
+					width="18"
+					height="18"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					aria-hidden="true"
 				>
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						width="14"
-						height="14"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						aria-hidden="true"
+					<circle cx="11" cy="11" r="8"></circle>
+					<path d="m21 21-4.3-4.3"></path>
+				</svg>
+				<input
+					type="search"
+					class="search-input"
+					placeholder="Search releases..."
+					aria-label="Search releases"
+					value={searchQuery}
+					oninput={handleSearchInput}
+					onkeydown={handleSearchKeydown}
+					oncompositionstart={handleCompositionStart}
+					oncompositionend={handleCompositionEnd}
+					onfocus={() => (isSearchFocused = true)}
+					onblur={() => (isSearchFocused = false)}
+				/>
+				{#if searchQuery}
+					<button
+						type="button"
+						class="clear-btn"
+						use:accessibleTooltip={{
+							text: "Clear search",
+							placement: "bottom",
+						}}
+						onclick={clearSearch}
+						aria-label="Clear search"
+						transition:scale={{
+							duration: prefersReducedMotion.current ? 0 : 120,
+							start: 0.5,
+							easing: cubicOut,
+						}}
 					>
-						<path d="M18 6 6 18"></path>
-						<path d="m6 6 12 12"></path>
-					</svg>
-				</button>
-			{/if}
-		</form>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							width="14"
+							height="14"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+						>
+							<path d="M18 6 6 18"></path>
+							<path d="m6 6 12 12"></path>
+						</svg>
+					</button>
+				{/if}
+			</form>
+		{/if}
 
 		<nav class="nav-desktop" aria-label="Primary">
 			<div
@@ -652,35 +751,41 @@
 			aria-label="Mobile menu"
 			transition:slide={slideTransition}
 		>
-			<form class="mobile-search-wrapper" role="search" onsubmit={handleSearchSubmit}>
-				<svg
-					class="search-icon"
-					xmlns="http://www.w3.org/2000/svg"
-					width="18"
-					height="18"
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					aria-hidden="true"
+			{#if showMobileSearch}
+				<form
+					class="mobile-search-wrapper"
+					role="search"
+					onsubmit={handleSearchSubmit}
 				>
-					<circle cx="11" cy="11" r="8"></circle>
-					<path d="m21 21-4.3-4.3"></path>
-				</svg>
-				<input
-					type="search"
-					class="search-input mobile"
-					placeholder="Search releases..."
-					aria-label="Search releases"
-					value={searchQuery}
-					oninput={handleSearchInput}
-					onkeydown={handleSearchKeydown}
-					oncompositionstart={handleCompositionStart}
-					oncompositionend={handleCompositionEnd}
-				/>
-			</form>
+					<svg
+						class="search-icon"
+						xmlns="http://www.w3.org/2000/svg"
+						width="18"
+						height="18"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						aria-hidden="true"
+					>
+						<circle cx="11" cy="11" r="8"></circle>
+						<path d="m21 21-4.3-4.3"></path>
+					</svg>
+					<input
+						type="search"
+						class="search-input mobile"
+						placeholder="Search releases..."
+						aria-label="Search releases"
+						value={searchQuery}
+						oninput={handleSearchInput}
+						onkeydown={handleSearchKeydown}
+						oncompositionstart={handleCompositionStart}
+						oncompositionend={handleCompositionEnd}
+					/>
+				</form>
+			{/if}
 
 			<div class="mobile-links">
 				<button
@@ -1110,6 +1215,15 @@
 		border-radius: var(--radius-lg);
 	}
 
+	/* `.search-input:focus` removes the global outline and the desktop wrapper
+	   draws the ring instead; the mobile input is inside the panel, which has
+	   no focused state, so the ring belongs on the wrapper. */
+	.mobile-search-wrapper:focus-within .search-input.mobile {
+		border-color: var(--color-accent);
+		box-shadow:
+			0 0 0 3px color-mix(in srgb, var(--color-accent) 18%, transparent);
+	}
+
 	.mobile-links {
 		display: flex;
 		width: 100%;
@@ -1120,8 +1234,10 @@
 		overflow: hidden;
 	}
 
-	/* Between 481-639px the header search is already visible; the
-	   mobile menu would otherwise show a redundant second search box */
+	/* Between 481-639px the header search is already visible; the mobile menu
+	   would otherwise show a redundant second search box. The form is also
+	   only mounted below this width, so a single `role="search"` landmark is
+	   exposed at any viewport. */
 	@media (min-width: 481px) {
 		.mobile-search-wrapper {
 			display: none;
@@ -1231,6 +1347,12 @@
 		}
 
 		.mobile-menu-button {
+			display: none;
+		}
+
+		/* The hamburger is gone at this width, so the panel it opens must not
+		   survive a resize into the desktop layout. */
+		.nav-mobile {
 			display: none;
 		}
 

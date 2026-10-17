@@ -3,6 +3,7 @@
     import LocalDateTime from "$lib/components/LocalDateTime.svelte";
     import { cardTransition } from "$lib/utils/card-transition.svelte";
     import { getPosterLoadingAttributes } from "$lib/utils/poster-loading";
+    import { getCardPosterPath } from "$lib/utils/poster-paths";
     import { posterTilt } from "$lib/utils/poster-tilt";
 
     interface Props {
@@ -13,10 +14,6 @@
     }
 
     let { card, index = 0 }: Props = $props();
-
-    function getCardPosterPath(posterPath: string): string {
-        return posterPath.replace(/\.avif$/i, ".card.avif");
-    }
 
     let posterLoading = $derived(getPosterLoadingAttributes(index));
 
@@ -47,7 +44,7 @@
                 src={getCardPosterPath(card.poster)}
                 srcset={`${getCardPosterPath(card.poster)} 200w, ${card.poster} 500w`}
                 sizes="(min-width: 640px) 176px, 44vw"
-                alt="{card.title} poster"
+                alt=""
                 class="poster"
                 width="200"
                 height="300"

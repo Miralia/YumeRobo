@@ -6,7 +6,10 @@
 	import { tick } from "svelte";
 	import { prefersReducedMotion } from "svelte/motion";
 	import { boundaryIndicator } from "$lib/utils/overscroll";
-	import { cardTransition } from "$lib/utils/card-transition.svelte";
+	import {
+		clearCardTransition,
+		setCardTransition,
+	} from "$lib/utils/card-transition.svelte";
 	import {
 		POSTER_TILT_RESET_EVENT,
 		POSTER_TILT_TRANSITION_END_EVENT,
@@ -31,24 +34,40 @@
 			(navigation.to?.params?.slug as string | undefined) ??
 			(navigation.from?.params?.slug as string | undefined) ??
 			null;
-		cardTransition.slug = slug;
+		setCardTransition(slug);
 		window.dispatchEvent(new Event(POSTER_TILT_RESET_EVENT));
 		await tick();
 
-		return new Promise((resolve) => {
-			const transition = document.startViewTransition(async () => {
-				resolve();
-				await navigation.complete;
-			});
+		return new Promise<void>((resolve) => {
 			const finishPosterHandoff = () => {
 				window.dispatchEvent(
 					new Event(POSTER_TILT_TRANSITION_END_EVENT),
 				);
 			};
-			transition.finished.then(
-				finishPosterHandoff,
-				finishPosterHandoff,
-			);
+
+			let transition: ViewTransition;
+			try {
+				transition = document.startViewTransition(async () => {
+					resolve();
+					await navigation.complete;
+				});
+			} catch (error) {
+				// A transition is already running, so the update callback above
+				// never runs and the returned promise would never settle — the
+				// navigation would hang. Settle it here instead and drop the
+				// stale slug.
+				console.error("View transition could not start:", error);
+				clearCardTransition();
+				resolve();
+				return;
+			}
+
+			// `finished` rejects when the update callback throws, so both
+			// outcomes run the poster handoff; the slug is dropped either way
+			// so no card keeps carrying a view-transition-name afterwards.
+			transition.finished
+				.then(finishPosterHandoff, finishPosterHandoff)
+				.finally(clearCardTransition);
 		});
 	});
 </script>
