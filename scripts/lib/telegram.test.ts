@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'bun:test';
 import fs from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
-import { buildCaption } from './telegram';
+import { buildCaption, computeRetryDelayMs, sendPhoto, sendPhotoWithRetry } from './telegram';
 import type { ReleaseData } from './types';
 
 function makeRelease(torrents: ReleaseData['torrents']): ReleaseData {
@@ -87,7 +88,7 @@ describe('buildCaption', () => {
     });
 
     test('omits the subtitles line when MediaInfo has only blank text fields', async () => {
-        const hash = 'telegram-empty-subtitle-test';
+        const hash = 'telegramemptysubtitletest';
         const mediaInfoPath = path.join(process.cwd(), 'static', 'mediainfo', hash);
         await fs.writeFile(mediaInfoPath, `
 General
@@ -111,9 +112,209 @@ Title                                    :
             const caption = await buildCaption(release, '', 'https://example.com');
 
             expect(caption).not.toContain('Subtitles:');
-            expect(caption).toContain('[x265](https://example\\.com/mediainfo/telegram\\-empty\\-subtitle\\-test)');
+            expect(caption).toContain(`[x265](https://example\\.com/mediainfo/${hash})`);
         } finally {
             await fs.rm(mediaInfoPath, { force: true });
+        }
+    });
+
+    test('reads MediaInfo through a valid hash and refuses a traversal hash', async () => {
+        const mediaInfo = `
+General
+Format                                   : Matroska
+
+Text
+Format                                   : UTF-8
+Language                                 : Japanese
+Title                                    : Signs
+`;
+        const validHash = 'telegramsubtitleflags';
+        const validPath = path.join(process.cwd(), 'static', 'mediainfo', validHash);
+        const outsidePath = path.join(process.cwd(), 'static', 'telegram-outside-mediainfo');
+        await fs.writeFile(validPath, mediaInfo, 'utf-8');
+        await fs.writeFile(outsidePath, mediaInfo, 'utf-8');
+
+        try {
+            const viaHash = await buildCaption(
+                makeRelease([{ name: 'Show.BD.1080p.x265-GROUP', files: [], mediainfo: [{ filename: 'a.mkv', raw_hash: validHash }] }]),
+                '',
+                'https://example.com',
+            );
+            expect(viaHash).toContain('Subtitles: 🇯🇵');
+
+            const viaTraversal = await buildCaption(
+                makeRelease([{ name: 'Show.BD.1080p.x265-GROUP', files: [], mediainfo: [{ filename: 'a.mkv', raw_hash: '../telegram-outside-mediainfo' }] }]),
+                '',
+                'https://example.com',
+            );
+            expect(viaTraversal).not.toContain('Subtitles:');
+        } finally {
+            await fs.rm(validPath, { force: true });
+            await fs.rm(outsidePath, { force: true });
+        }
+    });
+});
+
+describe('computeRetryDelayMs', () => {
+    test('honours an explicit retry_after, including zero', () => {
+        expect(computeRetryDelayMs(3, 0, () => 0.999)).toBe(0);
+        expect(computeRetryDelayMs(3, 2, () => 0)).toBe(2000);
+    });
+
+    test('falls back to exponential backoff with jitter', () => {
+        expect(computeRetryDelayMs(1, undefined, () => 0)).toBe(1000);
+        expect(computeRetryDelayMs(3, undefined, () => 0)).toBe(4000);
+        expect(computeRetryDelayMs(1, undefined, () => 0.5)).toBe(1500);
+    });
+
+    test('caps the wait', () => {
+        expect(computeRetryDelayMs(1, 3600, () => 0)).toBe(30_000);
+        expect(computeRetryDelayMs(20, undefined, () => 0)).toBe(30_000);
+    });
+});
+
+describe('sendPhoto guards', () => {
+    test('refuses an over-long caption without calling the API', async () => {
+        const original = globalThis.fetch;
+        globalThis.fetch = (() => {
+            throw new Error('fetch must not be called');
+        }) as typeof fetch;
+
+        try {
+            const result = await sendPhoto('123456789:token', 'chat', 'https://example.com/p.jpg', 'x'.repeat(1025));
+            expect(result.ok).toBe(false);
+            expect(result.retryable).toBe(false);
+            expect(result.error).toContain('1024');
+        } finally {
+            globalThis.fetch = original;
+        }
+    });
+
+    test('treats a missing local poster as non-retryable', async () => {
+        const original = globalThis.fetch;
+        globalThis.fetch = (() => {
+            throw new Error('fetch must not be called');
+        }) as typeof fetch;
+
+        try {
+            const result = await sendPhoto('123456789:token', 'chat', 'static/missing-poster.jpg', 'caption');
+            expect(result.ok).toBe(false);
+            expect(result.retryable).toBe(false);
+            expect(result.error).toContain('static/missing-poster.jpg');
+        } finally {
+            globalThis.fetch = original;
+        }
+    });
+
+    test('uploads a local poster as multipart form-data', async () => {
+        const posterPath = path.join(os.tmpdir(), `telegram-upload-${Date.now()}.jpg`);
+        await fs.writeFile(posterPath, Buffer.from([0xff, 0xd8, 0xff, 0xd9]));
+
+        const original = globalThis.fetch;
+        let body: FormData | undefined;
+        globalThis.fetch = (async (_url: Parameters<typeof fetch>[0], init?: RequestInit) => {
+            body = init?.body as FormData;
+            return new Response(JSON.stringify({ ok: true, result: { message_id: 7 } }), {
+                status: 200,
+                headers: { 'content-type': 'application/json' },
+            });
+        }) as typeof fetch;
+
+        try {
+            const result = await sendPhoto('123456789:token', 'chat', posterPath, 'caption');
+
+            expect(result.ok).toBe(true);
+            expect(result.messageId).toBe(7);
+            expect(body).toBeInstanceOf(FormData);
+            expect(body?.get('photo')).toBeInstanceOf(File);
+            expect(body?.get('caption')).toBe('caption');
+        } finally {
+            globalThis.fetch = original;
+            await fs.rm(posterPath, { force: true });
+        }
+    });
+
+    test('redacts the bot token from transport errors', async () => {
+        const token = '123456789:AAFakeTokenValue';
+        const original = globalThis.fetch;
+        globalThis.fetch = (() => {
+            throw new Error(`Unable to connect to https://api.telegram.org/bot${token}/sendPhoto`);
+        }) as typeof fetch;
+
+        try {
+            const result = await sendPhoto(token, 'chat', 'https://example.com/p.jpg', 'hi');
+            expect(result.ok).toBe(false);
+            expect(result.error).not.toContain(token);
+            expect(result.error).not.toContain('AAFakeTokenValue');
+            expect(result.error).toContain('bot[redacted]');
+        } finally {
+            globalThis.fetch = original;
+        }
+    });
+});
+
+describe('sendPhotoWithRetry', () => {
+    function stubFetch(handler: () => Response): { calls: () => number; restore: () => void } {
+        const original = globalThis.fetch;
+        let calls = 0;
+        globalThis.fetch = (async () => {
+            calls += 1;
+            return handler();
+        }) as typeof fetch;
+        return { calls: () => calls, restore: () => { globalThis.fetch = original; } };
+    }
+
+    function jsonResponse(status: number, body: unknown): Response {
+        return new Response(JSON.stringify(body), {
+            status,
+            headers: { 'content-type': 'application/json' },
+        });
+    }
+
+    test('does not retry a 4xx that is not 429', async () => {
+        const stub = stubFetch(() => jsonResponse(400, { ok: false, description: 'Bad Request' }));
+
+        try {
+            const result = await sendPhotoWithRetry('123456789:token', 'chat', 'https://example.com/p.jpg', 'hi', undefined, 3);
+            expect(result.ok).toBe(false);
+            expect(result.attempts).toBe(1);
+            expect(stub.calls()).toBe(1);
+        } finally {
+            stub.restore();
+        }
+    });
+
+    test('retries a 429 with retry_after 0 without the exponential wait', async () => {
+        const stub = stubFetch(() => jsonResponse(429, {
+            ok: false,
+            description: 'Too Many Requests',
+            parameters: { retry_after: 0 },
+        }));
+
+        try {
+            const startedAt = Date.now();
+            const result = await sendPhotoWithRetry('123456789:token', 'chat', 'https://example.com/p.jpg', 'hi', undefined, 2);
+            const elapsed = Date.now() - startedAt;
+
+            expect(result.ok).toBe(false);
+            expect(result.attempts).toBe(2);
+            expect(stub.calls()).toBe(2);
+            // A falsy retry_after used to fall back to the 1s exponential delay.
+            expect(elapsed).toBeLessThan(900);
+        } finally {
+            stub.restore();
+        }
+    });
+
+    test('retries a 5xx response', async () => {
+        const stub = stubFetch(() => jsonResponse(503, { ok: false, description: 'Service Unavailable' }));
+
+        try {
+            const result = await sendPhotoWithRetry('123456789:token', 'chat', 'https://example.com/p.jpg', 'hi', undefined, 2);
+            expect(result.attempts).toBe(2);
+            expect(stub.calls()).toBe(2);
+        } finally {
+            stub.restore();
         }
     });
 });

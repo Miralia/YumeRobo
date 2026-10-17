@@ -5,9 +5,13 @@ import {
     buildRottenTomatoesUrl,
     buildRtSearchUrl,
     formatImdbNumber,
+    fetchRottenTomatoesPath,
+    fetchTmdbExternalIds,
     lookupAnimeMappings,
     normalizeRottenTomatoesPath,
     parseMappingDescriptor,
+    redactSecrets,
+    searchBangumiByTitle,
 } from './link-resolver';
 import { matchAnimeMapEntry, type DoubanSearchHit } from './douban';
 import type { AnimeMapEntry } from './link-resolver';
@@ -48,10 +52,195 @@ describe('buildRottenTomatoesUrl', () => {
 });
 
 describe('buildRtSearchUrl', () => {
-    test('encodes a UNIT3D-style site-scoped query', () => {
+    test('keeps the site: operator outside the quoted title', () => {
         const url = buildRtSearchUrl('Some Title', 2010);
+        const decoded = decodeURIComponent(url);
+
         expect(url).toContain('site%3Arottentomatoes.com');
-        expect(decodeURIComponent(url)).toContain('"Some Title (2010) site:rottentomatoes.com"');
+        expect(decoded).toContain('"Some Title (2010)" site:rottentomatoes.com');
+        // Quoting the whole query turned the restriction into a phrase search.
+        expect(decoded).not.toContain('"Some Title (2010) site:rottentomatoes.com"');
+    });
+
+    test('omits the year when it is unknown', () => {
+        expect(decodeURIComponent(buildRtSearchUrl('Some Title')))
+            .toContain('"Some Title" site:rottentomatoes.com');
+    });
+});
+
+describe('searchBangumiByTitle', () => {
+    const originalFetch = globalThis.fetch;
+
+    function stub(payload: unknown, status = 200): { body: () => unknown } {
+        let captured: unknown;
+        globalThis.fetch = (async (_url: Parameters<typeof fetch>[0], init?: RequestInit) => {
+            captured = init?.body ? JSON.parse(String(init.body)) : undefined;
+            return new Response(JSON.stringify(payload), {
+                status,
+                headers: { 'content-type': 'application/json' },
+            });
+        }) as typeof fetch;
+        return { body: () => captured };
+    }
+
+    test('constrains the subject type to anime', async () => {
+        const request = stub({ data: [{ id: 1, name: 'Show', name_cn: '动画', date: '2020-01-01' }] });
+
+        try {
+            const hits = await searchBangumiByTitle('Some Title');
+            expect(request.body()).toEqual({ keyword: 'Some Title', filter: { type: [2] } });
+            expect(hits).toEqual([{ id: '1', name: 'Show', nameCn: '动画', date: '2020-01-01' }]);
+        } finally {
+            globalThis.fetch = originalFetch;
+        }
+    });
+
+    test('surfaces an error payload instead of returning no hits', async () => {
+        stub({ code: 400, error: 'bad request' });
+
+        try {
+            await expect(searchBangumiByTitle('Some Title')).rejects.toThrow(/code 400/);
+        } finally {
+            globalThis.fetch = originalFetch;
+        }
+    });
+
+    test('surfaces an unexpected payload instead of returning no hits', async () => {
+        stub({ total: 0 });
+
+        try {
+            await expect(searchBangumiByTitle('Some Title')).rejects.toThrow(/unexpected payload/);
+        } finally {
+            globalThis.fetch = originalFetch;
+        }
+    });
+});
+
+describe('fetchRottenTomatoesPath', () => {
+    const originalFetch = globalThis.fetch;
+
+    function stubEntity(entity: unknown): void {
+        globalThis.fetch = (async () => new Response(
+            JSON.stringify({ entities: { Q42: entity } }),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+        )) as typeof fetch;
+    }
+
+    test('rejects a malformed wikidata id before any request', async () => {
+        const original = globalThis.fetch;
+        globalThis.fetch = (() => {
+            throw new Error('fetch must not be called');
+        }) as typeof fetch;
+
+        try {
+            await expect(fetchRottenTomatoesPath('not-an-id')).rejects.toThrow(/Invalid Wikidata id/);
+            await expect(fetchRottenTomatoesPath('')).rejects.toThrow(/Invalid Wikidata id/);
+        } finally {
+            globalThis.fetch = original;
+        }
+    });
+
+    test('handles valueless snaks and reads a real value', async () => {
+        try {
+            stubEntity({ claims: { P1258: [{ mainsnak: { snaktype: 'somevalue' } }] } });
+            expect(await fetchRottenTomatoesPath('Q42')).toBeNull();
+
+            stubEntity({ claims: { P1258: [{ mainsnak: { snaktype: 'novalue' } }] } });
+            expect(await fetchRottenTomatoesPath('Q42')).toBeNull();
+
+            stubEntity({ claims: {} });
+            expect(await fetchRottenTomatoesPath('Q42')).toBeNull();
+
+            stubEntity({ claims: { P1258: [{ mainsnak: { datavalue: { value: 'm/inception' } } }] } });
+            expect(await fetchRottenTomatoesPath('Q42')).toBe('m/inception');
+
+            stubEntity({ claims: { P1258: [{ mainsnak: { datavalue: { value: '  ' } } }] } });
+            expect(await fetchRottenTomatoesPath('Q42')).toBeNull();
+        } finally {
+            globalThis.fetch = originalFetch;
+        }
+    });
+});
+
+describe('redactSecrets', () => {
+    test('redacts api_key, apikey and token query parameters', () => {
+        expect(redactSecrets('HTTP 401 for https://api.themoviedb.org/3/movie/1?api_key=abcdef123456&x=1'))
+            .toBe('HTTP 401 for https://api.themoviedb.org/3/movie/1?api_key=[redacted]&x=1');
+        expect(redactSecrets('https://example.com/x?apikey=SECRETVALUE')).toBe('https://example.com/x?apikey=[redacted]');
+        expect(redactSecrets('https://example.com/x?token=SECRETVALUE')).toBe('https://example.com/x?token=[redacted]');
+    });
+
+    test('redacts the configured TMDB key wherever it appears', () => {
+        const previous = process.env.TMDB_API_KEY;
+        process.env.TMDB_API_KEY = 'envkey12345678';
+        try {
+            expect(redactSecrets('key envkey12345678 rejected')).toBe('key [redacted] rejected');
+        } finally {
+            if (previous === undefined) delete process.env.TMDB_API_KEY;
+            else process.env.TMDB_API_KEY = previous;
+        }
+    });
+
+    test('fetchTmdbExternalIds redacts the key from HTTP failures', async () => {
+        const original = globalThis.fetch;
+        globalThis.fetch = (async () => new Response('{}', { status: 401 })) as typeof fetch;
+
+        try {
+            let message = '';
+            try {
+                await fetchTmdbExternalIds(1, 'movie', 'zzsecret12345678');
+            } catch (error) {
+                message = error instanceof Error ? error.message : String(error);
+            }
+
+            expect(message).toContain('HTTP 401');
+            expect(message).toContain('api_key=[redacted]');
+            expect(message).not.toContain('zzsecret12345678');
+        } finally {
+            globalThis.fetch = original;
+        }
+    });
+
+    test('fetchTmdbExternalIds retries a 429 and honours Retry-After', async () => {
+        const original = globalThis.fetch;
+        let calls = 0;
+        globalThis.fetch = (async () => {
+            calls += 1;
+            if (calls === 1) return new Response('{}', { status: 429, headers: { 'retry-after': '0' } });
+            return new Response(JSON.stringify({ external_ids: { imdb_id: 'tt1234567' } }), {
+                status: 200,
+                headers: { 'content-type': 'application/json' },
+            });
+        }) as typeof fetch;
+
+        try {
+            const ids = await fetchTmdbExternalIds(1, 'movie', 'zzsecret12345678');
+            expect(calls).toBe(2);
+            expect(ids.imdbId).toBe('tt1234567');
+        } finally {
+            globalThis.fetch = original;
+        }
+    });
+
+    test('fetchTmdbExternalIds gives up after a bounded number of 5xx responses', async () => {
+        const original = globalThis.fetch;
+        let calls = 0;
+        globalThis.fetch = (async () => {
+            calls += 1;
+            return new Response('{}', { status: 503, headers: { 'retry-after': '0' } });
+        }) as typeof fetch;
+
+        try {
+            await expect(fetchTmdbExternalIds(1, 'movie', 'zzsecret12345678')).rejects.toThrow(/HTTP 503/);
+            expect(calls).toBe(4);
+        } finally {
+            globalThis.fetch = original;
+        }
+    });
+
+    test('leaves unrelated text alone', () => {
+        expect(redactSecrets('HTTP 404 for https://example.com/a?x=1'))
+            .toBe('HTTP 404 for https://example.com/a?x=1');
     });
 });
 
@@ -88,12 +277,11 @@ describe('lookupAnimeMappings', () => {
         });
     });
 
-    test('defaults tv season to s1', () => {
-        expect(lookupAnimeMappings(mappings, 284445, 'tv')).toEqual({
-            anidb: '19038',
-            anilist: '185407',
-            mal: '60489',
-        });
+    test('does not guess a season when the tv season is unknown', () => {
+        // Defaulting to s1 returned another season's (hence another show's) ids
+        // and the caller marked them confirmed.
+        expect(lookupAnimeMappings(mappings, 284445, 'tv')).toEqual({});
+        expect(lookupAnimeMappings(mappings, 284445, 'tv', undefined)).toEqual({});
     });
 
     test('handles movie descriptors', () => {
@@ -124,6 +312,16 @@ describe('matchAnimeMapEntry', () => {
 
     test('falls back to a season-less tv entry', () => {
         expect(matchAnimeMapEntry(entries, 555, 'tv', 1)?.bgm_id).toBe('444');
+    });
+
+    test('never answers a season-less query with a season-scoped entry', () => {
+        // Season 1 is the only entry for this show; guessing it would confirm
+        // season 1's ids for the whole show.
+        const onlySeasonOne: AnimeMapEntry[] = [
+            { bgm_id: '999', tmdb_id: 'tv/777/season/1' },
+        ];
+        expect(matchAnimeMapEntry(onlySeasonOne, 777, 'tv')).toBeNull();
+        expect(matchAnimeMapEntry(onlySeasonOne, 777, 'tv', 1)?.bgm_id).toBe('999');
     });
 
     test('returns null when nothing matches', () => {

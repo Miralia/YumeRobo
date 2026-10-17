@@ -4,6 +4,7 @@
  */
 
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
+const TMDB_TIMEOUT_MS = 15000;
 
 export interface TMDBSearchResult {
     id: number;
@@ -22,6 +23,25 @@ export interface TMDBMetadata {
     number_of_seasons?: number;
 }
 
+/** HTTP-level failure; `status` lets callers tell "missing" from "unauthorized". */
+export class TmdbApiError extends Error {
+    readonly status: number;
+
+    constructor(status: number, statusText: string) {
+        super(`TMDB API error: ${status}${statusText ? ` ${statusText}` : ''}`);
+        this.name = 'TmdbApiError';
+        this.status = status;
+    }
+}
+
+/** A 200 response whose body is not usable metadata. */
+export class TmdbPayloadError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'TmdbPayloadError';
+    }
+}
+
 function getApiKey(): string {
     const key = process.env.TMDB_API_KEY;
     if (!key) {
@@ -35,23 +55,63 @@ export function getTmdbApiKey(): string {
     return getApiKey();
 }
 
+async function fetchTmdb(path: string): Promise<unknown> {
+    const response = await fetch(`${TMDB_BASE_URL}${path}`, {
+        signal: AbortSignal.timeout(TMDB_TIMEOUT_MS),
+    });
+
+    if (!response.ok) {
+        throw new TmdbApiError(response.status, response.statusText);
+    }
+
+    return response.json();
+}
+
+/**
+ * TMDB dates are `YYYY-MM-DD` (or `YYYY-MM`). Anything else — including an
+ * empty string, which `parseInt` turns into `NaN` — must not be written into
+ * release data as `year`: throw so the CLI falls back to manual entry.
+ */
+function parseReleaseYear(value: unknown, context: string): number {
+    if (typeof value !== 'string' || !value.trim()) {
+        throw new TmdbPayloadError(`${context} has no release date`);
+    }
+
+    const match = /^(\d{4})(?:-\d{2}(?:-\d{2})?)?$/.exec(value.trim());
+    if (!match) {
+        throw new TmdbPayloadError(`${context} has an unusable release date: ${JSON.stringify(value)}`);
+    }
+
+    return Number(match[1]);
+}
+
+function assertValidId(id: unknown, context: string): number {
+    if (typeof id !== 'number' || !Number.isInteger(id) || id <= 0) {
+        throw new TmdbPayloadError(`${context} returned an unexpected payload`);
+    }
+    return id;
+}
+
 /**
  * Search TMDB for movies and TV shows (English results)
  */
 export async function searchMulti(query: string): Promise<TMDBSearchResult[]> {
     const apiKey = getApiKey();
-    const url = `${TMDB_BASE_URL}/search/multi?api_key=${apiKey}&query=${encodeURIComponent(query)}&include_adult=false&language=en-US`;
+    const url = `/search/multi?api_key=${apiKey}&query=${encodeURIComponent(query)}&include_adult=false&language=en-US`;
 
-    const response = await fetch(url);
-    if (!response.ok) {
-        throw new Error(`TMDB API error: ${response.status} ${response.statusText}`);
+    const data = (await fetchTmdb(url)) as { results?: unknown } | null;
+    if (!data || !Array.isArray(data.results)) {
+        throw new TmdbPayloadError('TMDB search returned an unexpected payload');
     }
 
-    const data = await response.json();
-
     return (data.results as TMDBSearchResult[])
-        .filter((r) => r.media_type === 'movie' || r.media_type === 'tv')
+        .filter((r) => (r.media_type === 'movie' || r.media_type === 'tv') && hasDisplayTitle(r))
         .slice(0, 10);
+}
+
+function hasDisplayTitle(result: TMDBSearchResult): boolean {
+    const title = result.media_type === 'movie' ? result.title : result.name;
+    return typeof title === 'string' && title.trim().length > 0;
 }
 
 /**
@@ -59,23 +119,22 @@ export async function searchMulti(query: string): Promise<TMDBSearchResult[]> {
  */
 export async function getMovieMetadata(id: number): Promise<TMDBMetadata> {
     const apiKey = getApiKey();
-    const url = `${TMDB_BASE_URL}/movie/${id}?api_key=${apiKey}&language=en-US`;
-    const res = await fetch(url);
+    const url = `/movie/${id}?api_key=${apiKey}&language=en-US`;
+    const data = (await fetchTmdb(url)) as {
+        id?: unknown;
+        title?: unknown;
+        release_date?: unknown;
+    } | null;
 
-    if (!res.ok) {
-        throw new Error(`TMDB API error: ${res.status} ${res.statusText}`);
+    const tmdbId = assertValidId(data?.id, `TMDB movie ${id}`);
+    if (typeof data?.title !== 'string' || !data.title.trim()) {
+        throw new TmdbPayloadError(`TMDB movie ${id} has no title`);
     }
 
-    const data = await res.json();
-
-    const year = data.release_date
-        ? parseInt(data.release_date.split('-')[0])
-        : new Date().getFullYear();
-
     return {
-        tmdb_id: data.id,
+        tmdb_id: tmdbId,
         title: data.title,
-        year,
+        year: parseReleaseYear(data.release_date, `TMDB movie ${id}`),
         media_type: 'movie'
     };
 }
@@ -85,45 +144,58 @@ export async function getMovieMetadata(id: number): Promise<TMDBMetadata> {
  */
 export async function getTVMetadata(id: number): Promise<TMDBMetadata> {
     const apiKey = getApiKey();
-    const url = `${TMDB_BASE_URL}/tv/${id}?api_key=${apiKey}&language=en-US`;
-    const res = await fetch(url);
+    const url = `/tv/${id}?api_key=${apiKey}&language=en-US`;
+    const data = (await fetchTmdb(url)) as {
+        id?: unknown;
+        name?: unknown;
+        first_air_date?: unknown;
+        number_of_seasons?: unknown;
+    } | null;
 
-    if (!res.ok) {
-        throw new Error(`TMDB API error: ${res.status} ${res.statusText}`);
+    const tmdbId = assertValidId(data?.id, `TMDB TV show ${id}`);
+    if (typeof data?.name !== 'string' || !data.name.trim()) {
+        throw new TmdbPayloadError(`TMDB TV show ${id} has no name`);
     }
 
-    const data = await res.json();
-
-    const year = data.first_air_date
-        ? parseInt(data.first_air_date.split('-')[0])
-        : new Date().getFullYear();
+    const seasons = typeof data.number_of_seasons === 'number' && Number.isInteger(data.number_of_seasons)
+        ? data.number_of_seasons
+        : undefined;
 
     return {
-        tmdb_id: data.id,
+        tmdb_id: tmdbId,
         title: data.name,
-        year,
+        year: parseReleaseYear(data.first_air_date, `TMDB TV show ${id}`),
         media_type: 'tv',
-        number_of_seasons: data.number_of_seasons
+        number_of_seasons: seasons
     };
+}
+
+function isNotFound(error: unknown): boolean {
+    return error instanceof TmdbApiError && error.status === 404;
 }
 
 /**
  * Get metadata by ID, optionally specifying type.
  * If type is not specified, tries both Movie and TV in parallel.
  * Returns valid results found.
+ *
+ * Only a 404 ("this id is not a movie") is folded into "no results"; an auth
+ * or rate-limit failure is rethrown so it cannot masquerade as an empty search.
  */
 export async function getMetadataById(id: number, type?: 'movie' | 'tv'): Promise<TMDBMetadata[]> {
     if (type === 'movie') {
         try {
             return [await getMovieMetadata(id)];
-        } catch {
-            return [];
+        } catch (error) {
+            if (isNotFound(error)) return [];
+            throw error;
         }
     } else if (type === 'tv') {
         try {
             return [await getTVMetadata(id)];
-        } catch {
-            return [];
+        } catch (error) {
+            if (isNotFound(error)) return [];
+            throw error;
         }
     } else {
         // Try both
@@ -133,9 +205,17 @@ export async function getMetadataById(id: number, type?: 'movie' | 'tv'): Promis
         ]);
 
         const results: TMDBMetadata[] = [];
+        const failures: unknown[] = [];
 
         if (movieRes.status === 'fulfilled') results.push(movieRes.value);
+        else failures.push(movieRes.reason);
         if (tvRes.status === 'fulfilled') results.push(tvRes.value);
+        else failures.push(tvRes.reason);
+
+        if (results.length === 0) {
+            const fatal = failures.find((reason) => !isNotFound(reason));
+            if (fatal) throw fatal;
+        }
 
         return results;
     }

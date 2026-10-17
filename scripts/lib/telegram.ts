@@ -14,6 +14,26 @@ const TELEGRAM_API = 'https://api.telegram.org/bot';
 // Telegram supported image formats
 const SUPPORTED_FORMATS = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
 
+/** Bot API hard limit for photo captions. */
+const TELEGRAM_CAPTION_LIMIT = 1024;
+
+/** MediaInfo hashes are generated ids; anything else must not reach path.join. */
+const MEDIAINFO_HASH_RE = /^[a-z0-9]+$/;
+
+/** Retry waits are capped so a hostile Retry-After cannot stall the CLI. */
+const MAX_RETRY_DELAY_MS = 30_000;
+const RETRY_JITTER_MS = 1_000;
+
+/**
+ * Strip the bot token from any message that can reach the caller.
+ * The token is embedded in the request URL, so transport errors leak it.
+ */
+function redactToken(message: string, token: string): string {
+    let result = message;
+    if (token.length >= 8) result = result.split(token).join('[redacted]');
+    return result.replace(/bot\d{6,}:[A-Za-z0-9_-]+/g, 'bot[redacted]');
+}
+
 /**
  * Get MIME type for supported formats
  */
@@ -43,42 +63,6 @@ function escapeMarkdown(text: string): string {
     return text.replace(/([_*\[\]()~`>#+\-=|{}.!\\])/g, '\\$1');
 }
 
-/**
- * Group keywords to auto-bold in display names
- */
-const GROUP_KEYWORDS = [
-    'Natuyuki', 'NTYK',
-    'Kawatare', 'KWTR',
-    'Tasokare', 'TSKR'
-];
-
-/**
- * Format display name with auto-bolded group names
- * Input: "KWTR BD 1080p FLAC x265"
- * Output: "**KWTR** BD 1080p FLAC x265" (with escape)
- */
-function formatDisplayName(displayName: string): string {
-    let result = displayName;
-
-    // Replace group keywords with bold version
-    for (const keyword of GROUP_KEYWORDS) {
-        const regex = new RegExp(`\\b(${keyword})\\b`, 'gi');
-        result = result.replace(regex, `**$1**`);
-    }
-
-    // Escape everything except our bold markers
-    // Split by ** markers, escape middle parts, rejoin
-    const parts = result.split(/(\*\*[^*]+\*\*)/);
-    return parts.map(part => {
-        if (part.startsWith('**') && part.endsWith('**')) {
-            // Bold part: escape the inner text only
-            const inner = part.slice(2, -2);
-            return `**${escapeMarkdown(inner)}**`;
-        }
-        return escapeMarkdown(part);
-    }).join('');
-}
-
 function getTorrentTelegramLabel(torrent: ReleaseData['torrents'][number]): string {
     if (torrent.telegram_label?.trim()) return torrent.telegram_label.trim();
     const classification = classifyTorrentTelegramLabel(torrent.name);
@@ -102,10 +86,10 @@ export async function buildCaption(
 
     // Subtitles - extract from first MediaInfo of first torrent
     const firstTorrent = release.torrents[0];
-    if (firstTorrent?.mediainfo?.length > 0) {
-        const hash = firstTorrent.mediainfo[0].raw_hash;
+    const firstHash = firstTorrent?.mediainfo?.[0]?.raw_hash;
+    if (firstTorrent?.mediainfo?.length > 0 && typeof firstHash === 'string' && MEDIAINFO_HASH_RE.test(firstHash)) {
         try {
-            const rawPath = path.join(process.cwd(), 'static', 'mediainfo', hash);
+            const rawPath = path.join(process.cwd(), 'static', 'mediainfo', firstHash);
             const rawContent = await fs.readFile(rawPath, 'utf-8');
             const structured = toStructured(parseMediaInfo(rawContent));
             const langs = structured.text?.map(t => t.language).filter(Boolean) || [];
@@ -146,6 +130,29 @@ function isRetryableStatus(status: number): boolean {
 }
 
 /**
+ * Backoff for one retry: honour an explicit `retry_after` (including 0), cap
+ * the wait and add jitter so parallel senders do not retry in lockstep.
+ */
+export function computeRetryDelayMs(
+    attempt: number,
+    retryAfterSeconds?: number,
+    random: () => number = Math.random,
+): number {
+    const hasRetryAfter =
+        typeof retryAfterSeconds === 'number' &&
+        Number.isFinite(retryAfterSeconds) &&
+        retryAfterSeconds >= 0;
+
+    const base = hasRetryAfter
+        ? retryAfterSeconds * 1000  // Telegram-specified delay
+        : Math.pow(2, attempt - 1) * 1000;  // Exponential backoff: 1s, 2s, 4s
+
+    const capped = Math.min(Math.max(base, 0), MAX_RETRY_DELAY_MS);
+    const jitter = capped === 0 ? 0 : Math.floor(random() * Math.min(RETRY_JITTER_MS, capped));
+    return capped + jitter;
+}
+
+/**
  * Send photo with caption and inline buttons to Telegram channel.
  * photoSource can be:
  *   - A URL string (passed directly to Telegram, which downloads it)
@@ -158,6 +165,14 @@ export async function sendPhoto(
     caption: string,
     buttons?: Array<{ text: string; url: string }>
 ): Promise<{ ok: boolean; messageId?: number; error?: string; retryable?: boolean; retryAfter?: number }> {
+    if (caption.length > TELEGRAM_CAPTION_LIMIT) {
+        return {
+            ok: false,
+            error: `Caption is ${caption.length} characters, over Telegram's ${TELEGRAM_CAPTION_LIMIT}-character limit`,
+            retryable: false,
+        };
+    }
+
     try {
         const isUrl = photoSource.startsWith('http://') || photoSource.startsWith('https://');
 
@@ -196,9 +211,24 @@ export async function sendPhoto(
             if (!SUPPORTED_FORMATS.includes(ext)) {
                 return { ok: false, error: `Unsupported format: ${ext}. Use JPG, PNG, GIF, or WEBP.`, retryable: false };
             }
-            const photoBuffer = await fs.readFile(photoSource);
+
+            let photoBuffer: Buffer;
+            try {
+                photoBuffer = await fs.readFile(photoSource);
+            } catch (error) {
+                // Local read failure (ENOENT/EISDIR): retrying cannot help.
+                const detail = error instanceof Error ? error.message : String(error);
+                return {
+                    ok: false,
+                    error: redactToken(`Cannot read poster ${photoSource}: ${detail}`, token),
+                    retryable: false,
+                };
+            }
+
             const mimeType = getMimeType(ext);
-            const file = new File([photoBuffer], `poster.${ext}`, { type: mimeType });
+            // `Buffer` widens to `Uint8Array<ArrayBufferLike>`, which is not a
+            // `BlobPart` under the CLI's `esnext` lib; copy into a plain view.
+            const file = new File([new Uint8Array(photoBuffer)], `poster.${ext}`, { type: mimeType });
 
             const formData = new FormData();
             formData.append('chat_id', chatId);
@@ -227,11 +257,16 @@ export async function sendPhoto(
         } else {
             const retryable = isRetryableStatus(response.status);
             const retryAfter = result.parameters?.retry_after;
-            return { ok: false, error: result.description || 'Unknown error', retryable, retryAfter };
+            return {
+                ok: false,
+                error: redactToken(result.description || 'Unknown error', token),
+                retryable,
+                retryAfter,
+            };
         }
     } catch (e) {
-        // Network errors, timeouts, etc. are retryable
-        return { ok: false, error: String(e), retryable: true };
+        // Transport errors, timeouts, etc. are retryable
+        return { ok: false, error: redactToken(String(e), token), retryable: true };
     }
 }
 
@@ -266,14 +301,12 @@ export async function sendPhotoWithRetry(
         if (attempt === maxRetries) break;
 
         // Calculate delay
-        const baseDelay = result.retryAfter
-            ? result.retryAfter * 1000  // Telegram-specified delay
-            : Math.pow(2, attempt - 1) * 1000;  // Exponential backoff: 1s, 2s, 4s
+        const delayMs = computeRetryDelayMs(attempt, result.retryAfter);
 
         console.log(`[i] Attempt ${attempt}/${maxRetries} failed: ${lastError}`);
-        console.log(`[i] Retrying in ${(baseDelay / 1000).toFixed(0)}s...`);
+        console.log(`[i] Retrying in ${(delayMs / 1000).toFixed(1)}s...`);
 
-        await new Promise(resolve => setTimeout(resolve, baseDelay));
+        await new Promise(resolve => setTimeout(resolve, delayMs));
     }
 
     return { ok: false, error: lastError, attempts: maxRetries };

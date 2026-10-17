@@ -15,7 +15,6 @@
  */
 
 import { buildDoubanSubjectUrl, type AnimeMapEntry } from './link-resolver';
-import type { SupportedPlatform } from './links';
 
 const ANIME_MAP_URL = 'https://rhilip.github.io/BangumiExtLinker/data/anime_map.json';
 const DOUBAN_REXXAR_SEARCH_URL = 'https://m.douban.com/rexxar/api/v2/search/movie';
@@ -23,16 +22,47 @@ const DOUBAN_REXXAR_SEARCH_URL = 'https://m.douban.com/rexxar/api/v2/search/movi
 const CACHE_DIR = '.cache/metadata';
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * Minimum spacing between rexxar requests. Douban publishes no rate limit, so
+ * the pause is explicit and overridable (`DOUBAN_REQUEST_DELAY_MS=0` for tests
+ * and bulk backfills) instead of a hard-coded sleep.
+ */
+const DEFAULT_REXXAR_DELAY_MS = 1000;
+
+export function getRexxarDelayMs(): number {
+    const raw = process.env.DOUBAN_REQUEST_DELAY_MS;
+    if (raw === undefined || raw.trim() === '') return DEFAULT_REXXAR_DELAY_MS;
+
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : DEFAULT_REXXAR_DELAY_MS;
+}
+
 const REXXAR_HEADERS = {
     'User-Agent':
         'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15',
     Referer: 'https://m.douban.com/',
 };
 
+/** Fetch JSON with a hard timeout; non-OK responses are failures, not "no match". */
+async function fetchJson(url: string, init?: RequestInit, timeoutMs = 15000): Promise<unknown> {
+    const response = await fetch(url, {
+        ...init,
+        signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!response.ok) {
+        throw new Error(`douban HTTP ${response.status} for ${url}`);
+    }
+    return response.json();
+}
+
 /**
  * Match an anime map entry against a TMDB id. The dataset's `tmdb_id` field
  * looks like `tv/209867/season/1` or `movie/46343`; match on the numeric id
  * (and, for TV, prefer an exact season match when present).
+ *
+ * A season-scoped entry is never used to answer a season-less query: that
+ * would guess a season and could confirm another season's — hence another
+ * show's — link.
  */
 export function matchAnimeMapEntry(
     entries: AnimeMapEntry[],
@@ -55,11 +85,12 @@ export function matchAnimeMapEntry(
 
         if (mediaType === 'tv') {
             const entrySeason = match[2] ? Number(match[2]) : undefined;
-            if (entrySeason !== undefined && season !== undefined) {
+            if (entrySeason !== undefined) {
+                if (season === undefined) continue;
                 if (entrySeason === season) return entry;
                 continue;
             }
-            // Entry or query has no season granularity — keep as fallback.
+            // Season-less entry: granularity matches any query season.
             fallback ??= entry;
             continue;
         }
@@ -81,9 +112,7 @@ async function loadCachedJson<T>(name: string, url: string): Promise<T | null> {
     }
 
     try {
-        const response = await fetch(url, { signal: AbortSignal.timeout(60000) });
-        if (!response.ok) return null;
-        const json = (await response.json()) as T;
+        const json = (await fetchJson(url, undefined, 60000)) as T;
         await Bun.write(path, JSON.stringify(json));
         return json;
     } catch {
@@ -91,11 +120,18 @@ async function loadCachedJson<T>(name: string, url: string): Promise<T | null> {
     }
 }
 
+let animeMapPromise: Promise<AnimeMapEntry[] | null> | null = null;
+
 export async function loadAnimeMap(): Promise<AnimeMapEntry[] | null> {
-    return loadCachedJson<AnimeMapEntry[]>('anime_map.json', ANIME_MAP_URL);
+    // 3.8 MB of JSON: parse once per process, not once per release.
+    animeMapPromise ??= loadCachedJson<AnimeMapEntry[]>('anime_map.json', ANIME_MAP_URL)
+        .then((value) => (Array.isArray(value) ? value : null));
+    return animeMapPromise;
 }
 
 interface RexxarSearchResponse {
+    r?: number;
+    msg?: string;
     items?: Array<{
         layout?: string;
         target?: { id?: string; title?: string; year?: string };
@@ -108,19 +144,21 @@ export interface DoubanSearchHit {
     year: string;
 }
 
-/** Query the mobile rexxar search API. Throws on network/HTTP failure. */
+/** Query the mobile rexxar search API. Throws on network/HTTP/error-payload failure. */
 export async function searchDoubanRaw(query: string): Promise<DoubanSearchHit[]> {
     const url = `${DOUBAN_REXXAR_SEARCH_URL}?q=${encodeURIComponent(query)}`;
-    const response = await fetch(url, {
-        headers: REXXAR_HEADERS,
-        signal: AbortSignal.timeout(15000),
-    });
-    if (!response.ok) {
-        throw new Error(`douban rexxar HTTP ${response.status}`);
-    }
-    const data = (await response.json()) as RexxarSearchResponse;
+    const data = (await fetchJson(url, { headers: REXXAR_HEADERS })) as RexxarSearchResponse | null;
 
-    return (data.items ?? [])
+    // Douban answers rate limits/errors with a `r` code, which must not be
+    // mistaken for "this id has no douban page".
+    if (data && typeof data.r === 'number' && data.r !== 0) {
+        throw new Error(`douban rexxar error (r=${data.r}): ${data.msg ?? 'unknown error'}`);
+    }
+    if (!data || !Array.isArray(data.items)) {
+        throw new Error('douban rexxar returned an unexpected payload');
+    }
+
+    return data.items
         .filter((item) => item.layout === 'subject' && item.target?.id)
         .map((item) => ({
             id: String(item.target?.id),
@@ -178,7 +216,8 @@ export async function resolveDoubanLink(input: {
 
     if (imdbId) {
         try {
-            await new Promise((resolve) => setTimeout(resolve, 1000)); // polite rate limit
+            // Polite spacing between rexxar requests (configurable, may be 0).
+            await new Promise((resolve) => setTimeout(resolve, getRexxarDelayMs()));
             const hits = await searchDoubanRaw(imdbId);
             if (hits.length === 1) {
                 return {
@@ -213,9 +252,4 @@ export async function resolveBangumiFromAnimeMap(
         (imdbId ? animeMap.find((e) => e.imdb_id === imdbId) : undefined) ??
         matchAnimeMapEntry(animeMap, tmdbId, mediaType, season);
     return matched?.bgm_id ?? null;
-}
-
-/** Convenience for the resolver: true when a douban URL was produced. */
-export function isDoubanResolved(resolution: DoubanResolution, platform: SupportedPlatform): boolean {
-    return platform === 'douban' && !!resolution.confirmed;
 }

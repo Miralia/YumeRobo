@@ -90,7 +90,9 @@ export async function promptPoster(): Promise<string> {
         validate: (val) => !!val || 'Poster is required'
     });
 
-    return method === 'local' ? result.trim().replace(/\\(.)/g, '$1') : result.trim();
+    // inquirer does not shell-escape input, so a pasted path must be used
+    // verbatim (unescaping backslashes here corrupted Windows-style paths).
+    return result.trim();
 }
 
 /** Prompt for a manual Telegram MediaInfo link label. */
@@ -127,13 +129,13 @@ export async function promptTorrentPath(): Promise<string> {
         message: 'Torrent file path (.torrent):',
         validate: (val) => {
             if (!val) return 'Path is required';
-            // Check extension on cleaned path
-            const clean = val.trim().replace(/\\(.)/g, '$1');
+            // Check extension on the trimmed path; inquirer does not shell-escape.
+            const clean = val.trim();
             if (!clean.endsWith('.torrent')) return 'Must be a .torrent file';
             return true;
         }
     });
-    return raw.trim().replace(/\\(.)/g, '$1');
+    return raw.trim();
 }
 
 /**
@@ -165,29 +167,28 @@ export async function promptBBCode(): Promise<string> {
 }
 
 /**
- * Prompt for BBCode spec entry
- */
-export async function promptSpec(): Promise<{ title: string; bbcode: string }> {
-    const title = await input({
-        message: 'Spec title (e.g. "Info", "x265 log"):',
-        validate: (val) => !!val || 'Required'
-    });
-
-    const bbcode = await editor({
-        message: 'Paste BBCode content:'
-    });
-
-    return { title, bbcode };
-}
-
-/**
  * Prompt for final confirmation before writing
  */
 export async function promptFinalConfirm(): Promise<boolean> {
     return confirm({
-        message: 'Write to sample-data.ts?',
+        message: 'Write the release file?',
         default: true
     });
+}
+
+/**
+ * Season input validator. `parseInt` alone accepted "3abc" → 3 and "1.9" → 1,
+ * and let "-5" through to be dropped later; require a whole-number string.
+ * 0 stays valid: it means "none/single" and matches the dataset's `s0` keys.
+ */
+export function validateSeasonInput(value: string): true | string {
+    return /^\d+$/.test(value.trim()) || 'Must be a whole number (0 for none/single)';
+}
+
+/** Parse a validated season string. Returns undefined for "none/single" (0). */
+export function parseSeasonInput(value: string): number | undefined {
+    const parsed = parseInt(value.trim(), 10);
+    return parsed > 0 ? parsed : undefined;
 }
 
 /**
@@ -237,12 +238,9 @@ export async function promptRefineMetadata(
         const seasonStr = await input({
             message: seasonMsg,
             default: '1',
-            validate: (val) => !isNaN(parseInt(val)) || 'Must be a number'
+            validate: validateSeasonInput
         });
-        const seasonVal = parseInt(seasonStr);
-        if (seasonVal > 0) {
-            season = seasonVal;
-        }
+        season = parseSeasonInput(seasonStr);
 
         is_complete = await confirm({
             message: 'Is this release complete? (Fin Badge)',
