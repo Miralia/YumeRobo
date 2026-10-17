@@ -8,10 +8,13 @@
 		"build": "vite build",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
-		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json && bun run check:scripts",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"check:scripts": "tsc -p scripts/tsconfig.json",
+		"test": "bun test",
 		"cli": "bun scripts/manage.ts",
 		"backfill:comparisons": "bun scripts/backfill-comparisons.ts",
+		"backfill:links": "bun scripts/backfill-links.ts",
 		"vendor:yacomp": "bun scripts/vendor-yacomp-web.ts",
 		"check:yacomp": "bun scripts/check-yacomp-web.ts",
 		"update:yacomp": "bun scripts/update-yacomp-web.ts"
@@ -33,7 +36,6 @@
 		"@inquirer/prompts": "^8.5.2",
 		"bencode": "^4.0.1",
 		"dotenv": "^17.4.2",
-		"nanoid": "^6.0.0",
 		"sharp": "^0.35.3",
 		"zod": "^4.4.3"
 	}
