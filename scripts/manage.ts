@@ -124,6 +124,7 @@ import {
     formatCreateDraftSummary,
     formatEditDraftSummary,
 } from './lib/summary';
+import { commitReleaseSidecars } from './lib/release-commit';
 import {
     auditManagedAssets,
     executeCleanupPlan,
@@ -230,7 +231,7 @@ async function buildReleaseModule(release: ReleaseData): Promise<{
     fileContent: string;
     previewPath: string;
 }> {
-    const code = generateReleaseCode(release);
+    const code = generateReleaseCode(release).trim();
     const fileContent = `import type { Release } from '../schema';
 
 export const release: Release = ${code};
@@ -1099,9 +1100,14 @@ async function create() {
         if (action === 'confirm') {
             const targetPath = path.join(RELEASES_DIR, `${slug}.ts`);
             await commitReleaseModule(targetPath, fileContent);
-            // The file is on disk, so the draft no longer describes reality.
-            await clearCreateDraft();
-            await publishDraftComparison(slug, comparison);
+            // Publish the staged comparison, then clear the draft: clearing also
+            // deletes the staged sidecar the publish reads from.
+            await commitReleaseSidecars({
+                slug,
+                comparison,
+                publishComparison: publishDraftComparison,
+                clearDraft: () => clearCreateDraft(),
+            });
             const homePosterPaths = (await loadReleaseRecords()).map((record) => record.data.poster);
             await generateSocialCards(releaseData, homePosterPaths);
             const validation = await validateReleaseAssets({ release: releaseData });
@@ -1351,9 +1357,14 @@ async function edit() {
             };
             const { fileContent } = await buildReleaseModule(updatedData);
             await commitReleaseModule(filePath, fileContent);
-            // The file on disk is authoritative from here on.
-            await clearEditDraft(slug);
-            await publishDraftComparison(slug, comparison);
+            // Publish the staged comparison, then clear the draft: clearing also
+            // deletes the staged sidecar the publish reads from.
+            await commitReleaseSidecars({
+                slug,
+                comparison,
+                publishComparison: publishDraftComparison,
+                clearDraft: () => clearEditDraft(slug),
+            });
 
             const validation = await validateReleaseAssets({ release: updatedData });
             if (hasValidationIssues(validation)) {

@@ -35,7 +35,7 @@ async function loadRelease(filePath: string): Promise<ReleaseData | undefined> {
 function renderModule(release: ReleaseData): string {
     return `import type { Release } from '../schema';
 
-export const release: Release = ${generateReleaseCode(release)};
+export const release: Release = ${generateReleaseCode(release).trim()};
 `;
 }
 
