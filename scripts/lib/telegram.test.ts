@@ -20,6 +20,23 @@ function makeRelease(torrents: ReleaseData['torrents']): ReleaseData {
     };
 }
 
+/**
+ * Build a throwaway `static/mediainfo` tree.
+ *
+ * `buildCaption` reads MediaInfo from disk, and the real directory is
+ * gitignored production content that does not exist in a clean checkout, so
+ * tests must supply their own root instead of writing into the repository.
+ */
+async function makeMediaInfoRoot(fixtures: Record<string, string>): Promise<string> {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'yumerobo-telegram-'));
+    const directory = path.join(root, 'static', 'mediainfo');
+    await fs.mkdir(directory, { recursive: true });
+    for (const [hash, content] of Object.entries(fixtures)) {
+        await fs.writeFile(path.join(directory, hash), content, 'utf-8');
+    }
+    return root;
+}
+
 describe('buildCaption', () => {
     test('combines torrent MediaInfo and Comparisons links on one line in torrent order', async () => {
         const release = makeRelease([
@@ -89,8 +106,7 @@ describe('buildCaption', () => {
 
     test('omits the subtitles line when MediaInfo has only blank text fields', async () => {
         const hash = 'telegramemptysubtitletest';
-        const mediaInfoPath = path.join(process.cwd(), 'static', 'mediainfo', hash);
-        await fs.writeFile(mediaInfoPath, `
+        const root = await makeMediaInfoRoot({ [hash]: `
 General
 Format                                   : Matroska
 
@@ -98,7 +114,7 @@ Text
 Format                                   :
 Language                                 :
 Title                                    :
-        `, 'utf-8');
+        ` });
 
         try {
             const release = makeRelease([
@@ -109,12 +125,12 @@ Title                                    :
                 },
             ]);
 
-            const caption = await buildCaption(release, '', 'https://example.com');
+            const caption = await buildCaption(release, '', 'https://example.com', root);
 
             expect(caption).not.toContain('Subtitles:');
             expect(caption).toContain(`[x265](https://example\\.com/mediainfo/${hash})`);
         } finally {
-            await fs.rm(mediaInfoPath, { force: true });
+            await fs.rm(root, { recursive: true, force: true });
         }
     });
 
@@ -129,9 +145,10 @@ Language                                 : Japanese
 Title                                    : Signs
 `;
         const validHash = 'telegramsubtitleflags';
-        const validPath = path.join(process.cwd(), 'static', 'mediainfo', validHash);
-        const outsidePath = path.join(process.cwd(), 'static', 'telegram-outside-mediainfo');
-        await fs.writeFile(validPath, mediaInfo, 'utf-8');
+        // The traversal target lives one level above `static/mediainfo`, exactly
+        // where a `../` hash would point.
+        const root = await makeMediaInfoRoot({ [validHash]: mediaInfo });
+        const outsidePath = path.join(root, 'static', 'telegram-outside-mediainfo');
         await fs.writeFile(outsidePath, mediaInfo, 'utf-8');
 
         try {
@@ -139,6 +156,7 @@ Title                                    : Signs
                 makeRelease([{ name: 'Show.BD.1080p.x265-GROUP', files: [], mediainfo: [{ filename: 'a.mkv', raw_hash: validHash }] }]),
                 '',
                 'https://example.com',
+                root,
             );
             expect(viaHash).toContain('Subtitles: 🇯🇵');
 
@@ -146,11 +164,11 @@ Title                                    : Signs
                 makeRelease([{ name: 'Show.BD.1080p.x265-GROUP', files: [], mediainfo: [{ filename: 'a.mkv', raw_hash: '../telegram-outside-mediainfo' }] }]),
                 '',
                 'https://example.com',
+                root,
             );
             expect(viaTraversal).not.toContain('Subtitles:');
         } finally {
-            await fs.rm(validPath, { force: true });
-            await fs.rm(outsidePath, { force: true });
+            await fs.rm(root, { recursive: true, force: true });
         }
     });
 });

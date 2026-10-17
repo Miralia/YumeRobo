@@ -70,12 +70,17 @@ function getTorrentTelegramLabel(torrent: ReleaseData['torrents'][number]): stri
 }
 
 /**
- * Build Telegram caption from release data
+ * Build Telegram caption from release data.
+ *
+ * `rootDir` locates the `static/mediainfo` directory that subtitle languages are
+ * read from. It is injectable so tests can use a temporary tree instead of the
+ * gitignored production content directory.
  */
 export async function buildCaption(
     release: ReleaseData,
     comparisonsLink: string,
-    siteUrl: string
+    siteUrl: string,
+    rootDir: string = process.cwd()
 ): Promise<string> {
     const lines: string[] = [];
 
@@ -89,7 +94,7 @@ export async function buildCaption(
     const firstHash = firstTorrent?.mediainfo?.[0]?.raw_hash;
     if (firstTorrent?.mediainfo?.length > 0 && typeof firstHash === 'string' && MEDIAINFO_HASH_RE.test(firstHash)) {
         try {
-            const rawPath = path.join(process.cwd(), 'static', 'mediainfo', firstHash);
+            const rawPath = path.join(rootDir, 'static', 'mediainfo', firstHash);
             const rawContent = await fs.readFile(rawPath, 'utf-8');
             const structured = toStructured(parseMediaInfo(rawContent));
             const langs = structured.text?.map(t => t.language).filter(Boolean) || [];
