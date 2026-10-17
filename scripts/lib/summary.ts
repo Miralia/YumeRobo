@@ -1,12 +1,24 @@
 import type { CreateDraft, EditDraft } from "./drafts";
 import type { TorrentEntry } from "./types";
 
-function getTorrentMetrics(torrents?: TorrentEntry[]): { count: number; mediainfo: number } {
-	const safeTorrents = torrents ?? [];
+/**
+ * Draft progress summaries printed after every save.
+ *
+ * `status=done` must mean "the user actually filled this in": drafts written by
+ * hand (or by an older CLI) can omit `mediainfo` entirely and can carry empty
+ * arrays, and reporting those as done hides what is still missing.
+ */
+
+function getTorrentMetrics(torrents?: TorrentEntry[]): {
+	count: number;
+	mediainfo: number;
+} {
+	const safeTorrents = Array.isArray(torrents) ? torrents : [];
 	return {
 		count: safeTorrents.length,
 		mediainfo: safeTorrents.reduce(
-			(total, torrent) => total + torrent.mediainfo.length,
+			(total, torrent) =>
+				total + (Array.isArray(torrent?.mediainfo) ? torrent.mediainfo.length : 0),
 			0,
 		),
 	};
@@ -24,73 +36,54 @@ function formatComparisonStatus(draft: CreateDraft | EditDraft): string {
 	return "comparison status=missing";
 }
 
-export function formatCreateDraftSummary(draft: CreateDraft): string {
+/** Single-line `key=value` fields must not be broken by embedded whitespace. */
+function inline(value: string): string {
+	return value.replace(/\s+/g, " ").trim();
+}
+
+function formatFields(draft: CreateDraft | EditDraft): string[] {
 	const torrentMetrics = getTorrentMetrics(draft.torrents);
-	const lines = [`CREATE_DRAFT slug=${draft.slug}`];
+	const lines: string[] = [];
 
 	lines.push(
 		draft.metadata
-			? `metadata status=done title=${draft.metadata.title}`
+			? `metadata status=done title=${inline(draft.metadata.title)}`
 			: "metadata status=missing",
 	);
 	lines.push(
 		draft.posterPath
-			? `poster status=done path=${draft.posterPath}`
+			? `poster status=done path=${inline(draft.posterPath)}`
 			: "poster status=missing",
 	);
 	lines.push(
-		draft.torrents
+		torrentMetrics.count > 0
 			? `torrents status=done count=${torrentMetrics.count} mediainfo=${torrentMetrics.mediainfo}`
 			: "torrents status=missing",
 	);
 	lines.push(
-		draft.specs
+		draft.specs && draft.specs.length > 0
 			? `specs status=done count=${draft.specs.length}`
 			: "specs status=missing",
 	);
 	lines.push(formatComparisonStatus(draft));
 	lines.push(
-		draft.links && getLinksCount(draft.links) > 0
+		getLinksCount(draft.links) > 0
 			? `links status=done count=${getLinksCount(draft.links)}`
 			: "links status=missing",
 	);
 
-	return lines.join("\n");
+	return lines;
+}
+
+export function formatCreateDraftSummary(draft: CreateDraft): string {
+	return [`CREATE_DRAFT slug=${inline(draft.slug)}`, ...formatFields(draft)].join("\n");
 }
 
 export function formatEditDraftSummary(draft: EditDraft): string {
-	const torrentMetrics = getTorrentMetrics(draft.torrents);
-	const lines = [
-		`EDIT_DRAFT slug=${draft.slug}`,
-		`original title=${draft.originalRelease.title}`,
-	];
-
-	lines.push(
-		draft.metadata
-			? `metadata status=done title=${draft.metadata.title}`
-			: "metadata status=missing",
-	);
-	lines.push(
-		draft.posterPath
-			? `poster status=done path=${draft.posterPath}`
-			: "poster status=missing",
-	);
-	lines.push(
-		draft.torrents
-			? `torrents status=done count=${torrentMetrics.count} mediainfo=${torrentMetrics.mediainfo}`
-			: "torrents status=missing",
-	);
-	lines.push(
-		draft.specs
-			? `specs status=done count=${draft.specs.length}`
-			: "specs status=missing",
-	);
-	lines.push(formatComparisonStatus(draft));
-	lines.push(
-		draft.links && getLinksCount(draft.links) > 0
-			? `links status=done count=${getLinksCount(draft.links)}`
-			: "links status=missing",
-	);
-
-	return lines.join("\n");
+	return [
+		`EDIT_DRAFT slug=${inline(draft.slug)}`,
+		`original title=${inline(draft.originalRelease?.title ?? "")}`,
+		`date=${inline(draft.date ?? "")}`,
+		...formatFields(draft),
+	].join("\n");
 }

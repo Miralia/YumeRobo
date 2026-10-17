@@ -5,7 +5,21 @@ export interface CommandRunnerResult {
 	stderr: string;
 }
 
-export type CommandRunner = (command: string) => Promise<CommandRunnerResult>;
+/**
+ * Commands are passed as an argument vector, never as a shell string: the
+ * project name and branch come from `.env`, and interpolating them into a
+ * shell command would make the deploy step injectable.
+ */
+export type CommandRunner = (
+	file: string,
+	args: string[],
+) => Promise<CommandRunnerResult>;
+
+export interface DeployCommand {
+	file: string;
+	args: string[];
+}
+
 export interface DeployPreflightIssue {
 	field: "PUBLIC_SITE_URL" | "CLOUDFLARE_PAGES_PROJECT" | "CLOUDFLARE_PRODUCTION_BRANCH";
 	message: string;
@@ -23,10 +37,16 @@ export async function ensurePagesProject(
 	projectName: string,
 	productionBranch: string,
 ): Promise<"created" | "exists"> {
-	const command = `npx wrangler pages project create ${projectName} --production-branch ${productionBranch}`;
-
 	try {
-		await runCommand(command);
+		await runCommand("npx", [
+			"wrangler",
+			"pages",
+			"project",
+			"create",
+			projectName,
+			"--production-branch",
+			productionBranch,
+		]);
 		return "created";
 	} catch (error) {
 		if (isProjectAlreadyExistsError(error)) {
@@ -42,8 +62,19 @@ export async function ensurePagesProject(
 export function getDeployCommand(
 	projectName: string,
 	buildDir: string,
-): string {
-	return `npx wrangler pages deploy ${buildDir} --project-name ${projectName} --commit-dirty=true`;
+): DeployCommand {
+	return {
+		file: "npx",
+		args: [
+			"wrangler",
+			"pages",
+			"deploy",
+			buildDir,
+			"--project-name",
+			projectName,
+			"--commit-dirty=true",
+		],
+	};
 }
 
 export function getDeployPreflightIssues(
@@ -67,7 +98,12 @@ export function getDeployPreflightIssues(
 
 	try {
 		const siteUrl = new URL(config.siteUrl);
-		if (PLACEHOLDER_HOSTS.has(siteUrl.hostname)) {
+		if (siteUrl.protocol !== "http:" && siteUrl.protocol !== "https:") {
+			issues.push({
+				field: "PUBLIC_SITE_URL",
+				message: "PUBLIC_SITE_URL must be an absolute http(s) URL before deploy",
+			});
+		} else if (PLACEHOLDER_HOSTS.has(siteUrl.hostname)) {
 			issues.push({
 				field: "PUBLIC_SITE_URL",
 				message: "PUBLIC_SITE_URL must be set to a real production URL before deploy",
@@ -98,22 +134,32 @@ export function formatDeployPreflightIssues(
 	].join("\n");
 }
 
+/**
+ * Extract everything a caller might need to diagnose a failed command.
+ * `child_process` errors are `Error` instances that also carry `stdout` and
+ * `stderr`, so the `instanceof Error` branch must not short-circuit them —
+ * "already exists" frequently appears only in the captured output.
+ */
 function stringifyError(error: unknown): string {
-	if (error instanceof Error) {
-		return error.message;
+	const parts: string[] = [];
+
+	if (error instanceof Error && error.message) {
+		parts.push(error.message);
 	}
 
 	if (typeof error === "object" && error !== null) {
-		const stdout =
-			"stdout" in error && typeof error.stdout === "string" ? error.stdout : "";
-		const stderr =
-			"stderr" in error && typeof error.stderr === "string" ? error.stderr : "";
-		const message =
-			"message" in error && typeof error.message === "string"
-				? error.message
-				: "";
-		return [message, stdout, stderr].filter(Boolean).join("\n");
+		const record = error as Record<string, unknown>;
+		for (const key of ["stdout", "stderr"] as const) {
+			const value = record[key];
+			if (typeof value === "string" && value.trim()) parts.push(value);
+		}
+		if (parts.length === 0) {
+			const message = record.message;
+			if (typeof message === "string") parts.push(message);
+		}
 	}
 
-	return String(error);
+	if (parts.length === 0) parts.push(String(error));
+
+	return parts.join("\n");
 }

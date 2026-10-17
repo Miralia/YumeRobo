@@ -3,26 +3,41 @@
  * Handles cleanup of temporary files on exit or interrupt
  */
 import fs from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { unlinkSync } from 'node:fs';
 
 class TempFileManager {
     private files: Set<string> = new Set();
     private isCleaning: boolean = false;
+    private listenersRegistered: boolean = false;
 
-    constructor() {
-        // Handle normal exit
+    /**
+     * Register the process-level handlers. Called explicitly so importing this
+     * module never installs global listeners as a side effect.
+     */
+    register(): void {
+        if (this.listenersRegistered) return;
+        this.listenersRegistered = true;
+
+        // Normal exit: only synchronous work is possible here.
         process.on('exit', () => this.cleanupSync());
 
-        // Handle Ctrl+C
         process.on('SIGINT', () => {
             console.log('\n[!] Interrupted (Ctrl+C)');
-            this.cleanup().then(() => process.exit(0));
+            this.cleanup().finally(() => process.exit(130));
         });
 
-        // Handle uncaught exceptions
+        process.on('SIGTERM', () => {
+            this.cleanup().finally(() => process.exit(143));
+        });
+
         process.on('uncaughtException', (err) => {
             console.error('\n[!] Uncaught Exception:', err);
-            this.cleanup().then(() => process.exit(1));
+            this.cleanup().finally(() => process.exit(1));
+        });
+
+        process.on('unhandledRejection', (reason) => {
+            console.error('\n[!] Unhandled Rejection:', reason);
+            this.cleanup().finally(() => process.exit(1));
         });
     }
 
@@ -37,16 +52,20 @@ class TempFileManager {
      * Manually remove a file (if finished early)
      */
     async remove(filePath: string) {
-        if (this.files.has(filePath)) {
-            try {
-                if (existsSync(filePath)) {
-                    await fs.unlink(filePath);
-                }
-            } catch (e) {
-                // Ignore
+        if (!this.files.has(filePath)) return;
+
+        try {
+            await fs.unlink(filePath);
+        } catch (error) {
+            const err = error as NodeJS.ErrnoException;
+            if (err.code !== 'ENOENT') {
+                // Keep the entry registered so the exit handler can retry
+                // instead of forgetting the file.
+                console.error(`[!] Failed to delete ${filePath}:`, error);
+                return;
             }
-            this.files.delete(filePath);
         }
+        this.files.delete(filePath);
     }
 
     /**
@@ -56,30 +75,43 @@ class TempFileManager {
         if (this.isCleaning) return;
         this.isCleaning = true;
 
-        if (this.files.size > 0) {
+        try {
+            if (this.files.size === 0) return;
+
             console.log('\n[i] Cleaning up temporary files...');
-            for (const file of this.files) {
+            // Snapshot first: `remove()` can mutate the set while we await.
+            for (const file of [...this.files]) {
                 try {
-                    if (existsSync(file)) {
-                        await fs.unlink(file);
-                        console.log(`[x] Deleted: ${file}`);
+                    await fs.unlink(file);
+                    this.files.delete(file);
+                    console.log(`[x] Deleted: ${file}`);
+                } catch (error) {
+                    const err = error as NodeJS.ErrnoException;
+                    if (err.code === 'ENOENT') {
+                        this.files.delete(file);
+                        continue;
                     }
-                } catch (e) {
-                    console.error(`[!] Failed to delete ${file}:`, e);
+                    console.error(`[!] Failed to delete ${file}:`, error);
                 }
             }
-            this.files.clear();
+        } finally {
+            // Allow a later pass to retry whatever failed.
+            this.isCleaning = false;
         }
     }
 
     /**
-     * Synchronous cleanup for process.exit
-     * Note: fs.unlinkSync should be used here if needed, but 'exit' event limits async ops.
-     * We rely primarily on SIGINT/uncaughtException handlers for thorough cleanup.
+     * Synchronous cleanup for the `exit` event, which cannot await.
      */
     private cleanupSync() {
-        // Node.js exit event doesn't support async operations
-        // Best effort relies on signal handlers above
+        for (const file of this.files) {
+            try {
+                unlinkSync(file);
+            } catch {
+                // Best effort: the process is already terminating.
+            }
+        }
+        this.files.clear();
     }
 }
 
