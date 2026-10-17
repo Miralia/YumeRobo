@@ -1,21 +1,45 @@
 /**
  * External links validation
+ *
+ * Platform detection runs on URLs that a human pastes into an editor, so it
+ * must never be fooled by a URL that merely *contains* a platform's name:
+ * matching a substring would accept `https://evil.tld/?u=imdb.com`,
+ * `https://imdb.com.evil.tld/x` and even `javascript:alert("imdb.com")`,
+ * all of which then get stored as the release's link and rendered as an href.
  */
 
-const SUPPORTED_PLATFORMS: Record<string, RegExp> = {
-    tmdb: /themoviedb\.org/i,
-    imdb: /imdb\.com/i,
-    douban: /douban\.com/i,
-    bangumi: /bgm\.tv|bangumi\.tv/i,
-    letterboxd: /letterboxd\.com/i,
-    rotten_tomatoes: /rottentomatoes\.com/i,
-    anidb: /anidb\.net/i,
-    anilist: /anilist\.co/i,
-    myanimelist: /myanimelist\.net/i,
-    tvdb: /thetvdb\.com/i,
+export type SupportedPlatform =
+    | 'tmdb'
+    | 'imdb'
+    | 'douban'
+    | 'bangumi'
+    | 'letterboxd'
+    | 'rotten_tomatoes'
+    | 'anidb'
+    | 'anilist'
+    | 'myanimelist'
+    | 'tvdb';
+
+/**
+ * Registrable domains per platform. A hostname matches when it is the domain
+ * itself or a subdomain of it (`m.imdb.com` matches `imdb.com`), which is the
+ * only safe way to accept platform subdomains without accepting lookalikes.
+ */
+const PLATFORM_DOMAINS: Record<SupportedPlatform, string[]> = {
+    tmdb: ['themoviedb.org'],
+    imdb: ['imdb.com'],
+    douban: ['douban.com'],
+    bangumi: ['bgm.tv', 'bangumi.tv'],
+    letterboxd: ['letterboxd.com'],
+    rotten_tomatoes: ['rottentomatoes.com'],
+    anidb: ['anidb.net'],
+    anilist: ['anilist.co'],
+    myanimelist: ['myanimelist.net'],
+    tvdb: ['thetvdb.com'],
 };
 
-export type SupportedPlatform = keyof typeof SUPPORTED_PLATFORMS;
+const SUPPORTED_PLATFORMS = Object.keys(PLATFORM_DOMAINS) as SupportedPlatform[];
+
 export type LinkCollectionResult =
     | { status: 'added'; platform: SupportedPlatform; links: Record<string, string> }
     | { status: 'duplicate'; platform: SupportedPlatform; links: Record<string, string> }
@@ -31,10 +55,13 @@ export function collectExternalLinks(
 
     for (const rawLine of editorContent.split(/\r?\n/)) {
         const url = rawLine.trim();
-        if (!url || url.startsWith('#') || !isValidUrl(url)) {
-            if (url && !url.startsWith('#')) skipped += 1;
+        if (!url || url.startsWith('#')) continue;
+
+        if (!isValidUrl(url)) {
+            skipped += 1;
             continue;
         }
+
         const result = addExternalLink(links, url);
         if (result.status === 'added') {
             links = result.links;
@@ -47,43 +74,62 @@ export function collectExternalLinks(
     return { links, added, skipped };
 }
 
+function hostnameMatches(hostname: string, domain: string): boolean {
+    const host = hostname.toLowerCase();
+    return host === domain || host.endsWith(`.${domain}`);
+}
+
 /**
  * Detect platform from URL
  * Returns platform key if supported, null otherwise
  */
 export function detectPlatform(url: string): SupportedPlatform | null {
-    for (const [platform, regex] of Object.entries(SUPPORTED_PLATFORMS)) {
-        if (regex.test(url)) {
-            return platform as SupportedPlatform;
-        }
-    }
-    return null;
+    const parsed = parseHttpUrl(url);
+    if (!parsed) return null;
+
+    return (
+        SUPPORTED_PLATFORMS.find((platform) =>
+            PLATFORM_DOMAINS[platform].some((domain) =>
+                hostnameMatches(parsed.hostname, domain),
+            ),
+        ) ?? null
+    );
 }
 
 /**
- * Check if URL is valid
+ * Only absolute http(s) URLs are link material. `new URL()` alone accepts
+ * `javascript:`, `mailto:`, `data:` and friends.
+ */
+function parseHttpUrl(url: string): URL | null {
+    try {
+        const parsed = new URL(url);
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+        if (!parsed.hostname) return null;
+        return parsed;
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Check if URL is a usable external link
  */
 export function isValidUrl(url: string): boolean {
-    try {
-        new URL(url);
-        return true;
-    } catch {
-        return false;
-    }
+    return parseHttpUrl(url) !== null;
 }
 
 /**
  * Get list of supported platforms
  */
 export function getSupportedPlatforms(): string[] {
-    return Object.keys(SUPPORTED_PLATFORMS);
+    return [...SUPPORTED_PLATFORMS];
 }
 
 export function buildInitialExternalLinks(
     tmdbId: number,
     mediaType: string,
 ): Record<string, string> {
-    if (tmdbId <= 0) {
+    if (!Number.isFinite(tmdbId) || tmdbId <= 0) {
         return {};
     }
 
