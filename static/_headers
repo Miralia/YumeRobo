@@ -13,26 +13,35 @@
 /fonts/*
   Cache-Control: public, max-age=31536000, immutable
 
-# Ensure images are displayed inline
+# Posters are named by a generated asset id, but the card-sized sibling and the
+# OG render are rewritten in place by `backfill-card-posters` /
+# `backfill-social-cards`, so they cannot be immutable. A week is long enough to
+# keep repeat visits cheap and short enough that a regenerated poster lands.
 /posters/*.avif
   Content-Type: image/avif
   Content-Disposition: inline
-  Cache-Control: public, max-age=31536000, immutable
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
 
 /posters/*.jpg
   Content-Type: image/jpeg
   Content-Disposition: inline
-  Cache-Control: public, max-age=31536000, immutable
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
 
 /posters/*.png
   Content-Type: image/png
   Content-Disposition: inline
-  Cache-Control: public, max-age=31536000, immutable
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
 
 /posters/*.webp
   Content-Type: image/webp
   Content-Disposition: inline
-  Cache-Control: public, max-age=31536000, immutable
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
+
+# OG / social images (per release plus the home card)
+/og/*.jpg
+  Content-Type: image/jpeg
+  Content-Disposition: inline
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
 
 # Raw MediaInfo files are content-addressed by hash, immutable
 /mediainfo/*
@@ -44,6 +53,11 @@
 /vendor/yacomp-web/*
   Content-Type: text/javascript; charset=utf-8
   Cache-Control: public, max-age=31536000, immutable
+
+# Comparison sidecars are regenerated in place by `comparison-sync`
+/comparisons/*.json
+  Content-Type: application/json; charset=utf-8
+  Cache-Control: public, max-age=3600
 
 # JSON
 /*.json
