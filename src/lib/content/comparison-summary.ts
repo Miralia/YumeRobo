@@ -4,10 +4,12 @@ export interface ComparisonImageSummarySource {
     height?: number | null;
 }
 
+export interface ComparisonSummaryComparison {
+    images?: Array<ComparisonImageSummarySource | null> | null;
+}
+
 export interface ComparisonCollectionSummarySource {
-    comparisons?: Array<{
-        images?: ComparisonImageSummarySource[];
-    }>;
+    comparisons?: Array<ComparisonSummaryComparison | null> | null;
 }
 
 export interface ComparisonSummary {
@@ -16,31 +18,54 @@ export interface ComparisonSummary {
     maxResolution: string | null;
 }
 
+/**
+ * Strips any number of leading/trailing `(B)`/`(I)`/`(P)` variant markers
+ * ("(P) (B) JPN BD" -> "JPN BD").
+ */
 export function normalizeComparisonNode(value: string): string {
     return value
-        .replace(/^\s*\([BIP]\)\s*/i, "")
-        .replace(/\s*\([BIP]\)\s*$/i, "")
+        .replace(/^(?:\s*\([BIP]\)\s*)+/i, "")
+        .replace(/(?:\s*\([BIP]\)\s*)+$/i, "")
         .trim();
+}
+
+function getImages(
+    comparison: ComparisonSummaryComparison | null | undefined
+): Array<ComparisonImageSummarySource | null> {
+    if (!comparison || typeof comparison !== "object") return [];
+    return Array.isArray(comparison.images) ? comparison.images : [];
+}
+
+/**
+ * Resolutions come from unvalidated JSON, so only real finite numbers count:
+ * `Number()` coercion used to turn `true` and numeric strings into sizes.
+ */
+function toDimension(value: unknown): number | null {
+    return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null;
 }
 
 export function getComparisonSummary(
     collection: ComparisonCollectionSummarySource,
 ): ComparisonSummary {
-    const comparisons = Array.isArray(collection.comparisons)
+    const comparisons = Array.isArray(collection?.comparisons)
         ? collection.comparisons
         : [];
-    const nodes = (comparisons[0]?.images ?? [])
-        .map((image) => normalizeComparisonNode(image.name ?? ""))
-        .filter(Boolean);
 
+    // Node labels come from every comparison (first-seen order), not just the
+    // first one: `comparisonCount` counts them all, so reading only
+    // `comparisons[0]` could make the "A vs B" caption contradict the count.
+    const nodes: string[] = [];
     let largest: { width: number; height: number; area: number } | null = null;
+
     for (const comparison of comparisons) {
-        for (const image of comparison.images ?? []) {
-            const width = Number(image.width);
-            const height = Number(image.height);
-            if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
-                continue;
-            }
+        for (const image of getImages(comparison)) {
+            const name = normalizeComparisonNode(typeof image?.name === "string" ? image.name : "");
+            if (name && !nodes.includes(name)) nodes.push(name);
+
+            const width = toDimension(image?.width);
+            const height = toDimension(image?.height);
+            if (width === null || height === null) continue;
+
             const area = width * height;
             if (!largest || area > largest.area) largest = { width, height, area };
         }

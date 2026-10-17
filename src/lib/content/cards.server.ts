@@ -27,7 +27,10 @@ export function toCardData(release: Release, accent?: string): ReleaseCardData {
 		poster: release.poster,
 		date: release.date,
 		year: release.year,
-		badges: getReleaseBadges(release),
+		// `getReleaseBadges` always returns a non-empty base badge, but a blank
+		// chip must never reach the DOM, so empty/whitespace badges are dropped
+		// defensively here as the last gate before the card renders.
+		badges: getReleaseBadges(release).filter((badge) => badge.trim().length > 0),
 		accent
 	};
 }

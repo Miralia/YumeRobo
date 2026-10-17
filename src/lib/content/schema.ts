@@ -45,6 +45,22 @@ export const TorrentEntrySchema = z.object({
 });
 
 /**
+ * Publication date schema.
+ *
+ * Accepts what the content CLI writes — an ISO 8601 date-time with a `Z`
+ * or numeric offset (e.g. `2026-01-19T10:58:38.626Z`) — plus a bare
+ * `YYYY-MM-DD` date, which some hand-authored entries use. Anything else
+ * (including an unparsable string) is rejected: a wrong date would
+ * silently corrupt the release ordering.
+ */
+export const ReleaseDateSchema = z.union(
+    [z.iso.datetime({ offset: true }), z.iso.date()],
+    {
+        error: 'date must be an ISO 8601 date-time (e.g. 2026-01-19T10:58:38.626Z) or a bare YYYY-MM-DD date'
+    }
+);
+
+/**
  * External links schema
  */
 export const ExternalLinksSchema = z.object({
@@ -72,7 +88,7 @@ export const ReleaseSchema = z.object({
     title: z.string().describe('Primary display title'),
 
     // Date
-    date: z.string().datetime().or(z.string()).describe('Publication date in ISO format'),
+    date: ReleaseDateSchema.describe('Publication date in ISO format'),
 
     // TMDB integration
     tmdb_id: z.number().optional().describe('TMDB movie/TV ID'),
@@ -128,53 +144,58 @@ export function safeValidateRelease(
 }
 
 /**
+ * Fallback badge per media type. Every value is non-empty so a badge chip
+ * can never render blank (the previous `switch` only handled movie/tv and
+ * produced an empty string for tva/ova/ona/special).
+ */
+const MEDIA_TYPE_BADGES: Record<MediaType, string> = {
+    movie: 'Movie',
+    tv: 'TV',
+    tva: 'TVA',
+    ova: 'OVA',
+    ona: 'ONA',
+    special: 'SP'
+};
+
+/**
  * Get display badge(s) for a release
  * Returns array of badge strings to display
+ *
+ * Season 0 is a real season (special/bonus season), so it renders as `S00`
+ * in every branch; only a missing season falls back to the type label.
  */
 export function getReleaseBadges(release: Release): string[] {
     const badges: string[] = [];
-    let baseBadge = '';
+
+    const seasonBadge = typeof release.season === 'number'
+        ? `S${release.season.toString().padStart(2, '0')}`
+        : null;
 
     // Determine Base Badge
     // Priority: special_type > media_type
+    let baseBadge: string;
     if (release.special_type) {
-        switch (release.special_type) {
-            case 'tva': baseBadge = release.season ? `S${release.season.toString().padStart(2, '0')}` : 'TVA'; break;
-            case 'ova': baseBadge = 'OVA'; break;
-            case 'ona': baseBadge = 'ONA'; break;
-            case 'special': baseBadge = 'SP'; break;
+        const typeBadge = release.special_type === 'special'
+            ? 'SP'
+            : release.special_type.toUpperCase();
+
+        if (release.special_type === 'tva') {
+            // Standard TVA: the season is the whole badge.
+            baseBadge = seasonBadge ?? typeBadge;
+        } else {
+            // e.g. "OVA S01" when a season is known, plain "OVA" otherwise.
+            baseBadge = seasonBadge ? `${typeBadge} ${seasonBadge}` : typeBadge;
         }
     } else {
-        switch (release.media_type) {
-            case 'movie': baseBadge = 'Movie'; break;
-            case 'tv':
-                baseBadge = release.season ? `S${release.season.toString().padStart(2, '0')}` : 'TV';
-                break;
-        }
-    }
-
-    // Logic for combined Special Type + Season (Requested by user)
-    // If Special Type is present AND Season is present, combine them?
-    // User logic: "Movie can be OVA". "TV can be OVA".
-    // If Season exists, it usually implies Sxx.
-    // If Special Type exists (e.g. OVA), we might want "OVA Sxx".
-    if (release.season) {
-        const seasonStr = `S${release.season.toString().padStart(2, '0')}`;
-        // If special type set, use it as prefix unless it's TVA (standard Sxx)
-        if (release.special_type && release.special_type !== 'tva') {
-            const typeStr = release.special_type === 'special' ? 'SP' : release.special_type.toUpperCase();
-            baseBadge = `${typeStr} ${seasonStr}`;
-        } else {
-            // Standard TV/TVA Sxx
-            baseBadge = seasonStr;
-        }
+        baseBadge = seasonBadge ?? MEDIA_TYPE_BADGES[release.media_type];
     }
 
     badges.push(baseBadge);
 
-    // If custom badge_label is set, append it as suffix
+    // If custom badge_label is set, append it as suffix.
+    // The filter keeps a leading space out of the badge if the base is ever empty.
     if (release.badge_label) {
-        badges[0] = `${badges[0]} ${release.badge_label}`;
+        badges[0] = [badges[0], release.badge_label].filter(Boolean).join(' ');
     }
 
     // Add Fin badge if complete

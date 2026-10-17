@@ -13,10 +13,53 @@ export interface PosterMeta {
 	blur: string;
 }
 
-const modules = import.meta.glob('./poster-meta.json', { eager: true });
-const metaMap: Record<string, PosterMeta> =
-	(Object.values(modules)[0] as { default?: Record<string, PosterMeta> } | undefined)?.default ??
-	{};
+/**
+ * Validates one sidecar entry. A structural change to the generator must not
+ * silently degrade every accent/blur to `undefined` (the old code cast the
+ * whole file and trusted it), so entries that do not match the shape are
+ * dropped here and `getPosterMeta` then reports "no metadata" for them.
+ */
+function isPosterMeta(value: unknown): value is PosterMeta {
+	if (typeof value !== 'object' || value === null) return false;
+	const entry = value as Partial<PosterMeta>;
+	return typeof entry.accent === 'string' && typeof entry.blur === 'string';
+}
+
+/**
+ * Keeps only the well-formed entries of a parsed sidecar.
+ * Exported so the shape handling is testable without the bundler.
+ */
+export function buildPosterMetaMap(raw: unknown): Record<string, PosterMeta> {
+	const map: Record<string, PosterMeta> = {};
+	if (typeof raw !== 'object' || raw === null) return map;
+
+	for (const [key, value] of Object.entries(raw)) {
+		if (isPosterMeta(value)) map[key] = value;
+	}
+
+	return map;
+}
+
+let metaMap: Record<string, PosterMeta> | null = null;
+
+/**
+ * Loads and validates the sidecar once per process.
+ *
+ * `import.meta.glob` is called directly and lazily: Vite replaces that call
+ * with the inlined module map at build time, so a runtime guard such as
+ * `typeof import.meta.glob === 'function'` would evaluate to false inside the
+ * bundle and silently drop the whole sidecar.
+ */
+function getMetaMap(): Record<string, PosterMeta> {
+	if (metaMap === null) {
+		const modules = import.meta.glob('./poster-meta.json', { eager: true });
+		metaMap = buildPosterMetaMap(
+			(Object.values(modules)[0] as { default?: unknown } | undefined)?.default
+		);
+	}
+
+	return metaMap;
+}
 
 /**
  * Look up metadata for a poster path like `/posters/{assetId}.avif`.
@@ -24,5 +67,5 @@ const metaMap: Record<string, PosterMeta> =
 export function getPosterMeta(posterPath: string): PosterMeta | undefined {
 	const match = posterPath.match(/\/posters\/([^/]+)\.avif$/i);
 	if (!match) return undefined;
-	return metaMap[match[1]];
+	return getMetaMap()[match[1]];
 }

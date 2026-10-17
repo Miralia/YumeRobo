@@ -42,6 +42,16 @@ test("includes Fin badge for completed series", () => {
 	assert.deepEqual(toCardData(tv).badges, ["S01", "Fin"]);
 });
 
+test("never projects an empty badge chip", () => {
+	const tva: Release = { ...release, media_type: "tva" };
+	assert.deepEqual(toCardData(tva).badges, ["TVA"]);
+
+	for (const badge of toCardData({ ...tva, badge_label: "Extras" }).badges) {
+		assert.notEqual(badge, "");
+		assert.equal(badge, badge.trim());
+	}
+});
+
 const cards: ReleaseCardData[] = [
 	toCardData(release),
 	toCardData({ ...release, slug: "def67890", title: "Ghost in the Shell" }),

@@ -1,10 +1,16 @@
 import type { Release } from "./schema";
 
+/**
+ * Deterministic codec label order, most modern first. Torrent order must not
+ * leak into the social description, so the collected labels are re-sorted
+ * through this list rather than returned in discovery order.
+ */
+const CODEC_PRIORITY: Array<"x264" | "x265" | "AV1"> = ["AV1", "x265", "x264"];
+
 export function getReleaseCodecLabels(
     release: Pick<Release, "torrents">,
 ): Array<"x264" | "x265" | "AV1"> {
-    const labels: Array<"x264" | "x265" | "AV1"> = [];
-    const seen = new Set<string>();
+    const seen = new Set<"x264" | "x265" | "AV1">();
 
     for (const torrent of release.torrents) {
         const text = [
@@ -20,12 +26,11 @@ export function getReleaseCodecLabels(
         for (const [label, pattern] of candidates) {
             if (!seen.has(label) && pattern.test(text)) {
                 seen.add(label);
-                labels.push(label);
             }
         }
     }
 
-    return labels;
+    return CODEC_PRIORITY.filter((label) => seen.has(label));
 }
 
 export function getDetailSocialDescription(
@@ -40,8 +45,17 @@ export function getDetailSocialDescription(
     ].filter(Boolean).join(" · ");
 }
 
+/**
+ * Maps a local poster path to its social (Open Graph) image.
+ *
+ * Only a plain `/posters/<id>.avif` path maps to `/og/<id>.jpg`, matched
+ * case-insensitively. Anything else — another extension, an absolute URL, a
+ * path carrying a query string — is returned unchanged (the documented
+ * fallback) so callers such as `SocialMeta` still receive a usable string
+ * instead of an undefined image.
+ */
 export function getReleaseSocialImagePath(posterPath: string): string {
-    return posterPath
-        .replace(/\.avif$/i, ".jpg")
-        .replace(/^\/posters\//, "/og/");
+    const match = posterPath.match(/^\/posters\/([^/]+)\.avif$/i);
+    if (!match) return posterPath;
+    return `/og/${match[1]}.jpg`;
 }
