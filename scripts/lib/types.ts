@@ -6,13 +6,21 @@ export interface TorrentEntry {
     name: string;
     telegram_label?: string;     // Manual Telegram link label for new releases
     display_name?: string;       // Legacy Telegram display name
-    files: TorrentFile[];
+    files: Array<TorrentFile | string>;
     mediainfo: MediaInfoEntry[]; // 内嵌 MediaInfo
 }
 
+/**
+ * One entry of a torrent's file list.
+ *
+ * `name` (not `path`) is the persisted shape and the shape the zod schema in
+ * `src/lib/content/schema.ts` validates. The CLI used to model this as `path`
+ * while the generator emitted `name`, so editing a release without re-entering
+ * its torrents rewrote every file name as an empty string.
+ */
 export interface TorrentFile {
-    path: string;
-    size: number;
+    name: string;
+    size?: number;
 }
 
 export interface MediaInfoEntry {
@@ -23,6 +31,12 @@ export interface MediaInfoEntry {
 export interface SpecEntry {
     title: string;
     content: string;
+    /**
+     * Optional nested rows. Not produced by the BBCode parser, but present in
+     * release files and consumed by the detail page and the comparison
+     * extractor, so the code generator has to round-trip it.
+     */
+    subitems?: Array<{ title: string; content: string }>;
 }
 
 export interface ReleaseData {
