@@ -48,5 +48,9 @@ export function getCliUsage(): string {
 		"  backfill-social-cards Generate social cards for the home page and all releases",
 		"  deploy               Build and deploy to Cloudflare Pages",
 		"  help                 Show this help message",
+		"",
+		"Standalone scripts (not part of this CLI):",
+		"  bun run backfill:links [--dry-run]  Add auto-resolved external links to releases",
+		"  bun run backfill:comparisons [--force]",
 	].join("\n");
 }

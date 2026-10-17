@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { removePosterMeta } from "./poster-meta";
 import type { ReleaseData } from "./types";
 
 export type ManagedAssetKind = "poster" | "og" | "mediainfo";
@@ -18,7 +19,6 @@ export interface ManagedAssetIssue {
 	kind: ManagedAssetKind;
 	path: string;
 	releaseSlug?: string;
-	expectedPath?: string;
 	detail?: string;
 }
 
@@ -41,7 +41,6 @@ export interface ManagedAssetAuditReport {
 	missingReferences: ManagedAssetIssue[];
 	orphanedFiles: ManagedAssetIssue[];
 	malformedReferences: ManagedAssetIssue[];
-	derivedMismatches: ManagedAssetIssue[];
 }
 
 const STATIC_DIR = "static";
@@ -49,6 +48,13 @@ const POSTERS_DIR = "posters";
 const OG_DIR = "og";
 const MEDIAINFO_DIR = "mediainfo";
 const MANAGED_ASSET_KINDS: ManagedAssetKind[] = ["poster", "og", "mediainfo"];
+
+/**
+ * Assets that belong to the site itself rather than to a release. The audit
+ * treats them as referenced, and cleanup must never delete them even if a
+ * release happens to derive the same path.
+ */
+const PROTECTED_ASSET_KEYS = new Set<string>([`og:${OG_DIR}/home.jpg`]);
 
 function sortIssues(issues: ManagedAssetIssue[]): ManagedAssetIssue[] {
 	return issues.sort((a, b) =>
@@ -283,7 +289,6 @@ function toReferenceMap(
 ) {
 	const refs = new Map<string, ManagedAssetReference[]>();
 	const malformedReferences: ManagedAssetIssue[] = [];
-	const derivedMismatches: ManagedAssetIssue[] = [];
 	const homeSocialCard = createAssetEntry(rootDir, "og", `${OG_DIR}/home.jpg`);
 	refs.set(`og:${homeSocialCard.path}`, [homeSocialCard]);
 
@@ -302,7 +307,6 @@ function toReferenceMap(
 	return {
 		referencedAssets: refs,
 		malformedReferences: sortIssues(malformedReferences),
-		derivedMismatches: sortIssues(derivedMismatches),
 	};
 }
 
@@ -313,8 +317,7 @@ export async function auditManagedAssets({
 	releases: Array<Pick<ReleaseData, "slug" | "poster" | "torrents">>;
 	rootDir?: string;
 }): Promise<ManagedAssetAuditReport> {
-	const { referencedAssets, malformedReferences, derivedMismatches } =
-		toReferenceMap(releases, rootDir);
+	const { referencedAssets, malformedReferences } = toReferenceMap(releases, rootDir);
 
 	const [posterFiles, ogFiles, mediainfoFiles] = await Promise.all([
 		listManagedFiles(rootDir, "poster"),
@@ -347,7 +350,6 @@ export async function auditManagedAssets({
 		missingReferences: sortIssues(missingReferences),
 		orphanedFiles: sortIssues(orphanedFiles),
 		malformedReferences,
-		derivedMismatches: sortIssues(derivedMismatches),
 	};
 }
 
@@ -355,8 +357,7 @@ export function hasAuditIssues(report: ManagedAssetAuditReport): boolean {
 	return (
 		report.missingReferences.length > 0 ||
 		report.orphanedFiles.length > 0 ||
-		report.malformedReferences.length > 0 ||
-		report.derivedMismatches.length > 0
+		report.malformedReferences.length > 0
 	);
 }
 
@@ -369,11 +370,9 @@ export async function validateReleaseAssets({
 }): Promise<{
 	missingReferences: ManagedAssetIssue[];
 	malformedReferences: ManagedAssetIssue[];
-	derivedMismatches: ManagedAssetIssue[];
 }> {
 	const { issues, entries } = getReleaseAssetReferences(release, rootDir);
 	const missingReferences: ManagedAssetIssue[] = [];
-	const derivedMismatches: ManagedAssetIssue[] = [];
 
 	for (const entry of entries) {
 		try {
@@ -389,8 +388,7 @@ export async function validateReleaseAssets({
 
 	return {
 		missingReferences: sortIssues(missingReferences),
-		malformedReferences: issues,
-		derivedMismatches: sortIssues(derivedMismatches),
+		malformedReferences: sortIssues(issues),
 	};
 }
 
@@ -427,7 +425,12 @@ export function planReleaseAssetCleanup({
 	const toKeep: ManagedAssetCleanupKeep[] = [];
 
 	for (const ref of ownedRefs) {
-		if (remainingRefSet.has(refKey(ref))) {
+		if (PROTECTED_ASSET_KEYS.has(refKey(ref))) {
+			toKeep.push({
+				asset: ref,
+				reason: "site-owned asset",
+			});
+		} else if (remainingRefSet.has(refKey(ref))) {
 			toKeep.push({
 				asset: ref,
 				reason: "still referenced by another release",
@@ -462,7 +465,12 @@ export function planReleaseAssetDiffCleanup({
 	const toKeep: ManagedAssetCleanupKeep[] = [];
 
 	for (const ref of removedRefs) {
-		if (sharedRefSet.has(refKey(ref))) {
+		if (PROTECTED_ASSET_KEYS.has(refKey(ref))) {
+			toKeep.push({
+				asset: ref,
+				reason: "site-owned asset",
+			});
+		} else if (sharedRefSet.has(refKey(ref))) {
 			toKeep.push({
 				asset: ref,
 				reason: "still referenced by another release",
@@ -475,6 +483,13 @@ export function planReleaseAssetDiffCleanup({
 	return { delete: sortRefs(toDelete), keep: sortKeeps(toKeep) };
 }
 
+/**
+ * Delete every asset in the plan.
+ *
+ * This is the single choke point for asset deletion, so it is also where the
+ * generated poster sidecar is kept in sync: deleting a poster without dropping
+ * its `poster-meta.json` entry leaks an entry per removed poster forever.
+ */
 export async function executeCleanupPlan(
 	plan: ManagedAssetCleanupPlan,
 ): Promise<ManagedAssetCleanupResult> {
@@ -486,6 +501,7 @@ export async function executeCleanupPlan(
 		try {
 			await fs.unlink(asset.absolutePath);
 			deleted.push(asset);
+			await removePosterMetaForAsset(asset);
 		} catch (error) {
 			const err = error as NodeJS.ErrnoException;
 			if (err.code === "ENOENT") {
@@ -497,11 +513,28 @@ export async function executeCleanupPlan(
 	}
 
 	return {
-		delete: deleted,
+		delete: sortRefs(deleted),
 		keep: plan.keep,
 		missing: sortRefs(missing),
 		errors,
 	};
+}
+
+/** `posters/<id>.avif` owns a sidecar entry; `<id>.card.avif` does not. */
+async function removePosterMetaForAsset(
+	asset: ManagedAssetReference,
+): Promise<void> {
+	if (asset.kind !== "poster") return;
+	const basename = path.posix.basename(asset.path);
+	if (basename.endsWith(".card.avif")) return;
+	if (!basename.endsWith(".avif")) return;
+
+	try {
+		await removePosterMeta(basename.slice(0, -".avif".length));
+	} catch (error) {
+		// A stale sidecar entry is cosmetic; never fail a deletion over it.
+		console.error(`[!] Failed to update poster metadata: ${error}`);
+	}
 }
 
 export async function pruneOrphanedAssets({
@@ -512,11 +545,25 @@ export async function pruneOrphanedAssets({
 	rootDir?: string;
 }): Promise<ManagedAssetCleanupResult> {
 	const plan: ManagedAssetCleanupPlan = {
-		delete: orphanedFiles.map((issue) =>
-			createAssetEntry(rootDir, issue.kind, issue.path),
-		),
+		delete: [],
 		keep: [],
 	};
+
+	for (const issue of orphanedFiles) {
+		// The audit feeds this list, but the function is exported: re-validate
+		// every path so a crafted entry can never escape `static/`.
+		const normalized = normalizeStaticRelativePath(issue.path);
+		if (!normalized) {
+			continue;
+		}
+		const entry = createAssetEntry(rootDir, issue.kind, normalized);
+		if (PROTECTED_ASSET_KEYS.has(refKey(entry))) {
+			plan.keep.push({ asset: entry, reason: "site-owned asset" });
+			continue;
+		}
+		plan.delete.push(entry);
+	}
+
 	return executeCleanupPlan(plan);
 }
 
@@ -528,7 +575,9 @@ function countIssuesByKind(issues: ManagedAssetIssue[]): Record<ManagedAssetKind
 	};
 
 	for (const issue of issues) {
-		counts[issue.kind] += 1;
+		if (issue.kind in counts) {
+			counts[issue.kind] += 1;
+		}
 	}
 
 	return counts;
@@ -544,7 +593,9 @@ function countRefsByKind(
 	};
 
 	for (const ref of refs) {
-		counts[ref.kind] += 1;
+		if (ref.kind in counts) {
+			counts[ref.kind] += 1;
+		}
 	}
 
 	return counts;
@@ -564,7 +615,6 @@ export function formatAuditReport(report: ManagedAssetAuditReport): string {
 		["missing_references", report.missingReferences],
 		["orphaned_files", report.orphanedFiles],
 		["malformed_references", report.malformedReferences],
-		["derived_mismatches", report.derivedMismatches],
 	];
 	const allIssues = sections.flatMap(([, issues]) => issues);
 	const total = allIssues.length;
@@ -579,7 +629,6 @@ export function formatAuditReport(report: ManagedAssetAuditReport): string {
 		for (const issue of issues) {
 			const parts = [`kind=${issue.kind}`, `path=${issue.path}`];
 			if (issue.releaseSlug) parts.push(`release=${issue.releaseSlug}`);
-			if (issue.expectedPath) parts.push(`expected=${issue.expectedPath}`);
 			if (issue.detail) parts.push(`detail=${issue.detail}`);
 			lines.push(`- ${parts.join(" ")}`);
 		}
