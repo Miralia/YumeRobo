@@ -69,6 +69,42 @@ describe("slow.pics comparison metadata", () => {
     expect(candidates[0].url).toBe("https://slow.pics/c/ABC123");
   });
 
+  test("finds a link that reached the release file as raw BBCode", () => {
+    // Specs are pasted as `[quote=Info][pre]…[/pre][/quote]`; if the BBCode is
+    // stored unconverted the link is plain text, and it must still be found.
+    const candidates = extractSlowPicsCandidates([
+      {
+        content:
+          "Comparisons.....: [url=https://slow.pics/c/8VZ9WSZy]JPN BD vs NotRO[/url]",
+      },
+    ]);
+
+    expect(candidates).toEqual([
+      { key: "8VZ9WSZy", url: "https://slow.pics/c/8VZ9WSZy", label: "8VZ9WSZy" },
+    ]);
+  });
+
+  test("prefers the anchor label over the key for the same comparison", () => {
+    const candidates = extractSlowPicsCandidates([
+      {
+        content: `Bare https://slow.pics/c/abc123 and <a href="https://slow.pics/c/abc123">Source | Encode</a>`,
+      },
+    ]);
+
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0].label).toBe("Source | Encode");
+  });
+
+  test("does not match a lookalike host in plain text", () => {
+    const candidates = extractSlowPicsCandidates([
+      {
+        content: "See notslow.pics/c/AAAAAA and https://slow.pics.evil.example/c/BBBBBB",
+      },
+    ]);
+
+    expect(candidates).toEqual([]);
+  });
+
   test("validates collection identity and grid shape", () => {
     expect(validateSlowPicsCollection(collection(), "abc123").comparisons).toHaveLength(1);
     expect(validateSlowPicsCollection(collection(), "row1").key).toBe("abc123");

@@ -111,12 +111,43 @@ function candidatesFromHtml(html: string): SlowPicsCandidate[] {
   return candidates;
 }
 
+/**
+ * Matches a slow.pics comparison URL anywhere in the spec source, not just in
+ * an `href`. A spec pasted as raw BBCode can reach the release file with its
+ * markup intact, and a hand-written spec may contain a bare URL; either way the
+ * link must still be discoverable. The lookbehind stops a lookalike host such
+ * as `notslow.pics` from matching, and an explicit `http://` prefix is rejected
+ * like it is for anchors.
+ */
+const SLOWPICS_URL_RE =
+  /(?<![\w.-])(https?:\/\/)?(?:www\.)?slow\.pics\/c\/([A-Za-z0-9]+)/gi;
+
+function candidatesFromSource(source: string): SlowPicsCandidate[] {
+  const candidates: SlowPicsCandidate[] = [];
+  for (const match of source.matchAll(SLOWPICS_URL_RE)) {
+    const scheme = match[1];
+    if (scheme && scheme.toLowerCase() !== "https://") continue;
+    candidates.push({
+      key: match[2],
+      url: `${SLOWPICS_BASE_URL}/c/${match[2]}`,
+      label: match[2],
+    });
+  }
+  return candidates;
+}
+
 export function extractSlowPicsCandidates(specs: ComparisonSpec[] | undefined): SlowPicsCandidate[] {
   const unique = new Map<string, SlowPicsCandidate>();
   for (const spec of specs ?? []) {
     for (const html of [spec.content, ...(spec.subitems ?? []).map((item) => item.content)]) {
       if (!html) continue;
+      // Anchors first: they carry the human-readable label and define the
+      // order the operator sees. The source scan only appends links the anchor
+      // walk cannot see, so nothing that already worked changes position.
       for (const candidate of candidatesFromHtml(html)) unique.set(candidate.key, candidate);
+      for (const candidate of candidatesFromSource(html)) {
+        if (!unique.has(candidate.key)) unique.set(candidate.key, candidate);
+      }
     }
   }
   return [...unique.values()];

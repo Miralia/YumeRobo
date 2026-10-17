@@ -897,8 +897,8 @@ async function stepTelegram(release: ReleaseData): Promise<void> {
             photoSource = imageInput;
             break;
         } else {
-            // No shell escaping to undo: the prompt returns the typed path.
-            photoSource = imageInput.trim();
+            // The prompt already resolved any drag-and-drop shell escaping.
+            photoSource = imageInput;
             if (!isSupportedFormat(photoSource)) {
                 console.log(`[!] Unsupported format`);
                 continue;

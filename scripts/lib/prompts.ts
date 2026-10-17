@@ -2,6 +2,7 @@
  * Interactive Prompts (Simplified, no emoji)
  */
 import { input, select, confirm, editor } from '@inquirer/prompts';
+import { hasExtension, resolveInputPath } from './input-path';
 import type { ReleaseData } from './types';
 
 /**
@@ -90,9 +91,8 @@ export async function promptPoster(): Promise<string> {
         validate: (val) => !!val || 'Poster is required'
     });
 
-    // inquirer does not shell-escape input, so a pasted path must be used
-    // verbatim (unescaping backslashes here corrupted Windows-style paths).
-    return result.trim();
+    // A local path may arrive shell-escaped from a drag-and-drop.
+    return method === 'local' ? resolveInputPath(result) : result.trim();
 }
 
 /** Prompt for a manual Telegram MediaInfo link label. */
@@ -115,10 +115,12 @@ export async function promptLinksEditor(defaultContent?: string): Promise<string
  * Prompt for Telegram image (file path or URL)
  */
 export async function promptTelegramImage(): Promise<string> {
-    return input({
+    const raw = await input({
         message: 'Telegram image (file path or URL):',
         validate: (val) => !!val.trim() || 'Image is required for Telegram'
     });
+    // URLs pass through untouched; a dropped file path is unescaped.
+    return resolveInputPath(raw);
 }
 
 /**
@@ -129,13 +131,13 @@ export async function promptTorrentPath(): Promise<string> {
         message: 'Torrent file path (.torrent):',
         validate: (val) => {
             if (!val) return 'Path is required';
-            // Check extension on the trimmed path; inquirer does not shell-escape.
-            const clean = val.trim();
-            if (!clean.endsWith('.torrent')) return 'Must be a .torrent file';
+            // Validate every interpretation: a dropped path can arrive quoted,
+            // in which case the raw input does not end with `.torrent`.
+            if (!hasExtension(val, '.torrent')) return 'Must be a .torrent file';
             return true;
         }
     });
-    return raw.trim();
+    return resolveInputPath(raw);
 }
 
 /**

@@ -55,9 +55,27 @@ describe("parseBBCodeSpecs", () => {
 		expect(html).not.toContain("[/quote]");
 	});
 
-	test("keeps [code] bodies literal and unparsed", () => {
-		const html = specContent("[quote=Log]\n[code][b]not bold[/b] <tag>[/code]\n[/quote]");
-		expect(html).toBe("[b]not bold[/b] &lt;tag&gt;");
+	test("treats [code]/[pre] as wrappers so links inside them survive", () => {
+		// Specs are pasted as one `[quote=Info][pre]…[/pre][/quote]` block with
+		// the slow.pics link written as `[url=…]`, so a literal code body would
+		// silently drop every comparison link.
+		const html = specContent(
+			"[quote=Info]\n[pre]Comparisons.....: [url=https://slow.pics/c/8VZ9WSZy]JPN BD vs NotRO[/url][/pre]\n[/quote]",
+		);
+		expect(html).toContain('href="https://slow.pics/c/8VZ9WSZy"');
+		expect(html).toContain(">JPN BD vs NotRO</a>");
+		expect(html).not.toContain("[pre]");
+		expect(html).not.toContain("[/pre]");
+	});
+
+	test("keeps text inside a code block escaped", () => {
+		const html = specContent("[quote=Log]\n[code]a < b & c[/code]\n[/quote]");
+		expect(html).toBe("a &lt; b &amp; c");
+	});
+
+	test("leaves a bracketed non-tag like [MTeam] as text", () => {
+		const html = specContent("[quote=Info]\nSource.....: Shochiku JPN Blu-ray [MTeam]\n[/quote]");
+		expect(html).toBe("Source.....: Shochiku JPN Blu-ray [MTeam]");
 	});
 
 	test("handles nested inline tags inside a link label", () => {

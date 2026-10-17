@@ -9,8 +9,11 @@
  *  - link targets must be absolute http(s) URLs (no `javascript:`/`data:`),
  *  - opening and closing tags are matched, so a bare `[quote]` can never emit
  *    an unbalanced `</div>`,
- *  - `[code]`/`[pre]` bodies are emitted as literal escaped text and are not
- *    re-parsed as BBCode.
+ *  - `[code]`/`[pre]` are layout wrappers (they carry no styling of their own
+ *    and are dropped), so BBCode inside them — notably the `[url=...]` used for
+ *    the slow.pics comparison link — is still converted. Specs are usually
+ *    pasted as one `[quote=Info][pre]…[/pre][/quote]` block, so treating those
+ *    bodies as literal text would silently drop every comparison link.
  */
 import type { SpecEntry } from './types';
 
@@ -84,21 +87,6 @@ function parseNodes(input: string): BbNode[] {
         lastIndex = match.index + raw.length;
 
         if (!closing) {
-            if (tag === 'code' || tag === 'pre') {
-                // Code bodies are literal: capture the raw source up to the
-                // matching close tag instead of parsing BBCode inside it, so
-                // `[code][b]x[/b][/code]` keeps its brackets.
-                const closeToken = `[/${tag}]`;
-                const closeIndex = input.toLowerCase().indexOf(closeToken, lastIndex);
-                const end = closeIndex === -1 ? input.length : closeIndex;
-                if (end > lastIndex) {
-                    sink().push({ type: 'text', value: input.slice(lastIndex, end) });
-                }
-                lastIndex = closeIndex === -1 ? input.length : closeIndex + closeToken.length;
-                TAG_RE.lastIndex = lastIndex;
-                continue;
-            }
-
             stack.push({ tag, value, children: [] });
             continue;
         }
@@ -162,9 +150,9 @@ function renderNode(node: BbNode): string {
             return `<s>${renderNodes(node.children)}</s>`;
         case 'code':
         case 'pre':
-            // Only reachable for an unbalanced `[code]`; balanced bodies are
-            // captured as literal text by the tokenizer.
-            return escapeHtml(collectText(node.children));
+            // Layout wrappers with no styling of their own; their contents are
+            // converted normally so links inside them survive.
+            return renderNodes(node.children);
         case 'img':
             return '';
         case 'url': {
