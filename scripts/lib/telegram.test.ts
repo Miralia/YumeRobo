@@ -38,6 +38,28 @@ async function makeMediaInfoRoot(fixtures: Record<string, string>): Promise<stri
 }
 
 describe('buildCaption', () => {
+    test('bolds the title with the MarkdownV2 delimiter, not legacy **', async () => {
+        // The send calls set parse_mode=MarkdownV2, where bold is `*text*`;
+        // `**text**` is legacy Markdown and is not a valid entity there.
+        const release = makeRelease([]);
+        release.title = 'Tokyo Taxi';
+        release.season = 2;
+
+        const caption = await buildCaption(release, '', 'https://example.com');
+
+        expect(caption.startsWith('*Tokyo Taxi S02*\n')).toBe(true);
+        expect(caption).not.toContain('**');
+    });
+
+    test('escapes MarkdownV2 characters inside the title', async () => {
+        const release = makeRelease([]);
+        release.title = 'A_B (2025)!';
+
+        const caption = await buildCaption(release, '', 'https://example.com');
+
+        expect(caption.split('\n')[0]).toBe('*A\\_B \\(2025\\)\\!*');
+    });
+
     test('combines torrent MediaInfo and Comparisons links on one line in torrent order', async () => {
         const release = makeRelease([
             {

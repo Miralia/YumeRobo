@@ -84,9 +84,10 @@ export async function buildCaption(
 ): Promise<string> {
     const lines: string[] = [];
 
-    // Title + Season (bold)
+    // Title + Season. Bold is a single `*` in MarkdownV2 (the parse mode the
+    // send calls use); `**text**` is legacy Markdown and is not a valid entity.
     const season = release.season ? ` S${String(release.season).padStart(2, '0')}` : '';
-    lines.push(`**${escapeMarkdown(`${release.title}${season}`)}**`);
+    lines.push(`*${escapeMarkdown(`${release.title}${season}`)}*`);
     lines.push('');
 
     // Subtitles - extract from first MediaInfo of first torrent
