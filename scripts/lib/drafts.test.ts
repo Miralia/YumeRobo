@@ -100,3 +100,36 @@ describe("CLI drafts", () => {
 		}
 	});
 });
+
+describe("CLI draft slug validation", () => {
+	test("rejects a slug that would escape the drafts directory", async () => {
+		// Slugs reach these helpers from CLI arguments, so a traversal value
+		// must never be turned into a path.
+		expect(() => getDraftComparisonFilePath("edit", "../../etc/passwd")).toThrow(TypeError);
+		await expect(loadEditDraft("../../etc/passwd")).rejects.toThrow(TypeError);
+		await expect(
+			saveEditDraft({
+				slug: "../../etc/passwd",
+				originalRelease: release,
+				date: release.date,
+			}),
+		).rejects.toThrow(TypeError);
+	});
+
+	test("a corrupt draft slug does not block clearing the draft", async () => {
+		const root = await fs.mkdtemp(path.join(os.tmpdir(), "yumerobo-drafts-"));
+		try {
+			await fs.writeFile(
+				path.join(root, "create.json"),
+				JSON.stringify({ slug: "../../escape" }),
+				"utf8",
+			);
+
+			await clearCreateDraft(root);
+
+			expect(await loadCreateDraft(root)).toBeNull();
+		} finally {
+			await fs.rm(root, { recursive: true, force: true });
+		}
+	});
+});

@@ -24,12 +24,24 @@ import 'dotenv/config';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
-import { exec as execCb } from 'node:child_process';
+import { execFile as execFileCb } from 'node:child_process';
 import { promisify } from 'node:util';
+import { pathToFileURL } from 'node:url';
 import { select } from '@inquirer/prompts';
 import { confirm } from '@inquirer/prompts';
 
-const exec = promisify(execCb);
+const execFile = promisify(execFileCb);
+
+/**
+ * Run a command as an argument vector. Config values from `.env` (project
+ * name, branch) must never reach a shell.
+ */
+const runCommand: CommandRunner = async (file, args) => {
+    const { stdout, stderr } = await execFile(file, args, {
+        maxBuffer: 64 * 1024 * 1024,
+    });
+    return { stdout, stderr };
+};
 
 // Modules
 import {
@@ -75,6 +87,7 @@ import {
     getDeployCommand,
     getDeployPreflightIssues,
     hasDeployPreflightIssues,
+    type CommandRunner,
 } from './lib/deploy';
 import { getCliConfig, getReleaseUrl, getTelegramConfig } from './lib/config';
 import {
@@ -126,6 +139,9 @@ import {
 const RELEASES_DIR = path.join(process.cwd(), 'src/lib/content/releases');
 const STATIC_PATH = path.join(process.cwd(), 'static');
 
+/** Release slugs are hash-shaped; every path built from one is validated. */
+const SLUG_RE = /^[a-z0-9]+$/;
+
 interface ReleaseRecord {
     slug: string;
     data: ReleaseData;
@@ -146,8 +162,7 @@ interface ReleaseMetadataState {
 function hasValidationIssues(result: Awaited<ReturnType<typeof validateReleaseAssets>>): boolean {
     return (
         result.missingReferences.length > 0 ||
-        result.malformedReferences.length > 0 ||
-        result.derivedMismatches.length > 0
+        result.malformedReferences.length > 0
     );
 }
 
@@ -161,8 +176,6 @@ function formatValidationReport(
         ...result.missingReferences.map((issue) => `- kind=${issue.kind} path=${issue.path}`),
         `malformed_references count=${result.malformedReferences.length}`,
         ...result.malformedReferences.map((issue) => `- kind=${issue.kind} path=${issue.path}${issue.detail ? ` detail=${issue.detail}` : ''}`),
-        `derived_mismatches count=${result.derivedMismatches.length}`,
-        ...result.derivedMismatches.map((issue) => `- kind=${issue.kind} path=${issue.path}${issue.expectedPath ? ` expected=${issue.expectedPath}` : ''}${issue.detail ? ` detail=${issue.detail}` : ''}`),
     ].join('\n');
 }
 
@@ -184,7 +197,12 @@ async function loadReleaseRecords(): Promise<ReleaseRecord[]> {
 
         const filePath = path.join(RELEASES_DIR, file);
         try {
-            const mod = await import(filePath);
+            // Cache-bust on mtime: a release rewritten earlier in this process
+            // must be re-read instead of served from the module cache.
+            const { mtimeMs } = await fs.stat(filePath);
+            const mod = await import(
+                `${pathToFileURL(filePath).href}?t=${mtimeMs}`
+            );
             if (mod.release) {
                 records.push({
                     slug: mod.release.slug,
@@ -198,6 +216,82 @@ async function loadReleaseRecords(): Promise<ReleaseRecord[]> {
     }
 
     return records;
+}
+
+/**
+ * Render a release into module source and prove that it parses and exports
+ * before anything touches the real file.
+ *
+ * The CLI overwrites release files in place, so an escaping bug in the
+ * generator (a stray CR, an unquoted key) would otherwise replace a working
+ * release with one that breaks the build.
+ */
+async function buildReleaseModule(release: ReleaseData): Promise<{
+    fileContent: string;
+    previewPath: string;
+}> {
+    const code = generateReleaseCode(release);
+    const fileContent = `import type { Release } from '../schema';
+
+export const release: Release = ${code};
+`;
+
+    const previewPath = path.join(
+        os.tmpdir(),
+        `yumerobo-${release.slug}-${Date.now()}.ts`,
+    );
+    await fs.writeFile(previewPath, fileContent, 'utf-8');
+    tempManager.add(previewPath);
+
+    let exported: unknown;
+    try {
+        const mod = (await import(pathToFileURL(previewPath).href)) as {
+            release?: ReleaseData;
+        };
+        exported = mod.release;
+    } catch (error) {
+        throw new Error(`Generated release module does not parse: ${error}`);
+    }
+
+    if (!exported || typeof exported !== 'object') {
+        throw new Error('Generated release module does not export `release`');
+    }
+
+    return { fileContent, previewPath };
+}
+
+/** Replace the target file atomically, so a crash cannot truncate it. */
+async function commitReleaseModule(
+    targetPath: string,
+    fileContent: string,
+): Promise<void> {
+    const temporary = `${targetPath}.${process.pid}.tmp`;
+    await fs.writeFile(temporary, fileContent, 'utf-8');
+    await fs.rename(temporary, targetPath);
+}
+
+/**
+ * Social cards are derived assets. They are generated after the release file
+ * has already been written, so a failure has to be reported without pretending
+ * the release itself failed.
+ */
+async function generateSocialCards(
+    release: ReleaseData,
+    homePosterPaths: string[],
+): Promise<void> {
+    try {
+        await generateReleaseSocialCard(release);
+    } catch (error) {
+        console.error(`[!] Failed to generate the release social card: ${error}`);
+        process.exitCode = 1;
+    }
+
+    try {
+        await generateHomeSocialCard([...homePosterPaths, release.poster]);
+    } catch (error) {
+        console.error(`[!] Failed to generate the home social card: ${error}`);
+        process.exitCode = 1;
+    }
 }
 
 function toMetadataState(release: ReleaseData): ReleaseMetadataState {
@@ -298,84 +392,91 @@ async function stepMetadata(): Promise<{
     badge_label?: string;
     is_complete?: boolean;
 } | null> {
-    const tmdbId = await promptTMDBId();
-    let metadata: TMDBMetadata | null = null;
+    // Looped rather than recursive: "search again" used to grow the stack.
+    while (true) {
+        const tmdbId = await promptTMDBId();
+        let metadata: TMDBMetadata | null = null;
 
-    if (tmdbId) {
-        let id: number;
-        let type: 'movie' | 'tv' | undefined;
+        if (tmdbId) {
+            let id: number;
+            let type: 'movie' | 'tv' | undefined;
 
-        if (tmdbId.includes('/')) {
-            const parts = tmdbId.split('/');
-            type = parts[0] as 'movie' | 'tv';
-            id = parseInt(parts[1]);
-        } else {
-            id = parseInt(tmdbId);
-        }
-
-        try {
-            const candidates = await getMetadataById(id, type);
-            if (candidates.length === 0) {
-                console.log('[!] TMDB lookup failed: No results found');
-            } else if (candidates.length === 1) {
-                metadata = candidates[0];
+            if (tmdbId.includes('/')) {
+                const parts = tmdbId.split('/');
+                type = parts[0] as 'movie' | 'tv';
+                id = parseInt(parts[1], 10);
             } else {
-                const selectedIndex = await select({
-                    message: 'Multiple results found with this ID. Please select one:',
-                    choices: candidates.map((c, i) => ({
-                        name: formatSearchResult(c),
+                id = parseInt(tmdbId, 10);
+            }
+
+            if (!Number.isFinite(id)) {
+                console.log('[!] TMDB lookup failed: could not read an id from that input');
+            } else {
+                try {
+                    const candidates = await getMetadataById(id, type);
+                    if (candidates.length === 0) {
+                        console.log('[!] TMDB lookup failed: No results found');
+                    } else if (candidates.length === 1) {
+                        metadata = candidates[0];
+                    } else {
+                        const selectedIndex = await select({
+                            message: 'Multiple results found with this ID. Please select one:',
+                            choices: candidates.map((c, i) => ({
+                                name: formatSearchResult(c),
+                                value: i
+                            }))
+                        });
+                        metadata = candidates[selectedIndex];
+                    }
+                } catch (e) {
+                    console.log(`[!] TMDB lookup failed: ${e}`);
+                }
+            }
+        } else {
+            const query = await promptSearchQuery();
+            const results = await searchMulti(query);
+
+            if (results.length === 0) {
+                console.log('[!] No results found');
+            } else {
+                const selected = await select({
+                    message: 'Select result:',
+                    choices: results.map((r, i) => ({
+                        name: formatSearchResult(r),
                         value: i
                     }))
                 });
-                metadata = candidates[selectedIndex];
-            }
-        } catch (e) {
-            console.log(`[!] TMDB lookup failed: ${e}`);
-        }
-    } else {
-        const query = await promptSearchQuery();
-        const results = await searchMulti(query);
 
-        if (results.length === 0) {
-            console.log('[!] No results found');
-        } else {
-            const selected = await select({
-                message: 'Select result:',
-                choices: results.map((r, i) => ({
-                    name: formatSearchResult(r),
-                    value: i
-                }))
-            });
-
-            const result = results[selected];
-            try {
-                if (result.media_type === 'movie') {
-                    metadata = await getMovieMetadata(result.id);
-                } else {
-                    metadata = await getTVMetadata(result.id);
+                const result = results[selected];
+                try {
+                    if (result.media_type === 'movie') {
+                        metadata = await getMovieMetadata(result.id);
+                    } else {
+                        metadata = await getTVMetadata(result.id);
+                    }
+                } catch (e) {
+                    console.log(`[!] Failed to fetch details: ${e}`);
                 }
-            } catch (e) {
-                console.log(`[!] Failed to fetch details: ${e}`);
             }
         }
-    }
 
-    if (metadata) {
-        const refined = await promptRefineMetadata(metadata.media_type, metadata.number_of_seasons);
-        const finalMetadata = {
-            ...metadata,
-            special_type: refined.special_type,
-            season: refined.season,
-            badge_label: refined.badge_label,
-            is_complete: refined.is_complete
-        };
+        if (metadata) {
+            const refined = await promptRefineMetadata(metadata.media_type, metadata.number_of_seasons);
+            const finalMetadata = {
+                ...metadata,
+                special_type: refined.special_type,
+                season: refined.season,
+                badge_label: refined.badge_label,
+                is_complete: refined.is_complete
+            };
 
-        displayMetadata(finalMetadata);
-        const confirmed = await promptConfirmMetadata();
+            displayMetadata(finalMetadata);
+            const confirmed = await promptConfirmMetadata();
 
-        if (confirmed) {
-            return finalMetadata;
-        } else {
+            if (confirmed) {
+                return finalMetadata;
+            }
+
             const action = await select({
                 message: 'What to do?',
                 choices: [
@@ -384,23 +485,11 @@ async function stepMetadata(): Promise<{
                 ]
             });
 
-            if (action === 'retry') {
-                return stepMetadata();
-            }
-
-            const manual = await promptManualMetadata();
-            const refinedManual = await promptRefineMetadata(manual.media_type);
-            return {
-                ...manual,
-                tmdb_id: 0,
-                special_type: refinedManual.special_type,
-                season: refinedManual.season,
-                badge_label: refinedManual.badge_label,
-                is_complete: refinedManual.is_complete
-            };
+            if (action === 'retry') continue;
+        } else {
+            console.log('[!] Falling back to manual entry');
         }
-    } else {
-        console.log('[!] Falling back to manual entry');
+
         const manual = await promptManualMetadata();
         const refinedManual = await promptRefineMetadata(manual.media_type);
         return {
@@ -808,7 +897,8 @@ async function stepTelegram(release: ReleaseData): Promise<void> {
             photoSource = imageInput;
             break;
         } else {
-            photoSource = imageInput.trim().replace(/\\\\(.)/g, '$1');
+            // No shell escaping to undo: the prompt returns the typed path.
+            photoSource = imageInput.trim();
             if (!isSupportedFormat(photoSource)) {
                 console.log(`[!] Unsupported format`);
                 continue;
@@ -988,21 +1078,9 @@ async function create() {
             is_complete: metadata.is_complete
         };
 
-        const codeBlock = generateReleaseCode(releaseData);
-        // Clean up formatting: ensure it's a clean object literal
-        const cleanCode = codeBlock.trim().replace(/,$/, '');
+        const { fileContent, previewPath } = await buildReleaseModule(releaseData);
 
-        // Generate full file content
-        const fileContent = `import type { Release } from '../schema';
-
-export const release: Release = ${cleanCode};
-`;
-
-        const tempFile = path.join(os.tmpdir(), `yumerobo-${slug}.ts`);
-        await fs.writeFile(tempFile, fileContent, 'utf-8');
-        tempManager.add(tempFile);
-
-        console.log(`\n--- Preview (${tempFile}) ---\n`);
+        console.log(`\n--- Preview (${previewPath}) ---\n`);
         console.log(fileContent.slice(0, 500) + '...');
 
         const action = await select({
@@ -1020,11 +1098,12 @@ export const release: Release = ${cleanCode};
 
         if (action === 'confirm') {
             const targetPath = path.join(RELEASES_DIR, `${slug}.ts`);
-            await fs.writeFile(targetPath, fileContent, 'utf-8');
+            await commitReleaseModule(targetPath, fileContent);
+            // The file is on disk, so the draft no longer describes reality.
+            await clearCreateDraft();
             await publishDraftComparison(slug, comparison);
-            await generateReleaseSocialCard(releaseData);
             const homePosterPaths = (await loadReleaseRecords()).map((record) => record.data.poster);
-            await generateHomeSocialCard([...homePosterPaths, releaseData.poster]);
+            await generateSocialCards(releaseData, homePosterPaths);
             const validation = await validateReleaseAssets({ release: releaseData });
             if (hasValidationIssues(validation)) {
                 console.log(`\n[!] Release written to: ${targetPath}`);
@@ -1034,7 +1113,6 @@ export const release: Release = ${cleanCode};
                 return;
             }
             console.log(`\n[+] Release saved to: ${targetPath}`);
-            await clearCreateDraft();
             await stepTelegram(releaseData);
             await tempManager.cleanup();
             break;
@@ -1091,7 +1169,7 @@ async function getReleases() {
     const records = await loadReleaseRecords();
     return records
         .map((record) => ({
-            name: `[${record.data.date.split('T')[0]}] ${record.data.title} (${record.slug})`,
+            name: `[${(record.data.date ?? '').split('T')[0]}] ${record.data.title} (${record.slug})`,
             value: record,
         }))
         .sort((a, b) => b.name.localeCompare(a.name));
@@ -1100,12 +1178,7 @@ async function getReleases() {
 async function edit() {
     console.log('\n=== Edit Release ===\n');
     const records = await loadReleaseRecords();
-    const choices = records
-        .map((record) => ({
-            name: `[${record.data.date.split('T')[0]}] ${record.data.title} (${record.slug})`,
-            value: record,
-        }))
-        .sort((a, b) => b.name.localeCompare(a.name));
+    const choices = await getReleases();
     if (choices.length === 0) {
         console.log('No releases found.');
         return;
@@ -1276,15 +1349,23 @@ async function edit() {
                 specs,
                 links
             };
-            const codeBlock = generateReleaseCode(updatedData);
-            const cleanCode = codeBlock.trim().replace(/,$/, '');
-            const fileContent = `import type { Release } from '../schema';
-
-export const release: Release = ${cleanCode};
-`;
-            await fs.writeFile(filePath, fileContent);
+            const { fileContent } = await buildReleaseModule(updatedData);
+            await commitReleaseModule(filePath, fileContent);
+            // The file on disk is authoritative from here on.
+            await clearEditDraft(slug);
             await publishDraftComparison(slug, comparison);
-            await generateReleaseSocialCard(updatedData);
+
+            const validation = await validateReleaseAssets({ release: updatedData });
+            if (hasValidationIssues(validation)) {
+                // The edit is preserved, but deleting the previous assets now
+                // would destroy the only working copies of them.
+                console.log(`[!] Saved changes to ${filePath}, but asset validation failed`);
+                console.log(formatValidationReport(slug, validation));
+                console.log('[i] Skipped asset cleanup so the previous assets remain available');
+                process.exitCode = 1;
+                return;
+            }
+
             const otherReleases = records
                 .filter((record) => record.slug !== slug)
                 .map((record) => record.data);
@@ -1298,19 +1379,15 @@ export const release: Release = ${cleanCode};
                 console.log(formatCleanupResult(cleanup));
             }
 
-            const validation = await validateReleaseAssets({ release: updatedData });
-            if (hasValidationIssues(validation)) {
-                console.log(`[!] Saved changes to ${filePath}, but asset validation failed`);
-                console.log(formatValidationReport(slug, validation));
-                process.exitCode = 1;
-                return;
-            }
+            await generateSocialCards(
+                updatedData,
+                otherReleases.map((record) => record.poster),
+            );
 
             if (cleanup.errors.length > 0) {
                 process.exitCode = 1;
             }
 
-            await clearEditDraft(slug);
             console.log(`[+] Saved changes to ${filePath}`);
             return;
         }
@@ -1462,8 +1539,7 @@ async function pruneAssets() {
         console.log('[i] No orphaned assets to prune');
         if (
             report.missingReferences.length > 0 ||
-            report.malformedReferences.length > 0 ||
-            report.derivedMismatches.length > 0
+            report.malformedReferences.length > 0
         ) {
             process.exitCode = 1;
         }
@@ -1492,8 +1568,7 @@ async function pruneAssets() {
 
     if (
         report.missingReferences.length > 0 ||
-        report.malformedReferences.length > 0 ||
-        report.derivedMismatches.length > 0
+        report.malformedReferences.length > 0
     ) {
         process.exitCode = 1;
     }
@@ -1587,7 +1662,6 @@ async function backfillCardPosters() {
     const hasPosterRelatedIssues =
         report.missingReferences.some((issue) => issue.kind === 'poster' || issue.kind === 'og') ||
         report.malformedReferences.some((issue) => issue.kind === 'poster' || issue.kind === 'og') ||
-        report.derivedMismatches.some((issue) => issue.kind === 'poster' || issue.kind === 'og') ||
         report.orphanedFiles.some((issue) => issue.kind === 'poster' || issue.kind === 'og');
 
     if (hasPosterRelatedIssues) {
@@ -1598,67 +1672,95 @@ async function backfillCardPosters() {
 async function backfillSocialCards() {
     const records = await loadReleaseRecords();
     let generated = 0;
+    let failed = 0;
 
     for (const record of records) {
-        await generateReleaseSocialCard(record.data);
-        generated += 1;
-        console.log(`[+] ${record.slug}: release social card`);
+        try {
+            await generateReleaseSocialCard(record.data);
+            generated += 1;
+            console.log(`[+] ${record.slug}: release social card`);
+        } catch (error) {
+            failed += 1;
+            console.error(`[!] ${record.slug}: ${error}`);
+        }
     }
-    await generateHomeSocialCard(records.map((record) => record.data.poster));
-    console.log(`[✓] Generated ${generated} release social card(s) and the home card`);
+
+    try {
+        await generateHomeSocialCard(records.map((record) => record.data.poster));
+        console.log(`[✓] Generated ${generated} release social card(s) and the home card`);
+    } catch (error) {
+        failed += 1;
+        console.error(`[!] Home social card failed: ${error}`);
+    }
+
+    if (failed > 0) {
+        process.exitCode = 1;
+    }
 }
 
 async function deleteRelease(slug: string) {
     if (!slug) {
         console.log('[!] Slug required for delete. Usage: bun run cli delete <slug>');
+        process.exitCode = 1;
         return;
     }
+    if (!SLUG_RE.test(slug)) {
+        console.log(`[!] Refusing to delete: "${slug}" is not a valid release slug`);
+        process.exitCode = 1;
+        return;
+    }
+
     const targetPath = path.join(RELEASES_DIR, `${slug}.ts`);
     try {
         await fs.access(targetPath);
-        const records = await loadReleaseRecords();
-        const record = records.find((entry) => entry.slug === slug);
-
-        const shouldDelete = await confirm({ message: `Delete release ${slug}? This cannot be undone.`, default: false });
-        if (!shouldDelete) {
-            return;
-        }
-
-        await fs.unlink(targetPath);
-        console.log(`[+] Deleted ${targetPath}`);
-        const comparisonPath = getComparisonFilePath(slug);
-        if (await deleteStoredComparison(slug)) {
-            console.log(`[+] Deleted ${comparisonPath}`);
-        }
-        await clearReleaseDrafts(slug);
-        console.log(`[+] Cleared CLI drafts for ${slug}`);
-
-        if (!record) {
-            console.log('[!] Could not parse release file, deleted the .ts file only');
-            process.exitCode = 1;
-            return;
-        }
-
-        const remainingReleases = records
-            .filter((entry) => entry.slug !== slug)
-            .map((entry) => entry.data);
-        const cleanupPlan = planReleaseAssetCleanup({
-            release: record.data,
-            remainingReleases,
-        });
-        const cleanup = await executeCleanupPlan(cleanupPlan);
-        if (shouldPrintCleanupSummary(cleanup)) {
-            console.log(formatCleanupResult(cleanup));
-        }
-        if (cleanup.errors.length > 0) {
-            process.exitCode = 1;
-        }
-
-        console.log(`[✓] Release ${slug} fully deleted`);
     } catch {
         console.log(`[!] Release ${slug} not found`);
         process.exitCode = 1;
+        return;
     }
+
+    const records = await loadReleaseRecords();
+    const record = records.find((entry) => entry.slug === slug);
+
+    const shouldDelete = await confirm({ message: `Delete release ${slug}? This cannot be undone.`, default: false });
+    if (!shouldDelete) {
+        return;
+    }
+
+    // Past this point a failure is a real error, not a missing release: the
+    // previous broad catch reported unlink/cleanup failures as "not found" and
+    // silently skipped asset cleanup, which is how orphaned assets accumulate.
+    await fs.unlink(targetPath);
+    console.log(`[+] Deleted ${targetPath}`);
+    const comparisonPath = getComparisonFilePath(slug);
+    if (await deleteStoredComparison(slug)) {
+        console.log(`[+] Deleted ${comparisonPath}`);
+    }
+    await clearReleaseDrafts(slug);
+    console.log(`[+] Cleared CLI drafts for ${slug}`);
+
+    if (!record) {
+        console.log('[!] Could not parse release file, deleted the .ts file only');
+        process.exitCode = 1;
+        return;
+    }
+
+    const remainingReleases = records
+        .filter((entry) => entry.slug !== slug)
+        .map((entry) => entry.data);
+    const cleanupPlan = planReleaseAssetCleanup({
+        release: record.data,
+        remainingReleases,
+    });
+    const cleanup = await executeCleanupPlan(cleanupPlan);
+    if (shouldPrintCleanupSummary(cleanup)) {
+        console.log(formatCleanupResult(cleanup));
+    }
+    if (cleanup.errors.length > 0) {
+        process.exitCode = 1;
+    }
+
+    console.log(`[✓] Release ${slug} fully deleted`);
 }
 
 async function deploy() {
@@ -1672,12 +1774,12 @@ async function deploy() {
     }
     try {
         console.log('[1/3] Building project...');
-        await exec('npm run build');
+        await runCommand('npm', ['run', 'build']);
         console.log('[+] Build complete.');
 
         console.log('[2/3] Ensuring Cloudflare Pages project exists...');
         const projectStatus = await ensurePagesProject(
-            exec,
+            runCommand,
             config.cloudflarePagesProject,
             config.cloudflareProductionBranch,
         );
@@ -1688,7 +1790,8 @@ async function deploy() {
         }
 
         console.log('[3/3] Deploying (Direct Upload)...');
-        await exec(getDeployCommand(config.cloudflarePagesProject, 'build'));
+        const deployCommand = getDeployCommand(config.cloudflarePagesProject, 'build');
+        await runCommand(deployCommand.file, deployCommand.args);
         console.log('[+] Deployment initiated!');
     } catch (e) {
         console.error('[!] Deployment failed:', e);
@@ -1697,6 +1800,10 @@ async function deploy() {
 }
 
 async function main() {
+    // Explicit registration: importing the manager must not install global
+    // process listeners as a side effect.
+    tempManager.register();
+
     const resolved = resolveCliCommand(process.argv.slice(2));
     const command = resolved.command;
     const args = resolved.args;
