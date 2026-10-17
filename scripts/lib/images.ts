@@ -1,7 +1,7 @@
 /**
  * Image processing utilities using Sharp
  */
-import sharp from 'sharp';
+import sharp, { type Sharp } from 'sharp';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
@@ -18,16 +18,31 @@ const MICRO_QUALITY = 45;
 const OUTPUT_DIR = 'static/posters';
 const OG_DIR = 'static/og';
 
+// Remote sources are unbounded input: a hung server must not stall the CLI and
+// an oversized (or HTML) response must not reach sharp.
+const IMAGE_FETCH_TIMEOUT_MS = 20_000;
+const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
+
+/** Asset ids are generated hashes (`[a-z0-9]{8}`); anything else is unsafe in a path. */
+const ASSET_ID_RE = /^[a-z0-9]+$/;
+
+function assertAssetId(assetId: string): string {
+    if (typeof assetId !== 'string' || !ASSET_ID_RE.test(assetId)) {
+        throw new TypeError(`Invalid poster asset id: ${JSON.stringify(assetId)}`);
+    }
+    return assetId;
+}
+
 function getPosterOutputPath(assetId: string): string {
-    return path.join(OUTPUT_DIR, `${assetId}.avif`);
+    return path.join(OUTPUT_DIR, `${assertAssetId(assetId)}.avif`);
 }
 
 function getCardPosterOutputPath(assetId: string): string {
-    return path.join(OUTPUT_DIR, `${assetId}.card.avif`);
+    return path.join(OUTPUT_DIR, `${assertAssetId(assetId)}.card.avif`);
 }
 
 function getOgOutputPath(assetId: string): string {
-    return path.join(OG_DIR, `${assetId}.jpg`);
+    return path.join(OG_DIR, `${assertAssetId(assetId)}.jpg`);
 }
 
 async function ensurePosterOutputDirs() {
@@ -35,20 +50,61 @@ async function ensurePosterOutputDirs() {
     await fs.mkdir(OG_DIR, { recursive: true });
 }
 
-async function readImageSource(source: string): Promise<Buffer> {
-    if (source.startsWith('http')) {
-        const response = await fetch(source);
-        if (!response.ok) {
-            throw new Error(`Failed to download image: ${response.statusText}`);
+/** Stream a response body into a buffer, refusing to exceed `maxBytes`. */
+async function readCappedBody(response: Response, source: string, maxBytes: number): Promise<Buffer> {
+    const body = response.body;
+    if (!body) return Buffer.alloc(0);
+
+    const reader = body.getReader();
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+
+    try {
+        for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            total += value.byteLength;
+            if (total > maxBytes) {
+                await reader.cancel();
+                throw new Error(`Image at ${source} exceeds the ${maxBytes} byte limit`);
+            }
+            chunks.push(value);
         }
-        return Buffer.from(await response.arrayBuffer());
+    } finally {
+        reader.releaseLock();
     }
 
-    return await fs.readFile(source);
+    return Buffer.concat(chunks);
+}
+
+async function readImageSource(source: string): Promise<Buffer> {
+    const isRemote = source.startsWith('http://') || source.startsWith('https://');
+    if (!isRemote) {
+        return await fs.readFile(source);
+    }
+
+    const response = await fetch(source, { signal: AbortSignal.timeout(IMAGE_FETCH_TIMEOUT_MS) });
+    if (!response.ok) {
+        throw new Error(`Failed to download image: HTTP ${response.status} ${response.statusText} (${source})`);
+    }
+
+    const contentType = (response.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase();
+    if (!contentType.startsWith('image/')) {
+        throw new Error(
+            `Refusing to process a non-image response (content-type: ${contentType || 'missing'}) from ${source}`,
+        );
+    }
+
+    const declaredLength = Number(response.headers.get('content-length'));
+    if (Number.isFinite(declaredLength) && declaredLength > MAX_IMAGE_BYTES) {
+        throw new Error(`Image at ${source} exceeds the ${MAX_IMAGE_BYTES} byte limit`);
+    }
+
+    return readCappedBody(response, source, MAX_IMAGE_BYTES);
 }
 
 async function writePosterVariant(
-    image: sharp.Sharp,
+    image: Sharp,
     outputPath: string,
     width: number,
     quality: number,
@@ -73,10 +129,6 @@ export function getCardPosterPath(assetId: string): string {
     return `/posters/${assetId}.card.avif`;
 }
 
-export function getCardPosterPathFromPoster(posterPath: string): string {
-    return posterPath.replace(/\.avif$/i, '.card.avif');
-}
-
 /**
  * Process a poster image from a URL or local path
  * 1. Downloads/Reads image
@@ -91,7 +143,9 @@ export async function processPoster(source: string, assetId: string): Promise<st
         const buffer = await readImageSource(source);
         await ensurePosterOutputDirs();
 
-        const image = sharp(buffer);
+        // .rotate() applies the EXIF orientation tag (and drops it), so posters
+        // shot with an orientation tag are not written sideways.
+        const image = sharp(buffer).rotate();
         const outputPathAvif = getPosterOutputPath(assetId);
         const outputPathCardAvif = getCardPosterOutputPath(assetId);
         const outputPathJpg = getOgOutputPath(assetId);
@@ -142,7 +196,7 @@ export async function backfillCardPoster(posterSourcePath: string, assetId: stri
         const buffer = await readImageSource(posterSourcePath);
         await ensurePosterOutputDirs();
 
-        const image = sharp(buffer);
+        const image = sharp(buffer).rotate();
         const outputPath = getCardPosterOutputPath(assetId);
         await writePosterVariant(image, outputPath, CARD_POSTER_WIDTH, CARD_POSTER_QUALITY);
 
@@ -206,8 +260,18 @@ function normalizeAccent(r: number, g: number, b: number): string {
     return `#${toHex(r2)}${toHex(g2)}${toHex(b2)}`;
 }
 
-async function extractPosterMetaFromSharp(image: sharp.Sharp): Promise<PosterMeta> {
-    const { dominant } = await image.stats();
+async function extractPosterMetaFromSharp(image: Sharp): Promise<PosterMeta> {
+    // Normalize to 8-bit sRGB first: greyscale/16-bit sources otherwise report
+    // channel values that normalizeAccent turns into `#NaNNaNNaN`.
+    const { dominant } = await image.clone().toColourspace('srgb').stats();
+    if (
+        !dominant ||
+        !Number.isFinite(dominant.r) ||
+        !Number.isFinite(dominant.g) ||
+        !Number.isFinite(dominant.b)
+    ) {
+        throw new Error('Could not determine a dominant colour from the poster image');
+    }
     const accent = normalizeAccent(dominant.r, dominant.g, dominant.b);
 
     const microBuffer = await image
@@ -222,5 +286,5 @@ async function extractPosterMetaFromSharp(image: sharp.Sharp): Promise<PosterMet
 
 export async function extractPosterMeta(source: string): Promise<PosterMeta> {
     const buffer = await readImageSource(source);
-    return extractPosterMetaFromSharp(sharp(buffer));
+    return extractPosterMetaFromSharp(sharp(buffer).rotate());
 }

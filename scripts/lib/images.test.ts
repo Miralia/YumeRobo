@@ -6,6 +6,7 @@ import os from "node:os";
 import sharp from "sharp";
 
 import { processPoster } from "./images.ts";
+import { removePosterMeta } from "./poster-meta.ts";
 import { getReleaseAssetReferences } from "./assets.ts";
 
 const repoRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), "../..");
@@ -25,8 +26,10 @@ function getTestOgPath(assetId: string) {
 	return path.join(ogDir, `${assetId}.jpg`);
 }
 
-test("processPoster generates a card-sized poster asset", async () => {
-	const assetId = `card-poster-${Date.now()}`;
+// sharp/AVIF encoding is CPU-bound and this file shares the machine with the
+// rest of the suite, so give the render test room beyond the default timeout.
+test("processPoster generates a card-sized poster asset", { timeout: 30_000 }, async () => {
+	const assetId = `cardposter${Date.now()}`;
 	const sourcePath = path.join(os.tmpdir(), `${assetId}.png`);
 
 	await sharp({
@@ -59,7 +62,65 @@ test("processPoster generates a card-sized poster asset", async () => {
 			fs.rm(posterPath, { force: true }),
 			fs.rm(cardPosterPath, { force: true }),
 			fs.rm(ogPath, { force: true }),
+			removePosterMeta(assetId),
 		]);
+	}
+});
+
+test("processPoster rejects an asset id that is not a bare hash", async () => {
+	const sourcePath = path.join(os.tmpdir(), `images-guard-${Date.now()}.png`);
+
+	await sharp({
+		create: {
+			width: 100,
+			height: 150,
+			channels: 3,
+			background: { r: 10, g: 20, b: 30 },
+		},
+	})
+		.png()
+		.toFile(sourcePath);
+
+	try {
+		await assert.rejects(
+			() => processPoster(sourcePath, "../../escape"),
+			/Invalid poster asset id/,
+		);
+		await assert.rejects(
+			() => processPoster(sourcePath, "Card-Poster"),
+			/Invalid poster asset id/,
+		);
+	} finally {
+		await fs.rm(sourcePath, { force: true });
+	}
+});
+
+test("processPoster treats only http(s) sources as remote", async () => {
+	const assetId = `localprefix${Date.now()}`;
+
+	// `http` without `://` used to be handed to fetch(); it must stay a local path.
+	await assert.rejects(
+		() => processPoster("http-not-a-url", assetId),
+		(error: NodeJS.ErrnoException) => error.code === "ENOENT",
+	);
+});
+
+test("processPoster rejects a remote non-image response", async () => {
+	const assetId = `notanimage${Date.now()}`;
+	const server = Bun.serve({
+		port: 0,
+		fetch: () => new Response("<html>error page</html>", {
+			headers: { "content-type": "text/html; charset=utf-8" },
+		}),
+	});
+
+	try {
+		await assert.rejects(
+			() => processPoster(`http://127.0.0.1:${server.port}/poster.png`, assetId),
+			/Refusing to process a non-image response/,
+		);
+	} finally {
+		server.stop(true);
 	}
 });
 

@@ -12,13 +12,28 @@ const HOME_POSTER_WIDTH = 142;
 const HOME_POSTER_HEIGHT = 213;
 const HOME_POSTER_COUNT = 4;
 
-function escapeXml(value: string): string {
+/** Control characters are illegal in XML 1.0 even when escaped as entities. */
+const XML_ILLEGAL_RE = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/g;
+
+/** Exported for tests: XML escaping must also drop control characters. */
+export function escapeXml(value: string): string {
     return value
+        .replace(XML_ILLEGAL_RE, "")
         .replaceAll("&", "&amp;")
         .replaceAll("<", "&lt;")
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&apos;");
+}
+
+function codePointLength(value: string): number {
+    return Array.from(value).length;
+}
+
+/** Slice by code point so a truncation can never emit a lone surrogate. */
+function truncateCodePoints(value: string, limit: number): string {
+    const characters = Array.from(value);
+    return characters.length <= limit ? value : characters.slice(0, limit).join("");
 }
 
 function splitLongToken(token: string, limit: number): string[] {
@@ -28,16 +43,17 @@ function splitLongToken(token: string, limit: number): string[] {
     return parts;
 }
 
-function wrapTitle(value: string, limit = 27, maxLines = 3): string[] {
+/** Exported for tests: wrapping/truncation must stay code-point safe. */
+export function wrapTitle(value: string, limit = 27, maxLines = 3): string[] {
     const tokens = value
         .split(/\s+/)
-        .flatMap((token) => token.length > limit ? splitLongToken(token, limit) : [token]);
+        .flatMap((token) => codePointLength(token) > limit ? splitLongToken(token, limit) : [token]);
     const lines: string[] = [];
     let line = "";
 
     for (const token of tokens) {
         const next = line ? `${line} ${token}` : token;
-        if (next.length <= limit) {
+        if (codePointLength(next) <= limit) {
             line = next;
             continue;
         }
@@ -48,7 +64,7 @@ function wrapTitle(value: string, limit = 27, maxLines = 3): string[] {
 
     if (lines.length > maxLines) {
         const visible = lines.slice(0, maxLines);
-        visible[maxLines - 1] = `${visible[maxLines - 1].slice(0, limit - 1).trimEnd()}…`;
+        visible[maxLines - 1] = `${truncateCodePoints(visible[maxLines - 1], limit - 1).trimEnd()}…`;
         return visible;
     }
     return lines;
@@ -105,13 +121,37 @@ async function posterBuffer(
     width: number,
     height: number,
 ): Promise<Buffer> {
-    return sharp(sourcePath)
-        .resize(width, height, {
-            fit: "contain",
-            background: { r: 242, g: 241, b: 244, alpha: 1 },
-        })
-        .png()
-        .toBuffer();
+    try {
+        return await sharp(sourcePath)
+            // Honour EXIF orientation before resizing, otherwise rotated
+            // posters are composited sideways.
+            .rotate()
+            .resize(width, height, {
+                fit: "contain",
+                background: { r: 242, g: 241, b: 244, alpha: 1 },
+            })
+            .png()
+            .toBuffer();
+    } catch (error) {
+        throw new Error(
+            `Failed to read poster ${sourcePath}: ${error instanceof Error ? error.message : error}`,
+        );
+    }
+}
+
+/**
+ * Resolve a release poster path and assert it stays inside `<rootDir>/static`.
+ * Poster paths come from release data, so a `../` value must never escape.
+ */
+function resolveStaticPosterPath(rootDir: string, posterPath: string): string {
+    const staticDir = path.resolve(rootDir, "static");
+    const resolved = path.resolve(staticDir, posterPath.replace(/^\/+/, ""));
+    const relative = path.relative(staticDir, resolved);
+
+    if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) {
+        throw new Error(`Poster path escapes static/: ${posterPath}`);
+    }
+    return resolved;
 }
 
 function posterAssetId(posterPath: string): string {
@@ -134,11 +174,36 @@ export function selectRandomHomePosters(
     return candidates.slice(0, HOME_POSTER_COUNT);
 }
 
+/**
+ * Poster slots for the home card. The card is regenerated right after the
+ * first release file lands, so demanding four unique posters would abort the
+ * wizard *after* the release was written. With fewer posters than slots the
+ * available ones are repeated to keep the fixed four-slot layout valid.
+ */
+function homeCardPosters(posterPaths: string[], random: () => number): string[] {
+    const candidates = [...new Set(posterPaths)];
+    if (candidates.length === 0) {
+        console.log("[!] No posters available; the home social card will use the plain background");
+        return [];
+    }
+    if (candidates.length < HOME_POSTER_COUNT) {
+        console.log(
+            `[!] Only ${candidates.length} unique poster(s) available for ${HOME_POSTER_COUNT} slots; ` +
+            "repeating them so the home social card can still be generated",
+        );
+        return Array.from(
+            { length: HOME_POSTER_COUNT },
+            (_, index) => candidates[index % candidates.length],
+        );
+    }
+    return selectRandomHomePosters(candidates, random);
+}
+
 export async function generateReleaseSocialCard(
     release: ReleaseData,
     rootDir = process.cwd(),
 ): Promise<string> {
-    const sourcePath = path.join(rootDir, "static", release.poster.replace(/^\//, ""));
+    const sourcePath = resolveStaticPosterPath(rootDir, release.poster);
     const outputPath = path.join(rootDir, "static", "og", `${posterAssetId(release.poster)}.jpg`);
     const poster = await posterBuffer(sourcePath, DETAIL_POSTER_WIDTH, DETAIL_POSTER_HEIGHT);
 
@@ -163,10 +228,10 @@ export async function generateHomeSocialCard(
             <text x="112" y="356" fill="#55555e" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="30">A record of some releases.</text>
         </svg>
     `);
-    const selectedPosters = selectRandomHomePosters(posterPaths, random);
+    const selectedPosters = homeCardPosters(posterPaths, random);
     const posters = await Promise.all(selectedPosters.map((posterPath) =>
         posterBuffer(
-            path.join(rootDir, "static", posterPath.replace(/^\//, "")),
+            resolveStaticPosterPath(rootDir, posterPath),
             HOME_POSTER_WIDTH,
             HOME_POSTER_HEIGHT,
         )
@@ -174,12 +239,15 @@ export async function generateHomeSocialCard(
     const outputPath = path.join(rootDir, "static", "og", "home.jpg");
 
     await fs.mkdir(path.dirname(outputPath), { recursive: true });
-    await sharp(background)
-        .composite(posters.map((input, index) => ({
+    const card = sharp(background);
+    if (posters.length > 0) {
+        card.composite(posters.map((input, index) => ({
             input,
             left: 594 + index * 148,
             top: 208,
-        })))
+        })));
+    }
+    await card
         .jpeg({ quality: 86, mozjpeg: true })
         .toFile(outputPath);
     return outputPath;
