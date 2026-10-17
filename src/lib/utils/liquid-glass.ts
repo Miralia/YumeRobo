@@ -85,6 +85,9 @@ export function liquidGlass(
 ) {
     let options = initialOptions;
     let frame = 0;
+    let filterFrame = 0;
+    let lastWidth = 0;
+    let lastHeight = 0;
     let svg: SVGSVGElement | null = null;
     let image: SVGFEImageElement | null = null;
     let displacement: SVGFEDisplacementMapElement | null = null;
@@ -118,10 +121,27 @@ export function liquidGlass(
         delete node.dataset.liquidActive;
     }
 
-    function updateFilter() {
+    /** Drop the refraction hook when the element cannot carry a map. */
+    function clearFilter() {
+        node.style.removeProperty("--liquid-refraction-filter");
+        delete node.dataset.liquidRefraction;
+        lastWidth = 0;
+        lastHeight = 0;
+    }
+
+    function updateFilter(force = false) {
         if (!canRefract) return;
         const rect = node.getBoundingClientRect();
-        if (rect.width < 2 || rect.height < 2) return;
+        if (rect.width < 2 || rect.height < 2) {
+            clearFilter();
+            return;
+        }
+        // Dragging a window fires ResizeObserver continuously; rebuilding the
+        // map (canvas work plus toDataURL) is only needed on a real size change.
+        if (!force && rect.width === lastWidth && rect.height === lastHeight) return;
+        lastWidth = rect.width;
+        lastHeight = rect.height;
+
         ensureFilter();
         if (!image || !displacement) return;
         const radius = Number.parseFloat(getComputedStyle(node).borderTopLeftRadius) || 0;
@@ -133,7 +153,13 @@ export function liquidGlass(
         node.dataset.liquidRefraction = "";
     }
 
-    const resizeObserver = new ResizeObserver(updateFilter);
+    /** Coalesce resize bursts into a single rebuild per frame. */
+    function scheduleFilterUpdate() {
+        cancelAnimationFrame(filterFrame);
+        filterFrame = requestAnimationFrame(() => updateFilter());
+    }
+
+    const resizeObserver = new ResizeObserver(scheduleFilterUpdate);
     resizeObserver.observe(node);
     node.addEventListener("pointermove", updatePointer, { passive: true });
     node.addEventListener("pointerleave", clearPointer);
@@ -143,15 +169,18 @@ export function liquidGlass(
         update(nextOptions: LiquidGlassOptions) {
             options = nextOptions;
             if (!options.interactive) clearPointer();
-            updateFilter();
+            updateFilter(true);
         },
         destroy() {
             cancelAnimationFrame(frame);
+            cancelAnimationFrame(filterFrame);
             resizeObserver.disconnect();
             node.removeEventListener("pointermove", updatePointer);
             node.removeEventListener("pointerleave", clearPointer);
             svg?.remove();
             node.style.removeProperty("--liquid-refraction-filter");
+            node.style.removeProperty("--liquid-pointer-x");
+            node.style.removeProperty("--liquid-pointer-y");
             delete node.dataset.liquidActive;
             delete node.dataset.liquidRefraction;
         },

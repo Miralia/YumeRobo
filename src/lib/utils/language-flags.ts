@@ -117,8 +117,45 @@ const sceneAliases: Record<string, string> = {
     'emn': 'english',
 };
 
+/**
+ * Region variants that must survive deduplication because they carry a
+ * different flag from their base language.
+ */
+const regionalVariants: Record<string, string> = {
+    'spanish (latin america)': 'spanish (latin america)',
+    'portuguese (brazil)': 'portuguese (brazil)',
+};
+
+/**
+ * Subdivision flags are tag sequences (U+1F3F4 + tag letters + U+E007F);
+ * the two-letter regional-indicator trick cannot express them.
+ */
+const subdivisionFlags: Record<string, string> = {
+    'GB-WLS': '\u{1F3F4}\u{E0067}\u{E0062}\u{E0077}\u{E006C}\u{E0073}\u{E007F}',
+};
+
+/** Shortest fragment allowed to drive a prefix match. */
+const MIN_PREFIX_MATCH_LENGTH = 3;
+
+/** Standalone scene/format markers that describe a subtitle variant. */
+const SCENE_TAG_PATTERN =
+    /\b(?:sdh|cc|forced|commentary|descriptive|hearing impaired)\b/gi;
+
 function resolveAlias(language: string): string {
     return sceneAliases[language.toLowerCase().trim()] ?? language;
+}
+
+/**
+ * Lower-case and normalise the spacing around parenthesised variants so
+ * `"Spanish(Latin America)"` and `"Spanish (Latin America)"` compare equal.
+ */
+function canonicalize(language: string): string {
+    return language
+        .toLowerCase()
+        .replace(/\s*\(\s*/g, ' (')
+        .replace(/\s*\)/g, ')')
+        .replace(/\s+/g, ' ')
+        .trim();
 }
 
 /**
@@ -126,6 +163,13 @@ function resolveAlias(language: string): string {
  * Uses regional indicator symbols (works on most systems)
  */
 function countryCodeToFlag(code: string): string {
+    const subdivision = subdivisionFlags[code.toUpperCase()];
+    if (subdivision) return subdivision;
+
+    // Regional indicators only exist for two ASCII letters; longer codes such
+    // as "GB-WLS" would otherwise produce a broken multi-flag string.
+    if (!/^[a-z]{2}$/i.test(code)) return '🌐';
+
     const codePoints = code
         .toUpperCase()
         .split('')
@@ -141,17 +185,22 @@ function countryCodeToFlag(code: string): string {
 export function getLanguageFlag(language: string): string {
     if (!language) return '🏳️';
 
-    const normalized = resolveAlias(language).toLowerCase().trim();
+    const normalized = canonicalize(resolveAlias(language));
 
     // Try exact match first
     if (languageToCountry[normalized]) {
         return countryCodeToFlag(languageToCountry[normalized]);
     }
 
-    // Try partial match (e.g., "English (SDH)" -> "English")
-    for (const [key, country] of Object.entries(languageToCountry)) {
-        if (normalized.startsWith(key) || key.startsWith(normalized.split('(')[0].trim())) {
-            return countryCodeToFlag(country);
+    // Try partial match (e.g., "English (SDH)" -> "English"). Fragments shorter
+    // than a real language code ("in", "(", "   ") would otherwise match the
+    // first key they happen to prefix.
+    const base = normalized.split('(')[0].trim();
+    if (base.length >= MIN_PREFIX_MATCH_LENGTH) {
+        for (const [key, country] of Object.entries(languageToCountry)) {
+            if (normalized.startsWith(key) || key.startsWith(base)) {
+                return countryCodeToFlag(country);
+            }
         }
     }
 
@@ -166,13 +215,21 @@ export function normalizeLanguage(language: string): string {
     if (!language) return '';
 
     // Resolve scene-specific codes first (e.g., 'emn' -> 'english')
-    const aliased = resolveAlias(language);
+    const canonical = canonicalize(resolveAlias(language));
+
+    // Regional variants must be recognised before the base language is
+    // extracted, otherwise the region suffix (and its flag) is lost.
+    for (const [variant, value] of Object.entries(regionalVariants)) {
+        if (canonical.includes(variant)) {
+            return value;
+        }
+    }
 
     // Extract base language (before any parentheses or special markers)
-    let base = aliased
-        .toLowerCase()
+    const base = canonical
         .split('(')[0]
-        .replace(/\s*(sdh|cc|forced|commentary|descriptive|hearing impaired)\s*/gi, '')
+        .replace(SCENE_TAG_PATTERN, ' ')
+        .replace(/\s+/g, ' ')
         .trim();
 
     // Map Chinese variants to single 'chinese' for deduplication
@@ -182,18 +239,6 @@ export function normalizeLanguage(language: string): string {
     }
     if (base.includes('cantonese')) {
         return 'cantonese';
-    }
-
-    // Map regional variants
-    const regionalMap: Record<string, string> = {
-        'spanish (latin america)': 'spanish (latin america)',
-        'portuguese (brazil)': 'portuguese (brazil)',
-    };
-
-    for (const [key, value] of Object.entries(regionalMap)) {
-        if (language.toLowerCase().includes(key.split('(')[0]) && language.toLowerCase().includes(key.split('(')[1]?.replace(')', '') || '')) {
-            return value;
-        }
     }
 
     return base;

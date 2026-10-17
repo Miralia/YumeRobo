@@ -12,3 +12,19 @@
  * exactly one card in both directions.
  */
 export const cardTransition = $state<{ slug: string | null }>({ slug: null });
+
+/**
+ * Point the Magic Move at a single card. `null` names no card, which is the
+ * correct state outside an in-flight navigation.
+ */
+export function setCardTransition(slug: string | null): void {
+    cardTransition.slug = slug;
+}
+
+/**
+ * Drop any stale slug (aborted navigation, cancelled transition) so no card
+ * keeps carrying a `view-transition-name` after the fact.
+ */
+export function clearCardTransition(): void {
+    setCardTransition(null);
+}

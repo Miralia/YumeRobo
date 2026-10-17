@@ -71,13 +71,24 @@ export function accessibleTooltip(
         tooltip.style.top = `${Math.round(top)}px`;
     }
 
+    /**
+     * Resize and capture-phase scroll fire in bursts; doing two rect reads and
+     * two style writes per event is wasteful, so coalesce them into one frame.
+     */
+    function schedulePosition() {
+        cancelAnimationFrame(frame);
+        frame = requestAnimationFrame(positionTooltip);
+    }
+
     function show(immediate = false) {
         window.clearTimeout(showTimer);
         const open = () => {
             isOpen = true;
             tooltip.dataset.open = "";
-            cancelAnimationFrame(frame);
-            frame = requestAnimationFrame(positionTooltip);
+            // Escape must dismiss a hover-opened tooltip too (WCAG 1.4.13),
+            // and the hovered control is not focused, so listen document-wide.
+            document.addEventListener("keydown", handleDocumentKeydown);
+            schedulePosition();
         };
 
         if (immediate) {
@@ -92,6 +103,7 @@ export function accessibleTooltip(
         cancelAnimationFrame(frame);
         isOpen = false;
         delete tooltip.dataset.open;
+        document.removeEventListener("keydown", handleDocumentKeydown);
     }
 
     function handlePointerEnter(event: PointerEvent) {
@@ -112,14 +124,18 @@ export function accessibleTooltip(
         if (event.key === "Escape") hide();
     }
 
+    function handleDocumentKeydown(event: KeyboardEvent) {
+        if (event.key === "Escape") hide();
+    }
+
     node.addEventListener("pointerenter", handlePointerEnter);
     node.addEventListener("pointerleave", hide);
     node.addEventListener("focus", handleFocus);
     node.addEventListener("blur", hide);
     node.addEventListener("click", hide);
     node.addEventListener("keydown", handleKeydown);
-    window.addEventListener("resize", positionTooltip);
-    window.addEventListener("scroll", positionTooltip, true);
+    window.addEventListener("resize", schedulePosition);
+    window.addEventListener("scroll", schedulePosition, true);
 
     return {
         update(nextOptions: AccessibleTooltipOptions) {
@@ -129,14 +145,15 @@ export function accessibleTooltip(
         },
         destroy() {
             hide();
+            document.removeEventListener("keydown", handleDocumentKeydown);
             node.removeEventListener("pointerenter", handlePointerEnter);
             node.removeEventListener("pointerleave", hide);
             node.removeEventListener("focus", handleFocus);
             node.removeEventListener("blur", hide);
             node.removeEventListener("click", hide);
             node.removeEventListener("keydown", handleKeydown);
-            window.removeEventListener("resize", positionTooltip);
-            window.removeEventListener("scroll", positionTooltip, true);
+            window.removeEventListener("resize", schedulePosition);
+            window.removeEventListener("scroll", schedulePosition, true);
             tooltip.remove();
 
             const remainingIds =

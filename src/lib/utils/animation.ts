@@ -12,10 +12,17 @@ export const duration = {
 } as const;
 
 /**
+ * Longest index that still contributes to a section stagger delay. Without a
+ * cap, a 30-row torrent list would delay its last row by ~2s; beyond this many
+ * items the extra offset only makes the tail of a list feel unresponsive.
+ */
+export const MAX_STAGGER_INDEX = 8;
+
+/**
  * Calculate stagger delay for index-based animations
  */
 export function stagger(index: number, base = 50): number {
-    return index * base;
+    return Math.max(0, index) * base;
 }
 
 /**
@@ -37,7 +44,8 @@ export const sections = {
 export function sectionDelay(section: keyof typeof sections, index = 0): number {
     const config = sections[section];
     const offset = "offset" in config ? config.offset : 0;
-    return config.base + index * offset;
+    const cappedIndex = Math.min(Math.max(0, index), MAX_STAGGER_INDEX);
+    return config.base + cappedIndex * offset;
 }
 
 /**

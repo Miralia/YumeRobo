@@ -64,10 +64,13 @@ export interface MediaInfoStructured {
 export function parseMediaInfo(text: string): MediaInfoParsed {
     if (!text) return {};
 
-    const looksEscaped = /\\n/.test(text);
+    // MediaInfo sometimes ships literal `\n` escapes instead of real line
+    // breaks. Only unescape when the text has no real newline at all: a
+    // Windows path such as `C:\new\movie.mkv` contains a literal `\n` too.
+    const looksEscaped = !/[\r\n]/.test(text) && /\\n/.test(text);
     const normalized = (looksEscaped ? text.replace(/\\n/g, '\n') : text)
         .replace(/\r\n?/g, '\n')
-        .replace(/\xc2\xa0/g, ' ')
+        .replace(/\u00a0/g, ' ')
         .trim();
 
     const blocks = normalized.split(/\n\s*\n+/);
@@ -85,19 +88,24 @@ export function parseMediaInfo(text: string): MediaInfoParsed {
         const base = match?.[1]?.trim() ?? header;
         const index = match?.[2] ? Number(match[2]) : undefined;
 
-        const data: Record<string, string | string[]> = {};
+        // A null-prototype bag so fields literally named "constructor" or
+        // "__proto__" are stored as ordinary entries instead of touching the
+        // prototype chain.
+        const data: Record<string, string | string[]> = Object.create(null);
 
         for (let i = 1; i < lines.length; i++) {
             const line = lines[i];
             if (!line.includes(':')) continue;
 
             const [rawKey, ...rest] = line.split(':');
-            const key = rawKey.trim();
+            // Keys are column-aligned in MediaInfo output; collapse whatever
+            // whitespace (including non-breaking spaces) separates the words.
+            const key = rawKey.replace(/\s+/g, ' ').trim();
             const value = rest.join(':').trim();
 
             if (!key) continue;
 
-            if (key in data) {
+            if (Object.hasOwn(data, key)) {
                 const existing = data[key];
                 data[key] = Array.isArray(existing) ? [...existing, value] : [existing, value];
             } else {
@@ -212,19 +220,50 @@ function parseChannels(channelStr?: string): string {
 }
 
 /**
- * Get resolution string from width/height
+ * Resolution tiers, ordered from highest to lowest. Widths are the nominal
+ * 16:9 width for each tier (854x480, 1024x576, ...).
  */
-function getResolution(width?: string, height?: string): string {
-    if (!height) return '';
-    const h = parseInt(height.replace(/[^\d]/g, ''), 10);
-    if (isNaN(h)) return '';
+const RESOLUTION_TIERS = [
+    { label: '4K', width: 3840, height: 2160 },
+    { label: '1080p', width: 1920, height: 1080 },
+    { label: '720p', width: 1280, height: 720 },
+    { label: '576p', width: 1024, height: 576 },
+    { label: '480p', width: 854, height: 480 },
+] as const;
 
-    if (h >= 2160) return '4K';
-    if (h >= 1080) return '1080p';
-    if (h >= 720) return '720p';
-    if (h >= 576) return '576p';
-    if (h >= 480) return '480p';
-    return `${h}p`;
+/** Index of the highest tier a dimension reaches, or -1 when it reaches none. */
+function tierFor(value: number, axis: 'width' | 'height'): number {
+    return RESOLUTION_TIERS.findIndex((tier) => value >= tier[axis]);
+}
+
+function parseDimension(value?: string): number | null {
+    if (!value) return null;
+    const parsed = parseInt(value.replace(/[^\d]/g, ''), 10);
+    return Number.isNaN(parsed) ? null : parsed;
+}
+
+/**
+ * Get resolution string from width/height.
+ *
+ * A widescreen encode can be shorter than its nominal tier (1920x800 is a
+ * 1080p master), so both dimensions are classified and the higher-ranked label
+ * wins. Heights that reach no tier keep the plain `${height}p` fallback.
+ */
+export function getResolution(width?: string, height?: string): string {
+    const h = parseDimension(height);
+    if (h === null) return '';
+
+    const w = parseDimension(width);
+    const heightTier = tierFor(h, 'height');
+    const widthTier = w === null ? -1 : tierFor(w, 'width');
+    const heightLabel =
+        heightTier >= 0 ? RESOLUTION_TIERS[heightTier].label : `${h}p`;
+
+    if (widthTier >= 0 && (heightTier < 0 || widthTier < heightTier)) {
+        return RESOLUTION_TIERS[widthTier].label;
+    }
+
+    return heightLabel;
 }
 
 /**
@@ -235,11 +274,19 @@ function getHDRInfo(video: MediaInfoStructured['video']): string {
     const v = video[0];
 
     if (v.hdr_format) {
-        if (v.hdr_format.toLowerCase().includes('dolby vision')) return 'DV';
-        if (v.hdr_format.toLowerCase().includes('hdr10+')) return 'HDR10+';
-        if (v.hdr_format.toLowerCase().includes('hdr10')) return 'HDR10';
-        if (v.hdr_format.toLowerCase().includes('hlg')) return 'HLG';
-        return 'HDR';
+        const format = v.hdr_format.toLowerCase();
+        const flags: string[] = [];
+
+        if (format.includes('dolby vision')) flags.push('DV');
+        // "HDR10+" contains "hdr10" too, so the specific token is tested first.
+        if (format.includes('hdr10+')) {
+            flags.push('HDR10+');
+        } else if (format.includes('hdr10')) {
+            flags.push('HDR10');
+        }
+        if (format.includes('hlg')) flags.push('HLG');
+
+        return flags.length ? flags.join(' ') : 'HDR';
     }
 
     const transfer = v.transfer_characteristics?.toLowerCase() ?? '';
@@ -284,7 +331,7 @@ export function generateSummary(structured: MediaInfoStructured): string {
         }
 
         // Bit depth
-        if (v.bit_depth && !v.bit_depth.includes('8')) {
+        if (v.bit_depth && parseInt(v.bit_depth, 10) > 8) {
             videoParts.push(v.bit_depth.replace(' bits', '-bit').replace(' bit', '-bit'));
         }
 

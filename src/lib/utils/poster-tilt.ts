@@ -50,6 +50,26 @@ let latestPointerPosition: {
 } | null = null;
 let pointerTrackingConsumers = 0;
 
+/**
+ * Shared across every poster: one `matchMedia` object per query is enough, and
+ * query lists safely accept listeners from many nodes. Created lazily so that
+ * importing this module during SSR never touches `window`.
+ */
+let reducedMotionQuery: MediaQueryList | null = null;
+let finePointerQuery: MediaQueryList | null = null;
+
+function getReducedMotionQuery(): MediaQueryList {
+    reducedMotionQuery ??= window.matchMedia("(prefers-reduced-motion: reduce)");
+    return reducedMotionQuery;
+}
+
+function getFinePointerQuery(): MediaQueryList {
+    finePointerQuery ??= window.matchMedia(
+        "(any-hover: hover) and (any-pointer: fine)",
+    );
+    return finePointerQuery;
+}
+
 function trackPointerPosition(event: PointerEvent) {
     latestPointerPosition = {
         clientX: event.clientX,
@@ -84,10 +104,8 @@ function stopPointerTracking() {
  */
 export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
     let opts = { ...DEFAULTS, ...options };
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const finePointer = window.matchMedia(
-        "(any-hover: hover) and (any-pointer: fine)",
-    );
+    const reducedMotion = getReducedMotionQuery();
+    const finePointer = getFinePointerQuery();
 
     const rotateX: SpringValue = { value: 0, velocity: 0, target: 0 };
     const rotateY: SpringValue = { value: 0, velocity: 0, target: 0 };
@@ -285,8 +303,30 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
     }
 
     function handlePointerMove(event: PointerEvent) {
-        if (!supportsInteraction(event) || !bounds) return;
+        if (!supportsInteraction(event)) return;
+        if (!bounds) {
+            // Geometry was invalidated by a scroll or resize; re-sample on the
+            // next real pointer sample instead of reading layout per event.
+            if (!node.hasAttribute("data-poster-hover")) return;
+            bounds = node.getBoundingClientRect();
+        }
         updateTargets(event.clientX, event.clientY);
+    }
+
+    function invalidateBounds() {
+        // The cached rect was sampled at pointerenter and goes stale as soon as
+        // the page scrolls or the layout changes under the pointer.
+        bounds = null;
+    }
+
+    function handleScroll() {
+        invalidateBounds();
+    }
+
+    function handleResize() {
+        if (node.hasAttribute("data-poster-hover") || engagement.target > 0) {
+            invalidateBounds();
+        }
     }
 
     function settle() {
@@ -327,6 +367,9 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
             spring.velocity = 0;
             spring.target = 0;
         }
+        // A navigation freeze (or a capability change) must not leave the card
+        // permanently inert: a later pointerenter has to be able to engage it.
+        suspended = false;
         awaitingTransitionHandoff = false;
         node.removeAttribute("data-poster-handoff");
         node.removeAttribute("data-poster-active");
@@ -465,6 +508,11 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
     node.addEventListener("pointerleave", settle);
     node.addEventListener("pointercancel", settle);
     window.addEventListener("blur", resetImmediately);
+    window.addEventListener("scroll", handleScroll, {
+        capture: true,
+        passive: true,
+    });
+    window.addEventListener("resize", handleResize, { passive: true });
     window.addEventListener(POSTER_TILT_RESET_EVENT, handleNavigationReset);
     window.addEventListener(
         POSTER_TILT_TRANSITION_END_EVENT,
@@ -492,6 +540,8 @@ export function posterTilt(node: HTMLElement, options: PosterTiltOptions = {}) {
             node.removeEventListener("pointerleave", settle);
             node.removeEventListener("pointercancel", settle);
             window.removeEventListener("blur", resetImmediately);
+            window.removeEventListener("scroll", handleScroll, true);
+            window.removeEventListener("resize", handleResize);
             window.removeEventListener(
                 POSTER_TILT_RESET_EVENT,
                 handleNavigationReset,

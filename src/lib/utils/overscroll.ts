@@ -31,10 +31,19 @@ const defaultOptions: Required<BoundaryIndicatorOptions> = {
 };
 
 /**
+ * Window listeners and body-level glow elements are global, so an action
+ * applied to the same node twice (remount, HMR, nested layouts) would stack
+ * duplicate listeners and duplicate glows. Each node owns at most one instance.
+ */
+const activeIndicators = new WeakMap<HTMLElement, { destroy(): void }>();
+
+/**
  * Svelte Action for scroll boundary indicator.
  * Apply to the root scrollable container.
  */
 export function boundaryIndicator(node: HTMLElement, options: BoundaryIndicatorOptions = {}) {
+    activeIndicators.get(node)?.destroy();
+
     const opts = { ...defaultOptions, ...options };
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
@@ -44,20 +53,29 @@ export function boundaryIndicator(node: HTMLElement, options: BoundaryIndicatorO
     let cachedScrollHeight = document.documentElement.scrollHeight;
     let cachedInnerHeight = window.innerHeight;
 
-    // Track content growth (infinite scroll, accordions) without forcing
-    // layout from inside scroll-linked handlers.
-    const resizeObserver = new ResizeObserver(() => {
+    function measure() {
         cachedScrollHeight = document.documentElement.scrollHeight;
-    });
-    resizeObserver.observe(document.body);
-
-    function handleResize() {
         cachedInnerHeight = window.innerHeight;
-        cachedScrollHeight = document.documentElement.scrollHeight;
     }
 
-    const isAtTop = () => window.scrollY <= 0;
+    // Track content growth (infinite scroll, accordions) without forcing
+    // layout from inside scroll-linked handlers. The root element's box grows
+    // with the document, unlike body's, which can stay viewport-sized.
+    const resizeObserver = new ResizeObserver(() => {
+        measure();
+    });
+    resizeObserver.observe(document.documentElement);
+
+    function handleResize() {
+        measure();
+    }
+
+    // A page shorter than the viewport is at both boundaries at once, which
+    // would flash a glow on every wheel event.
+    const isScrollable = () => cachedScrollHeight - cachedInnerHeight > 1;
+    const isAtTop = () => isScrollable() && window.scrollY <= 0;
     const isAtBottom = () =>
+        isScrollable() &&
         window.scrollY + cachedInnerHeight >= cachedScrollHeight - 1;
 
     function createIndicator(edge: "top" | "bottom"): HTMLDivElement {
@@ -147,7 +165,7 @@ export function boundaryIndicator(node: HTMLElement, options: BoundaryIndicatorO
     window.addEventListener("touchend", handleTouchEnd, { passive: true });
     window.addEventListener("resize", handleResize, { passive: true });
 
-    return {
+    const instance = {
         destroy() {
             window.removeEventListener("wheel", handleWheel);
             window.removeEventListener("touchstart", handleTouchStart);
@@ -158,6 +176,12 @@ export function boundaryIndicator(node: HTMLElement, options: BoundaryIndicatorO
             if (hideTimer !== null) clearTimeout(hideTimer);
             topIndicator?.remove();
             bottomIndicator?.remove();
+            if (activeIndicators.get(node) === instance) {
+                activeIndicators.delete(node);
+            }
         },
     };
+
+    activeIndicators.set(node, instance);
+    return instance;
 }
