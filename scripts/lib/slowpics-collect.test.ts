@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { createSlowPicsCollector, extractCollectionFromHtml } from "./slowpics-collect";
+import {
+  createSlowPicsCollector,
+  extractCollectionFromHtml,
+  SlowPicsPayloadError,
+} from "./slowpics-collect";
 import { validateSlowPicsCollection } from "./comparisons";
 
 function collection(key = "abc123") {
@@ -49,6 +53,40 @@ describe("slow.pics HTML collection extraction", () => {
   test("extracted payload passes slow.pics validation with the expected key", () => {
     const parsed = extractCollectionFromHtml(htmlWithCollection(collection("abc123")));
     expect(validateSlowPicsCollection(parsed, "row1").key).toBe("abc123");
+  });
+
+  test("ignores braces inside single quotes, backticks and comments", () => {
+    const payload = JSON.stringify(collection("abc123"));
+    const html = [
+      "<!doctype html><html><body><script>",
+      "// a line comment with } and \" and ' and `",
+      "/* a block comment with } { \" ' ` */",
+      "var unrelated = 'a single quoted } brace';",
+      "var alsoUnrelated = `a backtick } brace`;",
+      "var collection = " + payload + ";",
+      "</script></body></html>",
+    ].join("\n");
+
+    expect(extractCollectionFromHtml(html)).toEqual(collection("abc123"));
+  });
+
+  test("a malformed payload raises a parse error, not a blocked/network message", () => {
+    const html = "<script>var collection = { \"key\": \"abc123\", };</script>";
+
+    expect(() => extractCollectionFromHtml(html)).toThrow(SlowPicsPayloadError);
+    expect(() => extractCollectionFromHtml(html)).toThrow(/not valid JSON/);
+    // No marker at all stays "payload missing" (null), not a parse error.
+    expect(extractCollectionFromHtml("<html><body>blocked</body></html>")).toBeNull();
+  });
+
+  test("the collector refuses URLs that are not https slow.pics", async () => {
+    const collector = await createSlowPicsCollector();
+    await expect(collector.collect("https://slow.pics.evil.example/c/abc123", "abc123"))
+      .rejects.toThrow("Refusing to fetch a non-slow.pics URL");
+    await expect(collector.collect("http://slow.pics/c/abc123", "abc123"))
+      .rejects.toThrow("Refusing to fetch a non-slow.pics URL");
+    await expect(collector.collect("not a url", "abc123"))
+      .rejects.toThrow("Invalid slow.pics URL");
   });
 });
 

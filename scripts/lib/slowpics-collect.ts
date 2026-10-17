@@ -43,11 +43,30 @@ function simulatedChromeHeaders(): Record<string, string> {
 /** Script markers that introduce the embedded collection JSON. */
 const COLLECTION_MARKERS = ["var collection = ", "window.collection = "];
 
+/** Only the canonical slow.pics hosts may be fetched. */
+const SLOWPICS_HOSTS = new Set(["slow.pics", "www.slow.pics"]);
+
+/** Upper bound on the fetched document, so a hostile/huge page cannot exhaust memory. */
+const MAX_HTML_BYTES = 8 * 1024 * 1024;
+
+/**
+ * Raised when the page carries the collection marker but the payload is not
+ * valid JSON — a parse failure, not a blocked/challenged request.
+ */
+export class SlowPicsPayloadError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "SlowPicsPayloadError";
+  }
+}
+
 /**
  * Extract the `collection` JSON object from a slow.pics document.
- * Uses brace matching that skips string literals, so embedded quotes/braces
- * inside image names cannot break the parse. Returns null when the page does
- * not carry the collection payload (missing/blocked/challenged).
+ * Uses brace matching that skips string literals (single/double quotes and
+ * backticks) plus line and block comments, so braces in either cannot shift
+ * the depth. Returns null when the page does not carry the collection payload
+ * (missing/blocked/challenged) and throws `SlowPicsPayloadError` when the
+ * payload is present but unparseable.
  */
 export function extractCollectionFromHtml(html: string): unknown {
   const marker = COLLECTION_MARKERS.find((candidate) => html.includes(candidate));
@@ -57,11 +76,27 @@ export function extractCollectionFromHtml(html: string): unknown {
   if (braceStart === -1) return null;
 
   let depth = 0;
-  let inString = false;
+  let quote: '"' | "'" | "`" | null = null;
   let escaped = false;
+  let inLineComment = false;
+  let inBlockComment = false;
+
   for (let i = braceStart; i < html.length; i++) {
     const ch = html[i];
-    if (inString) {
+    const next = html[i + 1];
+
+    if (inLineComment) {
+      if (ch === "\n") inLineComment = false;
+      continue;
+    }
+    if (inBlockComment) {
+      if (ch === "*" && next === "/") {
+        inBlockComment = false;
+        i += 1;
+      }
+      continue;
+    }
+    if (quote) {
       if (escaped) {
         escaped = false;
         continue;
@@ -70,11 +105,21 @@ export function extractCollectionFromHtml(html: string): unknown {
         escaped = true;
         continue;
       }
-      if (ch === '"') inString = false;
+      if (ch === quote) quote = null;
       continue;
     }
-    if (ch === '"') {
-      inString = true;
+    if (ch === "/" && next === "/") {
+      inLineComment = true;
+      i += 1;
+      continue;
+    }
+    if (ch === "/" && next === "*") {
+      inBlockComment = true;
+      i += 1;
+      continue;
+    }
+    if (ch === '"' || ch === "'" || ch === "`") {
+      quote = ch;
       continue;
     }
     if (ch === "{") {
@@ -82,10 +127,13 @@ export function extractCollectionFromHtml(html: string): unknown {
     } else if (ch === "}") {
       depth -= 1;
       if (depth === 0) {
+        const json = html.slice(braceStart, i + 1);
         try {
-          return JSON.parse(html.slice(braceStart, i + 1));
-        } catch {
-          return null;
+          return JSON.parse(json);
+        } catch (error) {
+          throw new SlowPicsPayloadError(
+            `embedded slow.pics collection is not valid JSON: ${error instanceof Error ? error.message : error}`,
+          );
         }
       }
     }
@@ -93,10 +141,53 @@ export function extractCollectionFromHtml(html: string): unknown {
   return null;
 }
 
+/** Reject anything that is not an https slow.pics URL. */
+function assertSlowPicsUrl(url: string): URL {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error(`Invalid slow.pics URL: ${url}`);
+  }
+  if (parsed.protocol !== "https:" || !SLOWPICS_HOSTS.has(parsed.hostname.toLowerCase())) {
+    throw new Error(`Refusing to fetch a non-slow.pics URL: ${url}`);
+  }
+  return parsed;
+}
+
+/** Read a response body as text, aborting past `maxBytes`. */
+async function readCappedText(response: Response, maxBytes: number): Promise<string> {
+  const body = response.body;
+  if (!body) return "";
+
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let total = 0;
+  let text = "";
+
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel();
+        throw new Error(`slow.pics response exceeds ${maxBytes} bytes`);
+      }
+      text += decoder.decode(value, { stream: true });
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  return text + decoder.decode();
+}
+
 export async function createSlowPicsCollector(): Promise<SlowPicsCollector> {
   return {
     async collect(url: string, expectedKey: string): Promise<SlowPicsCollection> {
-      const response = await fetch(url, {
+      const target = assertSlowPicsUrl(url);
+      const response = await fetch(target, {
         redirect: "follow",
         headers: simulatedChromeHeaders(),
         signal: AbortSignal.timeout(30_000),
@@ -105,8 +196,23 @@ export async function createSlowPicsCollector(): Promise<SlowPicsCollector> {
         throw new Error(`slow.pics returned HTTP ${response.status} for ${url}`);
       }
 
-      const html = await response.text();
-      const collection = extractCollectionFromHtml(html);
+      const declaredLength = Number(response.headers.get("content-length"));
+      if (Number.isFinite(declaredLength) && declaredLength > MAX_HTML_BYTES) {
+        throw new Error(`slow.pics response exceeds ${MAX_HTML_BYTES} bytes`);
+      }
+
+      const html = await readCappedText(response, MAX_HTML_BYTES);
+
+      let collection: unknown;
+      try {
+        collection = extractCollectionFromHtml(html);
+      } catch (error) {
+        if (error instanceof SlowPicsPayloadError) {
+          throw new Error(`slow.pics returned an unparseable comparison payload for ${url}: ${error.message}`);
+        }
+        throw error;
+      }
+
       if (collection === null) {
         throw new Error(
           `slow.pics did not include comparison data for ${url} — the request was probably blocked. Open the URL in your browser to confirm it is reachable.`,

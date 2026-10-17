@@ -51,10 +51,31 @@ interface HtmlNode {
 }
 
 const SLOWPICS_KEY_RE = /^[A-Za-z0-9]+$/;
+const SLOWPICS_BASE_URL = "https://slow.pics";
+const SLOWPICS_HOSTS = new Set(["slow.pics", "www.slow.pics"]);
+
+/** A file name that cannot escape its directory: no separators, no dot segments. */
+function isSafePublicFileName(name: string): boolean {
+  if (!name || name === "." || name === "..") return false;
+  return !name.includes("/") && !name.includes("\\");
+}
 
 function nodeText(node: HtmlNode): string {
   if (node.nodeName === "#text") return node.value ?? "";
   return (node.childNodes ?? []).map(nodeText).join("");
+}
+
+/** Parse an href against slow.pics, accepting absolute, protocol-relative, root-relative and bare-host forms. */
+function toSlowPicsUrl(href: string): URL | null {
+  const trimmed = href.trim();
+  if (!trimmed) return null;
+  // `www.slow.pics/c/x` (no scheme) is a host, not a relative path.
+  const candidate = /^(?:www\.)?slow\.pics\//i.test(trimmed) ? `https://${trimmed}` : trimmed;
+  try {
+    return new URL(candidate, SLOWPICS_BASE_URL);
+  } catch {
+    return null;
+  }
 }
 
 function candidateFromAnchor(node: HtmlNode): SlowPicsCandidate | null {
@@ -62,19 +83,18 @@ function candidateFromAnchor(node: HtmlNode): SlowPicsCandidate | null {
   const href = node.attrs?.find((attr) => attr.name === "href")?.value;
   if (!href) return null;
 
-  try {
-    const url = new URL(href);
-    if (url.protocol !== "https:" || url.hostname !== "slow.pics") return null;
-    const match = /^\/c\/([A-Za-z0-9]+)\/?$/.exec(url.pathname);
-    if (!match) return null;
-    return {
-      key: match[1],
-      url: `https://slow.pics/c/${match[1]}`,
-      label: nodeText(node).replace(/\s+/g, " ").trim() || match[1],
-    };
-  } catch {
-    return null;
-  }
+  const url = toSlowPicsUrl(href);
+  if (!url) return null;
+  if (url.protocol !== "https:") return null;
+  if (!SLOWPICS_HOSTS.has(url.hostname.toLowerCase())) return null;
+
+  const match = /^\/c\/([A-Za-z0-9]+)\/?$/.exec(url.pathname);
+  if (!match) return null;
+  return {
+    key: match[1],
+    url: `${SLOWPICS_BASE_URL}/c/${match[1]}`,
+    label: nodeText(node).replace(/\s+/g, " ").trim() || match[1],
+  };
 }
 
 function candidatesFromHtml(html: string): SlowPicsCandidate[] {
@@ -123,6 +143,9 @@ export function validateSlowPicsCollection(
   if (numCols === 0) throw new TypeError("slow.pics collection has no images");
 
   for (const comparison of collection.comparisons) {
+    if (comparison == null) {
+      throw new TypeError("slow.pics collection contains an empty comparison row");
+    }
     if (!Array.isArray(comparison.images) || comparison.images.length !== numCols) {
       throw new TypeError("slow.pics collection rows have inconsistent column counts");
     }
@@ -132,7 +155,7 @@ export function validateSlowPicsCollection(
         typeof image.name !== "string" ||
         !image.name.trim() ||
         typeof image.publicFileName !== "string" ||
-        !/^[A-Za-z0-9._-]+$/.test(image.publicFileName)
+        !isSafePublicFileName(image.publicFileName)
       ) {
         throw new TypeError("slow.pics collection contains malformed image metadata");
       }
@@ -152,7 +175,9 @@ export function createStoredComparison(
   candidate: SlowPicsCandidate,
   collection: unknown,
 ): StoredComparison {
-  if (!SLOWPICS_KEY_RE.test(candidate.key)) throw new TypeError("Invalid slow.pics key");
+  if (typeof candidate.key !== "string" || !SLOWPICS_KEY_RE.test(candidate.key)) {
+    throw new TypeError("Invalid slow.pics key");
+  }
   return {
     schemaVersion: 1,
     source: {
@@ -183,13 +208,32 @@ export async function readStoredComparison(
 
 export async function readStoredComparisonFile(filePath: string): Promise<StoredComparison> {
   const raw = await fs.readFile(filePath, "utf8");
-  const parsed = JSON.parse(raw) as StoredComparison;
-  if (parsed.schemaVersion !== 1 || parsed.source?.provider !== "slowpics") {
-    throw new TypeError("Unsupported comparison sidecar schema");
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    throw new TypeError(
+      `Invalid comparison sidecar JSON at ${filePath}: ${error instanceof Error ? error.message : error}`,
+    );
   }
+
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new TypeError(`Unsupported comparison sidecar schema at ${filePath}`);
+  }
+
+  const stored = parsed as Partial<StoredComparison>;
+  if (stored.schemaVersion !== 1 || stored.source?.provider !== "slowpics") {
+    throw new TypeError(`Unsupported comparison sidecar schema at ${filePath}`);
+  }
+  if (typeof stored.source.key !== "string" || typeof stored.source.url !== "string") {
+    throw new TypeError(`Unsupported comparison sidecar schema at ${filePath}`);
+  }
+
+  const collection = stored.collection as SlowPicsCollection | undefined;
   return createStoredComparison(
-    { key: parsed.source.key, url: parsed.source.url, label: parsed.collection.name ?? parsed.source.key },
-    parsed.collection,
+    { key: stored.source.key, url: stored.source.url, label: collection?.name ?? stored.source.key },
+    collection,
   );
 }
 
@@ -198,7 +242,14 @@ export async function writeStoredComparisonFile(
   comparison: StoredComparison,
 ): Promise<string> {
   await fs.mkdir(path.dirname(filePath), { recursive: true });
-  await fs.writeFile(filePath, JSON.stringify(comparison, null, 2) + "\n", "utf8");
+  const tempPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
+  try {
+    await fs.writeFile(tempPath, JSON.stringify(comparison, null, 2) + "\n", "utf8");
+    await fs.rename(tempPath, filePath);
+  } catch (error) {
+    await fs.rm(tempPath, { force: true }).catch(() => {});
+    throw error;
+  }
   return filePath;
 }
 
