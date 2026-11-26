@@ -600,7 +600,7 @@ async function stepTorrents(): Promise<TorrentEntry[]> {
 
 async function stepSpecs(): Promise<SpecEntry[]> {
     console.log('\n--- Specs (BBCode) ---');
-    console.log('Paste all BBCode with [quote=Title]...[/quote] blocks');
+    console.log('Paste all BBCode with [quote=Title]...[/quote] or [hide=Title]...[/hide] blocks');
 
     let specs: SpecEntry[] = [];
     do {

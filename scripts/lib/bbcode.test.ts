@@ -117,4 +117,33 @@ describe("parseBBCodeSpecs", () => {
 		expect(parseBBCodeSpecs("no quotes here")).toEqual([]);
 		expect(specContent("[quote=Info]\n[unknown]x[/unknown]\n[/quote]")).toBe("[unknown]x[/unknown]");
 	});
+
+	test("parses [hide=Title] release sections and keeps episode quotes nested", () => {
+		const specs = parseBBCodeSpecs(
+			"[quote=Info][pre]info[/pre][/quote]\n" +
+			"[hide=x265 log][pre][quote=E01]x265 line[/quote][/pre][/hide]",
+		);
+		expect(specs.map((spec) => spec.title)).toEqual(["Info", "x265 log"]);
+		expect(specs[1].content).toContain('<div class="inner-quote-title">E01</div>');
+		expect(specs[1].content).toContain("x265 line");
+	});
+
+	test("finds section blocks through formatting wrappers", () => {
+		const specs = parseBBCodeSpecs(
+			"[pre][hide=AV1 Report][pre]Encoder.........: SVT-AV1\n" +
+			"[quote=E01]metric[/quote][/pre][/hide][/pre]",
+		);
+		expect(specs.map((spec) => spec.title)).toEqual(["AV1 Report"]);
+		expect(specs[0].content).toContain("Encoder.........: SVT-AV1");
+		expect(specs[0].content).toContain('<div class="inner-quote-title">E01</div>');
+	});
+
+	test("does not promote nested episode quotes out of a section", () => {
+		const specs = parseBBCodeSpecs(
+			"[quote=x265 log][pre][quote=E01]x[/quote][quote=E02]y[/quote][/pre][/quote]",
+		);
+		expect(specs.map((spec) => spec.title)).toEqual(["x265 log"]);
+		expect(specs[0].content).toContain("E01");
+		expect(specs[0].content).toContain("E02");
+	});
 });

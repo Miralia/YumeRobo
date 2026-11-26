@@ -20,6 +20,7 @@ import type { SpecEntry } from './types';
 type BbNode =
     | { type: 'text'; value: string }
     | { type: 'tag'; tag: string; value?: string; children: BbNode[] };
+type BbTagNode = Extract<BbNode, { type: 'tag' }>;
 
 interface BbFrame {
     tag: string;
@@ -31,7 +32,7 @@ interface BbFrame {
 const KNOWN_TAGS = new Set([
     'b', 'strong', 'i', 'em', 'u', 's', 'strike',
     'url', 'email', 'img',
-    'quote', 'spoiler',
+    'quote', 'spoiler', 'hide',
     'code', 'pre',
     'color', 'size', 'font',
     'list', '*', 'hr',
@@ -165,7 +166,8 @@ function renderNode(node: BbNode): string {
         case 'email':
             return renderNodes(node.children);
         case 'quote':
-        case 'spoiler': {
+        case 'spoiler':
+        case 'hide': {
             const title = node.value?.trim()
                 ? `<div class="inner-quote-title">${escapeHtml(node.value.trim())}</div>`
                 : '';
@@ -185,18 +187,39 @@ function renderNode(node: BbNode): string {
     }
 }
 
+const SECTION_TAGS = new Set(['quote', 'spoiler', 'hide']);
+
 /**
- * Parse BBCode input and extract the outermost `[quote=Title]` / `[spoiler]`
- * blocks as spec entries. Text outside those blocks is ignored, matching the
- * "paste a forum post" workflow.
+ * Collect the outermost section containers. Formatting tags such as `[pre]`
+ * are transparent here: release templates often wrap a whole section in them,
+ * and treating them as opaque parents hides every spec nested inside. Once a
+ * section has been found, its nested episode quotes stay inside that section.
+ */
+function collectSectionNodes(nodes: BbNode[]): BbTagNode[] {
+    const sections: BbTagNode[] = [];
+
+    function visit(node: BbNode): void {
+        if (node.type !== 'tag') return;
+        if (SECTION_TAGS.has(node.tag)) {
+            sections.push(node);
+            return;
+        }
+        for (const child of node.children) visit(child);
+    }
+
+    for (const node of nodes) visit(node);
+    return sections;
+}
+
+/**
+ * Parse BBCode input and extract the outermost `[quote=Title]`, `[spoiler]`
+ * or `[hide=Title]` blocks as spec entries. Text outside those blocks is
+ * ignored, matching the "paste a forum post" workflow.
  */
 export function parseBBCodeSpecs(input: string): SpecEntry[] {
     const specs: SpecEntry[] = [];
 
-    for (const node of parseNodes(input)) {
-        if (node.type !== 'tag') continue;
-        if (node.tag !== 'quote' && node.tag !== 'spoiler') continue;
-
+    for (const node of collectSectionNodes(parseNodes(input))) {
         specs.push({
             title: (node.value ?? '').trim(),
             content: renderNodes(node.children).trim(),
